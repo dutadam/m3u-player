@@ -70,12 +70,6 @@ body{height:var(--vh);background:var(--bg);color:var(--text);
 .pl-del{width:34px;height:34px;border:none;background:none;color:var(--text-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:8px;flex-shrink:0;touch-action:manipulation;padding:0}
 .pl-del:active{background:rgba(255,80,114,.12);color:var(--danger)}
 .pl-del svg{width:16px;height:16px;fill:currentColor}
-.pl-refresh{width:34px;height:34px;border:none;background:none;color:var(--text-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:8px;flex-shrink:0;touch-action:manipulation;padding:0}
-.pl-refresh:active{background:var(--accent-dim);color:var(--accent)}
-.pl-refresh svg{width:16px;height:16px;fill:currentColor;transition:transform .15s}
-.pl-refresh.spinning{color:var(--accent);pointer-events:none}
-.pl-refresh.spinning svg{animation:pl-spin .8s linear infinite}
-@keyframes pl-spin{to{transform:rotate(360deg)}}
 /* BROWSE */
 #browse-screen{display:none;flex-direction:column;height:var(--vh);background:var(--bg);position:absolute;inset:0}
 #browse-screen.active{display:flex}
@@ -400,6 +394,13 @@ body{height:var(--vh);background:var(--bg);color:var(--text);
 .xt-json-file-btn svg{width:16px;height:16px;fill:currentColor;flex-shrink:0}
 .xt-json-file-btn input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:16px}
 .xt-json-file-btn:active{background:rgba(79,127,255,.25)}
+/* GitHub Auto-Update */
+.gh-section{width:100%;max-width:440px;margin-top:12px;border-top:1px solid var(--border);padding-top:10px}
+.gh-toggle{display:flex;align-items:center;gap:8px;background:none;border:none;color:var(--text-dim);font-size:12px;font-weight:600;cursor:pointer;padding:2px 0;width:100%;text-align:left;touch-action:manipulation;-webkit-appearance:none;letter-spacing:.3px}
+.gh-toggle svg{width:14px;height:14px;fill:currentColor;flex-shrink:0}
+.gh-toggle-arr{font-size:10px;margin-left:auto}
+.gh-body{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.gh-status{font-size:11px;color:var(--text-dim);min-height:14px;line-height:1.5}
 /* SERIES OVERLAY */
 #series-overlay{display:none;position:fixed;inset:0;background:var(--bg);z-index:70;flex-direction:column}
 #series-overlay.active{display:flex}
@@ -467,6 +468,18 @@ body{height:var(--vh);background:var(--bg);color:var(--text);
       <input class="url-input" id="xt-pass" type="password" autocomplete="current-password" placeholder="Şifre">
       <button class="xt-btn" id="xt-login-btn">Kanalları Yükle</button>
       <div class="xt-status" id="xt-status"></div>
+      <div class="gh-section">
+        <button class="gh-toggle" id="gh-toggle">
+          <svg viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          GitHub Otomatik Güncelleme
+          <span class="gh-toggle-arr" id="gh-toggle-arr">▸</span>
+        </button>
+        <div class="gh-body" id="gh-body" style="display:none">
+          <input class="url-input" id="gh-pat" type="password" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="GitHub Personal Access Token">
+          <button class="xt-btn" id="gh-save-btn">Kaydet &amp; Başlat</button>
+          <div class="gh-status" id="gh-status"></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -830,8 +843,8 @@ function renderPLList(){
   const wrap=document.getElementById('pl-list-wrap'),list=document.getElementById('pl-list');if(!wrap||!list)return;
   if(!PLAYLISTS.length){wrap.style.display='none';return;}
   wrap.style.display='';
-  list.innerHTML=PLAYLISTS.map(pl=>{const canRefresh=(pl.type==='url'&&pl.url)||(pl.type==='xtream'&&pl.xtream);return '<div class="pl-item" data-pl-id="'+esc(pl.id)+'"><div class="pl-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg></div><div class="pl-info"><div class="pl-name">'+esc(pl.name)+'</div><div class="pl-meta">'+numFmt(pl.count||0)+' kanal · '+ago(pl.ts)+'</div><div class="pl-type">'+(pl.type==='url'?'URL':pl.type==='xtream'?'Xtream':'Dosya')+'</div></div>'+(canRefresh?'<button class="pl-refresh" data-refresh-id="'+esc(pl.id)+'" title="Yenile"><svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.74 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4z"/></svg></button>':'')+'<button class="pl-del" data-del-id="'+esc(pl.id)+'"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button></div>';}).join('');
-  list.querySelectorAll('.pl-item').forEach(el=>{el.addEventListener('click',()=>loadPL(el.dataset.plId));el.addEventListener('dblclick',e=>renamePL(el.dataset.plId,e));el.querySelector('.pl-del').addEventListener('click',e=>deletePL(el.dataset.plId,e));const rb=el.querySelector('.pl-refresh');if(rb)rb.addEventListener('click',e=>refreshPL(el.dataset.plId,e));});
+  list.innerHTML=PLAYLISTS.map(pl=>'<div class="pl-item" data-pl-id="'+esc(pl.id)+'"><div class="pl-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg></div><div class="pl-info"><div class="pl-name">'+esc(pl.name)+'</div><div class="pl-meta">'+numFmt(pl.count||0)+' kanal · '+ago(pl.ts)+'</div><div class="pl-type">'+(pl.type==='url'?'URL':pl.type==='xtream'?'Xtream':'Dosya')+'</div></div><button class="pl-del" data-del-id="'+esc(pl.id)+'"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button></div>').join('');
+  list.querySelectorAll('.pl-item').forEach(el=>{el.addEventListener('click',()=>loadPL(el.dataset.plId));el.addEventListener('dblclick',e=>renamePL(el.dataset.plId,e));el.querySelector('.pl-del').addEventListener('click',e=>deletePL(el.dataset.plId,e));});
 }
 // EPG
 function parseXMLTVDate(s){
@@ -1405,14 +1418,12 @@ document.getElementById('url-prog-cancel').addEventListener('click',()=>{if(_url
 async function loadURL(url,statusEl,onSuccess){
   url=url.trim();if(!url.startsWith('http')){showToast('Geçerli bir URL girin','info');return;}
   const useOv=!statusEl;
-  const enc=encodeURIComponent(url);
   const proxies=[
     {lbl:'Doğrudan',  u:url},
-    {lbl:'Proxy 1',   u:'https://corsproxy.io/?'+enc},
-    {lbl:'Proxy 2',   u:'https://api.allorigins.win/raw?url='+enc},
-    {lbl:'Proxy 3',   u:'https://proxy.cors.sh/'+url},
-    {lbl:'Proxy 4',   u:'https://api.codetabs.com/v1/proxy?quest='+enc},
-    {lbl:'Proxy 5',   u:'https://cors.eu.org/'+url},
+    {lbl:'Proxy 1',   u:'https://corsproxy.io/?'+encodeURIComponent(url)},
+    {lbl:'Proxy 2',   u:'https://api.allorigins.win/raw?url='+encodeURIComponent(url)},
+    {lbl:'Proxy 3',   u:'https://thingproxy.freeboard.io/fetch/'+url},
+    {lbl:'Proxy 4',   u:'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(url)},
   ];
   if(_urlAbortCtrl)_urlAbortCtrl.abort();
   _urlAbortCtrl=new AbortController();
@@ -1436,7 +1447,7 @@ async function loadURL(url,statusEl,onSuccess){
         if(text.includes('#EXTM3U')||text.includes('#EXTINF')){
           setP(65);S.set('settings_url',url);
           if(useOv)_urlProgHide();
-          if(statusEl){statusEl.textContent='✓ Yüklendi';statusEl.style.color='var(--success)';}
+          if(statusEl)statusEl.textContent='✓ Yüklendi';
           if(onSuccess)onSuccess();
           loadText(text,{type:'url',url,name:url.split('/').pop()||url,ts:Date.now()});
           return;
@@ -1447,17 +1458,15 @@ async function loadURL(url,statusEl,onSuccess){
   if(cancelSig.aborted)return;
   setP(0);
   if(useOv)_urlProgHide();
-  if(statusEl){statusEl.textContent='❌ Bağlanamadı — sunucu/kullanıcı/şifre bilgilerini kontrol edin';statusEl.style.color='var(--danger)';}
-  showToast('URL yüklenemedi — sunucu adresini ve bilgileri kontrol edin','info',5000);
+  if(statusEl)statusEl.textContent='Başarısız — alternatif yöntemi deneyin';
+  showToast('URL yüklenemedi — M3U metnini yapıştır yöntemini deneyin','info',4500);
 }
-async function bgRefreshURL(url,plId,opts){
+async function bgRefreshURL(url,plId){
   // Silent background refresh — direct fetch first (GitHub raw is CORS-friendly), then proxies
-  opts=opts||{};
-  const _e=encodeURIComponent(url);
-  const proxies=[url,'https://corsproxy.io/?'+_e,'https://api.allorigins.win/raw?url='+_e,'https://proxy.cors.sh/'+url,'https://api.codetabs.com/v1/proxy?quest='+_e,'https://cors.eu.org/'+url];
+  const proxies=[url,'https://corsproxy.io/?'+encodeURIComponent(url),'https://api.allorigins.win/raw?url='+encodeURIComponent(url)];
   for(const u of proxies){
     try{
-      const res=await fetch(u,{signal:makeSignal(25000)});
+      const res=await fetch(u,{signal:makeSignal(20000)});
       if(!res.ok)continue;
       const text=await res.text();
       if(!text.includes('#EXTM3U')&&!text.includes('#EXTINF'))continue;
@@ -1468,25 +1477,10 @@ async function bgRefreshURL(url,plId,opts){
       if(document.getElementById('browse-screen').classList.contains('active')){
         ALL=chs.map((c,i)=>({id:i,...c}));PLAY_LIST=ALL;RECENT=S.get('recent',[]);renderBrowse();
       }
-      if(!opts.silent)showToast('Playlist güncellendi — '+numFmt(chs.length)+' kanal','ok',3500);
-      return true;
+      showToast('Playlist güncellendi — '+chs.length+' kanal','ok',3500);
+      return;
     }catch{}
   }
-  if(!opts.silent)showToast('Yenilenemedi — sunucuya ulaşılamadı','info',3500);
-  return false;
-}
-async function refreshPL(id,e){
-  if(e)e.stopPropagation();
-  const pl=PLAYLISTS.find(p=>p.id===id);if(!pl)return;
-  let url=null;
-  if(pl.type==='url'&&pl.url)url=pl.url;
-  else if(pl.type==='xtream'&&pl.xtream){const x=pl.xtream;url=_xtNorm(x.server)+'/get.php?username='+encodeURIComponent(x.user)+'&password='+encodeURIComponent(x.pass)+'&type=m3u_plus';}
-  else{showToast('Dosya playlistleri yenilenemez','info');return;}
-  const btn=e&&e.currentTarget?e.currentTarget:null;
-  if(btn)btn.classList.add('spinning');
-  await bgRefreshURL(url,id);
-  if(btn)btn.classList.remove('spinning');
-  renderPLList();
 }
 // File/Drop
 const dropZone=document.getElementById('drop-zone');
@@ -1506,22 +1500,7 @@ function loadXtream(server,user,pass){
   server=_xtNorm(server);
   if(!server||!user||!pass){showToast('Sunucu, kullanıcı adı ve şifre girin','info');return;}
   S.set('xtream_creds',{server,user,pass});
-  const m3uUrl=server+'/get.php?username='+encodeURIComponent(user)+'&password='+encodeURIComponent(pass)+'&type=m3u_plus';
-  const statusEl=document.getElementById('xt-status');
-  const btn=document.getElementById('xt-login-btn');
-  if(statusEl){statusEl.innerHTML='Bağlanıyor…';statusEl.style.color='var(--text-dim)';}
-  if(btn){btn.disabled=true;btn.textContent='Yükleniyor…';}
-  loadURL(m3uUrl,statusEl).then(()=>{
-    // on success loadText already ran — nothing extra needed
-  }).catch(()=>{}).finally(()=>{
-    if(btn){btn.disabled=false;btn.textContent='Kanalları Yükle';}
-    // If status still shows error (loadURL sets textContent), append copy link
-    if(statusEl&&statusEl.textContent.startsWith('❌')){
-      statusEl.innerHTML=statusEl.textContent+
-        '<br><span style="font-size:11px;color:var(--text-dim)">M3U linki: </span>'+
-        '<a style="font-size:11px;color:var(--accent);word-break:break-all" href="'+m3uUrl+'" target="_blank">'+m3uUrl+'</a>';
-    }
-  });
+  loadURL(server+'/get.php?username='+encodeURIComponent(user)+'&password='+encodeURIComponent(pass)+'&type=m3u_plus');
 }
 function getXtCreds(){
   const g=id=>{const el=document.getElementById(id);return el?el.value.trim():'';};
@@ -1533,6 +1512,56 @@ function saveXtCreds(){const c=getXtCreds();if(c.server&&c.user&&c.pass)S.set('x
 ['xt-server','xt-user','xt-pass'].forEach(id=>{const el=document.getElementById(id);if(!el)return;el.addEventListener('input',()=>saveXtCreds());});
 document.getElementById('xt-login-btn').addEventListener('click',()=>{const c=getXtCreds();loadXtream(c.server,c.user,c.pass);});
 ['xt-server','xt-user','xt-pass'].forEach(id=>{document.getElementById(id).addEventListener('keydown',e=>{if(e.key==='Enter'){e.target.blur();const c=getXtCreds();loadXtream(c.server,c.user,c.pass);}});});
+// ── GitHub Auto-Update ───────────────────────────────────────────────────
+document.getElementById('gh-toggle').addEventListener('click',()=>{
+  const body=document.getElementById('gh-body');
+  const arr=document.getElementById('gh-toggle-arr');
+  const open=body.style.display!=='none';
+  body.style.display=open?'none':'';
+  arr.textContent=open?'▸':'▾';
+});
+const GH_REPO='dutadam/m3u-player';
+document.getElementById('gh-save-btn').addEventListener('click',setGitHubAutoUpdate);
+document.getElementById('gh-pat').addEventListener('input',()=>S.set('gh_pat',document.getElementById('gh-pat').value));
+async function _loadSodium(){
+  if(typeof sodium!=='undefined'){await sodium.ready;return sodium;}
+  await new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/libsodium-wrappers@0.7.13/dist/modules/libsodium-wrappers.min.js';s.onload=res;s.onerror=()=>rej(new Error('libsodium yüklenemedi'));document.head.appendChild(s);});
+  await sodium.ready;return sodium;
+}
+async function setGitHubAutoUpdate(){
+  const pat=(document.getElementById('gh-pat').value||'').trim();
+  const statusEl=document.getElementById('gh-status');
+  const btn=document.getElementById('gh-save-btn');
+  if(!pat){statusEl.textContent='⚠ GitHub Token girin';statusEl.style.color='var(--danger)';return;}
+  const c=getXtCreds();
+  if(!c.server||!c.user||!c.pass){statusEl.textContent='⚠ Önce Xtream bilgilerini girin';statusEl.style.color='var(--danger)';return;}
+  const m3uUrl=_xtNorm(c.server)+'/get.php?username='+encodeURIComponent(c.user)+'&password='+encodeURIComponent(c.pass)+'&type=m3u_plus';
+  const slash=GH_REPO.indexOf('/');
+  const owner=GH_REPO.slice(0,slash);const repo=GH_REPO.slice(slash+1);
+  btn.disabled=true;
+  statusEl.textContent='GitHub\'a bağlanılıyor…';statusEl.style.color='var(--text-dim)';
+  try{
+    const keyRes=await fetch('https://api.github.com/repos/'+owner+'/'+repo+'/actions/secrets/public-key',{headers:{'Authorization':'token '+pat,'Accept':'application/vnd.github.v3+json'}});
+    if(!keyRes.ok)throw new Error('Erişim reddedildi — token\'ı ve repoyu kontrol edin ('+keyRes.status+')');
+    const{key_id,key}=await keyRes.json();
+    statusEl.textContent='Şifreleniyor…';
+    const _s=await _loadSodium();
+    const keyBytes=_s.from_base64(key,_s.base64_variants.ORIGINAL);
+    const enc=_s.crypto_box_seal(_s.from_string(m3uUrl),keyBytes);
+    const encB64=_s.to_base64(enc,_s.base64_variants.ORIGINAL);
+    statusEl.textContent='Secret kaydediliyor…';
+    const putRes=await fetch('https://api.github.com/repos/'+owner+'/'+repo+'/actions/secrets/M3U_SOURCE_URL',{method:'PUT',headers:{'Authorization':'token '+pat,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify({encrypted_value:encB64,key_id})});
+    if(!putRes.ok&&putRes.status!==204)throw new Error('Secret kaydedilemedi ('+putRes.status+')');
+    statusEl.textContent='Workflow başlatılıyor…';
+    await fetch('https://api.github.com/repos/'+owner+'/'+repo+'/actions/workflows/update-playlist.yml/dispatches',{method:'POST',headers:{'Authorization':'token '+pat,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},body:JSON.stringify({ref:'main'})}).catch(()=>{});
+    S.set('gh_pat',pat);
+    statusEl.textContent='✓ Ayarlandı — GitHub Actions her 6 saatte günceller';
+    statusEl.style.color='var(--success)';
+  }catch(err){
+    statusEl.textContent='❌ '+err.message;
+    statusEl.style.color='var(--danger)';
+  }finally{btn.disabled=false;}
+}
 document.getElementById('m3u-url-btn').addEventListener('click',()=>{const url=document.getElementById('m3u-url-input').value.trim();if(url)loadURL(url);});
 document.getElementById('m3u-url-input').addEventListener('keydown',e=>{if(e.key==='Enter'){e.target.blur();const url=e.target.value.trim();if(url)loadURL(url);}});
 // ── Series Detail Overlay ─────────────────────────────────────────────────
@@ -1609,6 +1638,12 @@ if(_savedXt){
   if(ui&&_savedXt.user)ui.value=_savedXt.user;
   if(pi&&_savedXt.pass)pi.value=_savedXt.pass;
 }
+{
+  const _ghPat=S.get('gh_pat','');
+  const _ghPatEl=document.getElementById('gh-pat');
+  if(_ghPatEl&&_ghPat)_ghPatEl.value=_ghPat;
+  if(_ghPat){document.getElementById('gh-body').style.display='';document.getElementById('gh-toggle-arr').textContent='▾';}
+}
 // PWA
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 // Start
@@ -1641,3 +1676,4 @@ if(savedEpgUrl){loadEPG(savedEpgUrl);}
 </script>
 </body>
 </html>
+ 
