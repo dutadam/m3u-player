@@ -5,6 +5,11 @@
   <key>CFBundleDisplayName</key>
   <string>cheesino</string>
 
+  <!-- Export compliance: yalnız standart HTTPS/şifreleme kullanılır → muaf.
+       Bu anahtar her TestFlight/App Store yüklemesinde şifreleme sorusunu atlatır. -->
+  <key>ITSAppUsesNonExemptEncryption</key>
+  <false/>
+
   <!-- KRİTİK: IPTV portallarının çoğu düz HTTP. Native'de mixed-content duvarı yok,
        ancak App Transport Security HTTP'yi varsayılan engeller. Bu istisna yayınların
        oynamasını sağlar (PWA'daki asıl tıkanmayı çözen ayar). Mağaza incelemesinde

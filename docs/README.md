@@ -7,6 +7,7 @@ iOS öncelikli, native-per-ecosystem bir IPTV oynatıcı (**cheesino**). Bu klas
 - **[Tasarım Şartnamesi (görsel)](./design/ui-preview.html)** — iOS UI/UX prototipi ("Signal" yönü).
   Tarayıcıda aç; native SwiftUI implementasyonunun görsel referansı. Palet, tipografi, anahtar ekranlar, tasarım sistemi.
 - **[Çekirdek Spec](./spec/xtream-m3u-epg.md)** — M3U/Xtream/EPG sözleşmesi + stream fallback algoritması + PWA→native geçiş tablosu.
+- **Uyum** — [gizlilik politikası (TR/EN)](./compliance/PRIVACY.md) · [App Store rehberi](./compliance/APP-STORE.md) (App Review notları, nutrition label, export compliance, kontrol listesi).
 - **Tam ürün/teknik plan** — oturum planı (`effervescent-weaving` plan dosyası): rakip analizi, Reddit içgörüleri, mimari, yol haritası.
 
 ## Mimari (özet)
