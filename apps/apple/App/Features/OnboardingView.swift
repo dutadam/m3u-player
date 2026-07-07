@@ -10,6 +10,7 @@ struct OnboardingView: View {
     @State private var tab: Tab = .xtream
     @State private var m3uURL = ""
     @State private var server = "", user = "", pass = ""
+    @State private var showFilePicker = false
 
     var body: some View {
         ScrollView {
@@ -40,7 +41,21 @@ struct OnboardingView: View {
                         }
                     }
                 case .file:
-                    Text("Dosya seçici (UIDocumentPicker) bir sonraki adımda.").foregroundStyle(.sgDim)
+                    #if os(iOS)
+                    Button { showFilePicker = true } label: {
+                        Label("M3U dosyası seç", systemImage: "doc.badge.plus")
+                            .font(.system(size: 14, weight: .semibold)).frame(maxWidth: .infinity)
+                            .padding(13)
+                            .background(Color.sgSurface, in: RoundedRectangle(cornerRadius: 12))
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.sgLine))
+                            .foregroundStyle(.sgText)
+                    }
+                    .sheet(isPresented: $showFilePicker) {
+                        DocumentPicker { text in library.loadM3U(text: text); showFilePicker = false }
+                    }
+                    #else
+                    Text("Dosya seçimi iOS/iPadOS'ta desteklenir.").foregroundStyle(.sgDim)
+                    #endif
                 case .discover:
                     Text("iptv-org ücretsiz katalog (keşfet) — Faz 4.").foregroundStyle(.sgDim)
                 }
