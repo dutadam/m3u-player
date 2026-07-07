@@ -71,23 +71,4 @@ struct LibraryView: View {
     }
 }
 
-/// Çoklu ekran (2–4 yayın). Tasarım: docs/design/ui-preview.html §Çoklu Ekran. Faz 2 tam entegrasyon.
-struct MultiView: View {
-    @EnvironmentObject private var library: LibraryStore
-    private let cols = [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)]
-
-    var body: some View {
-        LazyVGrid(columns: cols, spacing: 8) {
-            ForEach(library.live.prefix(4)) { ch in
-                ZStack(alignment: .topLeading) {
-                    RoundedRectangle(cornerRadius: 14).fill(Color.sgElevated).aspectRatio(16/9, contentMode: .fit)
-                    Text(ch.name).font(.system(size: 10, weight: .bold))
-                        .padding(4).background(.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 6))
-                        .padding(7)
-                }
-            }
-        }
-        .padding(8)
-        .navigationTitle("Çoklu Ekran")
-    }
-}
+// MultiView → MultiViewScreen.swift (gerçek 4-yayın oynatma)
