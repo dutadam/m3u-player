@@ -13,6 +13,15 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 22) {
                     if let hero = library.live.first { HeroCard(channel: hero) { selected = hero } }
 
+                    // "Devam Et" — son izlenenler (en üstte)
+                    if !library.recentChannels.isEmpty {
+                        ChannelRail(title: "Devam Et", channels: library.recentChannels) { selected = $0 }
+                    }
+                    // "Favoriler"
+                    if !library.favoriteChannels.isEmpty {
+                        ChannelRail(title: "Favoriler", channels: library.favoriteChannels) { selected = $0 }
+                    }
+
                     // "Canlı · Spor" rayı — grup adında spor geçenler
                     let sports = library.live.filter { $0.group.localizedCaseInsensitiveContains("spor") }
                     if !sports.isEmpty { ChannelRail(title: "Canlı · Spor", channels: sports) { selected = $0 } }

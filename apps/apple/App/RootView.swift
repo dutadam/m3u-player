@@ -15,6 +15,7 @@ struct RootView: View {
         }
         .tint(.sgAccent)
         .background(Color.sgGround.ignoresSafeArea())
+        .task { await library.restoreLastSession() }   // kayıtlı Xtream → otomatik giriş
     }
 }
 

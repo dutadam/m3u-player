@@ -10,16 +10,60 @@ final class LibraryStore: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
 
+    // Kullanıcı durumu (kalıcı)
+    @Published private(set) var favorites: Set<String> = []
+    @Published private(set) var recents: [RecentItem] = []
+    @Published private(set) var progress: [String: Progress] = [:]
+
     private let session = URLSession.shared
+
+    init() {
+        favorites = LocalStore.load(Set<String>.self, key: LocalStore.Key.favorites) ?? []
+        recents = LocalStore.load([RecentItem].self, key: LocalStore.Key.recents) ?? []
+        progress = LocalStore.load([String: Progress].self, key: LocalStore.Key.progress) ?? [:]
+    }
 
     // MARK: - Türetilmiş gruplar (UI için)
     var live: [Channel] { channels.filter { $0.kind == .live } }
     var movies: [Channel] { channels.filter { $0.kind == .vod } }
     var seriesChannels: [Channel] { channels.filter { $0.kind == .series } }
+    var favoriteChannels: [Channel] { channels.filter { favorites.contains($0.url.absoluteString) } }
+    func channel(forURL url: String) -> Channel? { channels.first { $0.url.absoluteString == url } }
+    var recentChannels: [Channel] { recents.compactMap { channel(forURL: $0.url) } }
 
     var groups: [String: [Channel]] {
         Dictionary(grouping: channels, by: \.group)
     }
+
+    /// Açılışta kayıtlı Xtream kimlik bilgisiyle otomatik geri yükleme.
+    func restoreLastSession() async {
+        if let creds = KeychainStore.load() { await loadXtream(creds) }
+    }
+
+    // MARK: - Favoriler / son izlenenler / ilerleme
+    func isFavorite(_ ch: Channel) -> Bool { favorites.contains(ch.url.absoluteString) }
+
+    func toggleFavorite(_ ch: Channel) {
+        let key = ch.url.absoluteString
+        if favorites.contains(key) { favorites.remove(key) } else { favorites.insert(key) }
+        LocalStore.save(favorites, key: LocalStore.Key.favorites)
+    }
+
+    func addRecent(_ ch: Channel) {
+        let item = RecentItem(name: ch.name, group: ch.group,
+                              logo: ch.logo?.absoluteString, url: ch.url.absoluteString, watchedAt: .now)
+        recents.removeAll { $0.url == item.url }
+        recents.insert(item, at: 0)
+        if recents.count > 30 { recents.removeLast(recents.count - 30) }
+        LocalStore.save(recents, key: LocalStore.Key.recents)
+    }
+
+    func saveProgress(url: String, position: Double, duration: Double) {
+        guard duration > 30 else { return }
+        progress[url] = Progress(positionSec: position, durationSec: duration, updatedAt: .now)
+        LocalStore.save(progress, key: LocalStore.Key.progress)
+    }
+    func resumePosition(for url: String) -> Double { progress[url]?.resumePosition ?? 0 }
 
     // MARK: - M3U (URL)
     func loadM3U(from url: URL) async {
@@ -69,10 +113,17 @@ final class LibraryStore: ObservableObject {
 
             guard !all.isEmpty else { errorMessage = "Sunucuda kanal bulunamadı."; return }
             channels = all
+            KeychainStore.save(creds)            // başarılı giriş → kimlik bilgisini şifreli sakla
             await loadEPG(from: client.xmltvURL)
         } catch {
             errorMessage = "Xtream girişi başarısız — sunucu/kullanıcı/şifreyi kontrol edin."
         }
+    }
+
+    /// Kaydedilmiş kaynağı ve kimlik bilgisini temizle (çıkış).
+    func signOut() {
+        KeychainStore.clear()
+        channels = []; epg = nil; xtreamClient = nil
     }
 
     /// Bir dizinin bölümlerini getirir (oynatıcı için). PWA'daki manuel akışın yerine geçer.
