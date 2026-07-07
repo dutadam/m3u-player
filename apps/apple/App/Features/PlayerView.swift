@@ -4,112 +4,217 @@ import AVFoundation
 import Core
 import Design
 
-/// Oynatıcı görünümü. AVPlayer (HLS/MP4) + VLCKit (MKV/AVI/exotik) fallback, StreamResolver zinciriyle.
-/// VLCKit yalnız MobileVLCKit paketi eklendiğinde aktif olur (#if canImport); yoksa AVPlayer kullanılır.
+/// Oynatıcı — kontrolsüz video katmanı + özel overlay. AVPlayer (HLS/MP4) + VLCKit fallback.
+/// Canlıda kanal ↑/↓, EPG "şimdi", AirPlay; VOD/dizide resume + ilerleme kaydı.
 struct PlayerView: View {
-    let channel: Channel
     @EnvironmentObject private var library: LibraryStore
     @Environment(\.dismiss) private var dismiss
+
+    @State private var current: Channel
     @State private var player = AVPlayer()
     @State private var candidates: [StreamResolver.Candidate] = []
     @State private var index = 0
-    @State private var showError = false
-    @State private var progressTimer: Timer?
     @State private var activeEngine: StreamResolver.Engine = .avPlayer
     @State private var vlcURL: URL?
+
+    @State private var controlsVisible = true
+    @State private var isPlaying = true
+    @State private var isBuffering = true
+    @State private var showError = false
+    @State private var ticker: Timer?
+    @State private var hideTask: DispatchWorkItem?
+
+    init(channel: Channel) { _current = State(initialValue: channel) }
+
+    private var isLive: Bool { current.kind == .live }
+    private var nowTitle: String? { library.epg?.nowPlaying(for: current)?.title }
 
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
+
             Group {
-                if activeEngine == .avPlayer {
-                    VideoPlayer(player: player)
-                } else if let u = vlcURL {
-                    VLCPlayerView(url: u)
-                }
+                if activeEngine == .avPlayer { PlayerLayerView(player: player) }
+                else if let u = vlcURL { VLCPlayerView(url: u) }
             }
             .ignoresSafeArea()
+            .contentShape(Rectangle())
+            .onTapGesture { toggleControls() }
 
-            VStack {
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text(channel.name).font(.headline).foregroundStyle(.white)
-                        Text(channel.group).font(.caption).foregroundStyle(Color.sgDim)
-                    }
-                    Spacer()
-                    Button { library.toggleFavorite(channel) } label: {
-                        Image(systemName: library.isFavorite(channel) ? "heart.fill" : "heart").padding(10)
-                            .background(.black.opacity(0.4), in: Circle())
-                            .foregroundStyle(library.isFavorite(channel) ? Color.sgLive : .white)
-                    }
-                    Button { dismiss() } label: {
-                        Image(systemName: "xmark").padding(10)
-                            .background(.black.opacity(0.4), in: Circle()).foregroundStyle(.white)
-                    }
-                }
-                .padding()
-                Spacer()
-                if showError {
-                    Text("Yayına ulaşılamadı. Kaynak geçersiz veya sunucu yanıt vermiyor.")
-                        .font(.footnote).foregroundStyle(Color.sgDim)
-                        .padding().background(.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
-                        .padding()
-                }
+            if isBuffering && !showError {
+                ProgressView().tint(.white).scaleEffect(1.4)
             }
+
+            if showError { errorOverlay }
+
+            if controlsVisible { controls.transition(.opacity) }
         }
-        .onAppear { library.addRecent(channel); start(); startProgressTracking() }
-        .onDisappear { saveProgress(); progressTimer?.invalidate(); player.pause() }
+        .animation(.easeInOut(duration: 0.2), value: controlsVisible)
+        .onAppear { library.addRecent(current); start(); startTicker() }
+        .onDisappear { saveProgress(); ticker?.invalidate(); player.pause() }
     }
 
+    // MARK: - Kontrol overlay
+    private var controls: some View {
+        VStack {
+            // Üst
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(current.name).font(.headline).bold().foregroundStyle(.white).lineLimit(1)
+                    Text(nowTitle ?? current.group).font(.caption).foregroundStyle(Color.sgDim).lineLimit(1)
+                }
+                Spacer()
+                iconButton(library.isFavorite(current) ? "heart.fill" : "heart",
+                           tint: library.isFavorite(current) ? Color.sgLive : .white) {
+                    library.toggleFavorite(current); showControls()
+                }
+                iconButton("xmark") { dismiss() }
+            }
+            .padding()
+            .background(LinearGradient(colors: [.black.opacity(0.6), .clear], startPoint: .top, endPoint: .bottom))
+
+            Spacer()
+
+            // Orta play/pause
+            Button { togglePlay() } label: {
+                Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                    .font(.system(size: 40)).foregroundStyle(.white)
+                    .frame(width: 76, height: 76)
+                    .background(.white.opacity(0.14), in: Circle())
+            }.buttonStyle(.plain)
+
+            Spacer()
+
+            // Alt
+            HStack(spacing: 16) {
+                if isLive { LivePill(current.kind == .live ? "CANLI" : "LIVE") }
+                Spacer()
+                if isLive {
+                    iconButton("backward.fill") { step(-1) }
+                    iconButton("forward.fill") { step(1) }
+                }
+                #if os(iOS)
+                AirPlayButton().frame(width: 40, height: 40)
+                #endif
+            }
+            .padding()
+            .background(LinearGradient(colors: [.clear, .black.opacity(0.6)], startPoint: .top, endPoint: .bottom))
+        }
+    }
+
+    private var errorOverlay: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle").font(.largeTitle).foregroundStyle(Color.sgWarn)
+            Text("Yayına ulaşılamadı").font(.headline).foregroundStyle(.white)
+            Text("Kaynak geçersiz veya sunucu yanıt vermiyor.").font(.caption).foregroundStyle(Color.sgDim)
+            HStack(spacing: 12) {
+                Button("Yeniden Dene") { showError = false; start() }
+                    .padding(.horizontal, 16).padding(.vertical, 9)
+                    .background(Color.sgAccent, in: Capsule()).foregroundStyle(.white)
+                Button("Kapat") { dismiss() }
+                    .padding(.horizontal, 16).padding(.vertical, 9)
+                    .background(Color.sgSurface, in: Capsule()).foregroundStyle(.white)
+            }.font(.system(size: 14, weight: .semibold)).padding(.top, 4)
+        }
+        .padding(24).background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private func iconButton(_ name: String, tint: Color = .white, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: name).font(.system(size: 16, weight: .semibold)).foregroundStyle(tint)
+                .frame(width: 40, height: 40).background(.black.opacity(0.4), in: Circle())
+        }.buttonStyle(.plain)
+    }
+
+    // MARK: - Oynatma
     private func start() {
-        candidates = StreamResolver.candidates(for: channel.url)
+        candidates = StreamResolver.candidates(for: current.url)
         index = 0
+        isBuffering = true
         playCurrent()
     }
 
-    /// Sıradaki adayı dener. Motor ipucuna göre AVPlayer veya VLCKit'e yönlendirir.
     private func playCurrent() {
-        guard index < candidates.count else { showError = true; return }
+        guard index < candidates.count else { showError = true; isBuffering = false; return }
         let c = candidates[index]
-        activeEngine = VLCPlayerView.isAvailable ? c.engine : .avPlayer   // paket yoksa AV'ye düş
-
+        activeEngine = VLCPlayerView.isAvailable ? c.engine : .avPlayer
         if activeEngine == .vlcKit {
-            vlcURL = c.url            // VLCPlayerView oynatır (kendi hata/yeniden-bağlanma yönetimi)
+            vlcURL = c.url; isBuffering = false; isPlaying = true
             return
         }
-
         let item = AVPlayerItem(url: c.url)
         player.replaceCurrentItem(with: item)
-        // VOD/dizi ise kaldığı yerden devam (canlıda anlamsız).
-        let resume = library.resumePosition(for: channel.url.absoluteString)
-        if channel.kind != .live, resume > 0 {
-            player.seek(to: CMTime(seconds: resume, preferredTimescale: 1))
-        }
-        player.play()
-        // Watchdog: ~12 sn içinde oynamazsa sıradaki kaynağa geç (spec §5).
+        let resume = library.resumePosition(for: current.url.absoluteString)
+        if !isLive, resume > 0 { player.seek(to: CMTime(seconds: resume, preferredTimescale: 1)) }
+        player.play(); isPlaying = true
+        // Watchdog: 12 sn içinde oynamazsa sıradaki kaynak.
         DispatchQueue.main.asyncAfter(deadline: .now() + 12) {
-            if activeEngine == .avPlayer, player.timeControlStatus != .playing {
-                index += 1
-                playCurrent()
+            if activeEngine == .avPlayer, player.timeControlStatus != .playing, !showError {
+                index += 1; playCurrent()
             }
         }
+        showControls()
     }
 
-    // MARK: - İlerleme takibi (devam et)
-    private func startProgressTracking() {
-        guard channel.kind != .live else { return }   // yalnız VOD/dizi
-        progressTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { _ in
-            Task { @MainActor in saveProgress() }
+    private func togglePlay() {
+        if player.timeControlStatus == .playing { player.pause(); isPlaying = false }
+        else { player.play(); isPlaying = true }
+        showControls()
+    }
+
+    private func step(_ d: Int) {
+        let list = library.live
+        guard let i = list.firstIndex(where: { $0.url == current.url }), !list.isEmpty else { return }
+        saveProgress()
+        current = list[((i + d) % list.count + list.count) % list.count]
+        library.addRecent(current)
+        start()
+    }
+
+    // MARK: - Kontrol görünürlüğü
+    private func toggleControls() { controlsVisible ? hideControls() : showControls() }
+    private func showControls() {
+        controlsVisible = true
+        hideTask?.cancel()
+        let t = DispatchWorkItem {
+            if activeEngine == .vlcKit || player.timeControlStatus == .playing { controlsVisible = false }
+        }
+        hideTask = t
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4, execute: t)
+    }
+    private func hideControls() { hideTask?.cancel(); controlsVisible = false }
+
+    // MARK: - Durum & ilerleme
+    private func startTicker() {
+        ticker = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
+            Task { @MainActor in updateStatus() }
         }
     }
-
+    private func updateStatus() {
+        guard activeEngine == .avPlayer else { isBuffering = false; return }
+        let s = player.timeControlStatus
+        isPlaying = (s == .playing)
+        isBuffering = (s == .waitingToPlayAtSpecifiedRate)
+        if !isLive { saveProgress() }
+    }
     private func saveProgress() {
-        guard channel.kind != .live,
-              let item = player.currentItem, item.duration.isNumeric else { return }
-        let pos = player.currentTime().seconds
-        let dur = item.duration.seconds
+        guard !isLive, let item = player.currentItem, item.duration.isNumeric else { return }
+        let pos = player.currentTime().seconds, dur = item.duration.seconds
         if pos.isFinite, dur.isFinite {
-            library.saveProgress(url: channel.url.absoluteString, position: pos, duration: dur)
+            library.saveProgress(url: current.url.absoluteString, position: pos, duration: dur)
         }
     }
 }
+
+// AirPlay yönlendirme butonu (iOS).
+#if os(iOS)
+struct AirPlayButton: UIViewRepresentable {
+    func makeUIView(context: Context) -> AVRoutePickerView {
+        let v = AVRoutePickerView()
+        v.tintColor = .white
+        v.activeTintColor = UIColor(Color.sgAccent)
+        return v
+    }
+    func updateUIView(_ uiView: AVRoutePickerView, context: Context) {}
+}
+#endif
