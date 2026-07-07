@@ -16,6 +16,6 @@ struct CheesinoApp: App {
 
 /// Marka sabitleri (tek kaynak).
 enum Brand {
-    static let name = "Cheesino"
+    static let name = "cheesino"
     static let tagline = "iOS'ta TiviMate kalitesinde yayın deneyimi"
 }

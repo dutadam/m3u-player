@@ -39,4 +39,4 @@ Keychain kimlik saklama, iCloud sync.
 
 ## Ürün ismi
 
-**Cheesino.** Marka sabiti tek kaynakta: `App/CheesinoApp.swift` → `enum Brand`. Wordmark + ikon bu isimle güncellenecek.
+**cheesino** (her zaman küçük harf wordmark). Marka sabiti tek kaynakta: `App/CheesinoApp.swift` → `enum Brand`.
