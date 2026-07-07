@@ -18,10 +18,46 @@ final class LibraryStore: ObservableObject {
 
     private let session = URLSession.shared
 
+    private var cloudObserver: NSObjectProtocol?
+
     init() {
         favorites = LocalStore.load(Set<String>.self, key: LocalStore.Key.favorites) ?? []
         recents = LocalStore.load([RecentItem].self, key: LocalStore.Key.recents) ?? []
         progress = LocalStore.load([String: WatchProgress].self, key: LocalStore.Key.progress) ?? [:]
+        // iCloud: başka cihazdan gelen durumu birleştir + değişiklikleri dinle.
+        mergeFromCloud()
+        cloudObserver = CloudStore.startObserving { [weak self] in
+            Task { @MainActor in self?.mergeFromCloud() }
+        }
+    }
+
+    deinit { if let o = cloudObserver { NotificationCenter.default.removeObserver(o) } }
+
+    /// iCloud'daki durumu yerelle birleştirir (favori=birleşim, ilerleme/son izlenen=en yeni kazanır),
+    /// sonucu hem yerele hem iCloud'a geri yazar (birleşim tüm cihazlara yayılsın).
+    private func mergeFromCloud() {
+        guard CloudStore.isAvailable else { return }
+        if let cf = CloudStore.load(Set<String>.self, key: LocalStore.Key.favorites) {
+            favorites.formUnion(cf)
+        }
+        if let cr = CloudStore.load([RecentItem].self, key: LocalStore.Key.recents) {
+            var byURL = Dictionary(recents.map { ($0.url, $0) }, uniquingKeysWith: { a, b in a.watchedAt >= b.watchedAt ? a : b })
+            for r in cr { if let e = byURL[r.url] { byURL[r.url] = e.watchedAt >= r.watchedAt ? e : r } else { byURL[r.url] = r } }
+            recents = byURL.values.sorted { $0.watchedAt > $1.watchedAt }.prefix(30).map { $0 }
+        }
+        if let cp = CloudStore.load([String: WatchProgress].self, key: LocalStore.Key.progress) {
+            for (url, p) in cp {
+                if let e = progress[url] { if p.updatedAt > e.updatedAt { progress[url] = p } }
+                else { progress[url] = p }
+            }
+        }
+        // Birleşmiş sonucu geri yaz (yerel + bulut).
+        LocalStore.save(favorites, key: LocalStore.Key.favorites)
+        LocalStore.save(recents, key: LocalStore.Key.recents)
+        LocalStore.save(progress, key: LocalStore.Key.progress)
+        CloudStore.save(favorites, key: LocalStore.Key.favorites)
+        CloudStore.save(recents, key: LocalStore.Key.recents)
+        CloudStore.save(progress, key: LocalStore.Key.progress)
     }
 
     // MARK: - Türetilmiş gruplar (UI için)
@@ -48,6 +84,7 @@ final class LibraryStore: ObservableObject {
         let key = ch.url.absoluteString
         if favorites.contains(key) { favorites.remove(key) } else { favorites.insert(key) }
         LocalStore.save(favorites, key: LocalStore.Key.favorites)
+        CloudStore.save(favorites, key: LocalStore.Key.favorites)
     }
 
     func addRecent(_ ch: Channel) {
@@ -57,12 +94,14 @@ final class LibraryStore: ObservableObject {
         recents.insert(item, at: 0)
         if recents.count > 30 { recents.removeLast(recents.count - 30) }
         LocalStore.save(recents, key: LocalStore.Key.recents)
+        CloudStore.save(recents, key: LocalStore.Key.recents)
     }
 
     func saveProgress(url: String, position: Double, duration: Double) {
         guard duration > 30 else { return }
         progress[url] = WatchProgress(positionSec: position, durationSec: duration, updatedAt: .now)
         LocalStore.save(progress, key: LocalStore.Key.progress)
+        CloudStore.save(progress, key: LocalStore.Key.progress)
     }
     func resumePosition(for url: String) -> Double { progress[url]?.resumePosition ?? 0 }
 

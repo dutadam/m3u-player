@@ -24,10 +24,15 @@ apps/apple/
       OnboardingView.swift  M3U/Xtream/Dosya/Keşfet + güven mesajı
       OtherViews.swift      Live/Search/Library/MultiView
     Stores/
-      LibraryStore.swift    Core tüketen ana store (kanal/dizi/EPG/favori/recent/progress)
+      LibraryStore.swift    Core tüketen ana store (kanal/dizi/EPG/favori/recent/progress + iCloud merge)
       KeychainStore.swift   Xtream kimlik bilgisi (şifreli)
-      LocalStore.swift      favori/recent/progress kalıcılık + RecentItem/Progress
+      LocalStore.swift      favori/recent/progress kalıcılık + RecentItem/WatchProgress
+      CloudStore.swift      iCloud KVS senkron (cihazlar arası favori/ilerleme)
+      DiagnosticsMonitor.swift  MetricKit crash/hang (cihazda, telemetri yok)
 ```
+
+> **iCloud entitlement gerekir:** Xcode → Signing & Capabilities → **iCloud → Key-value storage**
+> (`com.apple.developer.ubiquity-kvstore-identifier`). Yoksa sync sessizce devre dışı kalır (çökme yok).
 
 ## Xcode kurulumu (Faz 1)
 
@@ -39,10 +44,10 @@ apps/apple/
 
 ## Durum
 
-Faz 1: Core entegre; tam Xtream API (live/vod/series + get_series_info), tam EPG grid + catchup,
-Keychain kimlik saklama, favori/recent/resume kalıcılık, AVPlayer+VLCKit oynatıcı. Derleme Xcode'da
-yapılır (ortamda toolchain yok). Sıradaki: dosya seçici (UIDocumentPicker), iCloud/CloudKit sync,
-çoklu ekran tam entegrasyon, iptv-org keşfet (Faz 4).
+Faz 1–2: Core entegre; tam Xtream API (live/vod/series + get_series_info), tam EPG grid + catchup,
+Keychain kimlik saklama, favori/recent/resume kalıcılık + **iCloud sync**, AVPlayer+VLCKit oynatıcı,
+**çoklu ekran** (4 yayın), dosya seçici. Core/Design paketleri CI'da yeşil (swift test). SwiftUI app
+target'ı ilk kez Xcode'da derlenecek. Sıradaki: App Store uyum paketi, iptv-org keşfet (Faz 4), Android (Faz 3).
 
 ## Ürün ismi
 
