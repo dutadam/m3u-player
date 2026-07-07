@@ -7,6 +7,16 @@ import Design
 struct OnboardingView: View {
     @EnvironmentObject private var library: LibraryStore
     enum Tab: String, CaseIterable { case m3u = "M3U URL", xtream = "Xtream", file = "Dosya", discover = "Keşfet" }
+
+    // iptv-org ücretsiz katalog kaynakları (yasal free-to-air topluluk listeleri).
+    static let discoverSources: [(name: String, code: String, flag: String)] = [
+        ("Türkiye", "tr", "🇹🇷"), ("ABD", "us", "🇺🇸"), ("İngiltere", "uk", "🇬🇧"),
+        ("Almanya", "de", "🇩🇪"), ("Tüm dünya", "index", "🌍")
+    ]
+    static func iptvOrgURL(_ code: String) -> String {
+        code == "index" ? "https://iptv-org.github.io/iptv/index.m3u"
+                        : "https://iptv-org.github.io/iptv/countries/\(code).m3u"
+    }
     @State private var tab: Tab = .xtream
     @State private var m3uURL = ""
     @State private var server = "", user = "", pass = ""
@@ -57,7 +67,25 @@ struct OnboardingView: View {
                     Text("Dosya seçimi iOS/iPadOS'ta desteklenir.").foregroundStyle(.sgDim)
                     #endif
                 case .discover:
-                    Text("iptv-org ücretsiz katalog (keşfet) — Faz 4.").foregroundStyle(.sgDim)
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("iptv-org — ücretsiz, yasal, topluluk kanalları. Kendi kaynağın olmadan hemen dene.")
+                            .font(.caption).foregroundStyle(.sgDim)
+                        ForEach(Self.discoverSources, id: \.code) { src in
+                            Button {
+                                if let u = URL(string: Self.iptvOrgURL(src.code)) { Task { await library.loadM3U(from: u) } }
+                            } label: {
+                                HStack {
+                                    Text(src.flag).font(.title3)
+                                    Text(src.name).font(.system(size: 14, weight: .semibold)).foregroundStyle(.sgText)
+                                    Spacer()
+                                    Image(systemName: "arrow.down.circle").foregroundStyle(.sgAccent2)
+                                }
+                                .padding(12)
+                                .background(Color.sgSurface, in: RoundedRectangle(cornerRadius: 11))
+                                .overlay(RoundedRectangle(cornerRadius: 11).stroke(Color.sgLine))
+                            }.buttonStyle(.plain)
+                        }
+                    }
                 }
 
                 if let err = library.errorMessage {
