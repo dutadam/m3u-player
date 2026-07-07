@@ -45,8 +45,17 @@ struct HomeView: View {
 
 /// Sinematik hero kartı.
 struct HeroCard: View {
+    @EnvironmentObject private var library: LibraryStore
     let channel: Channel
     var onPlay: () -> Void
+
+    private var now: EpgEntry? { library.epg?.nowPlaying(for: channel) }
+    private var progress: Double {
+        guard let n = now else { return 0 }
+        let total = n.stop.timeIntervalSince(n.start)
+        guard total > 0 else { return 0 }
+        return min(1, max(0, Date().timeIntervalSince(n.start) / total))
+    }
 
     var body: some View {
         ZStack(alignment: .bottomLeading) {
@@ -60,7 +69,12 @@ struct HeroCard: View {
                     if let q = channel.quality { QualityBadge(q.rawValue) }
                 }
                 Text(channel.name).font(.system(size: 22, weight: .heavy)).foregroundStyle(.white)
-                Text(channel.group).font(.subheadline).foregroundStyle(Color.sgDim)
+                if let n = now {
+                    Text(n.title).font(.subheadline).foregroundStyle(Color.sgText).lineLimit(1)
+                    ProgressBarLine(fraction: progress).frame(width: 160)
+                } else {
+                    Text(channel.group).font(.subheadline).foregroundStyle(Color.sgDim)
+                }
                 Button(action: onPlay) {
                     Label("İzle", systemImage: "play.fill")
                         .font(.system(size: 14, weight: .bold))

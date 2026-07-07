@@ -36,14 +36,23 @@ struct CategoryBrowseView: View {
             }
             Divider().overlay(Color.sgLineSoft)
 
-            // Grid
-            ScrollView {
-                LazyVGrid(columns: cols, spacing: 16) {
-                    ForEach(filtered.prefix(400)) { ch in
-                        ChannelCard(channel: ch).onTapGesture { selected = ch }
-                    }
+            // Grid / boş durum
+            if filtered.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "tray").font(.largeTitle).foregroundStyle(Color.sgMute)
+                    Text(channels.isEmpty ? "Bu bölümde içerik yok" : "Sonuç bulunamadı")
+                        .font(.subheadline).foregroundStyle(Color.sgDim)
                 }
-                .padding(SGMetric.gutter)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    LazyVGrid(columns: cols, spacing: 16) {
+                        ForEach(filtered.prefix(400)) { ch in
+                            ChannelCard(channel: ch).onTapGesture { selected = ch }
+                        }
+                    }
+                    .padding(SGMetric.gutter)
+                }
             }
         }
         .background(Color.sgGround)

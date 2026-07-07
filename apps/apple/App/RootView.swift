@@ -8,7 +8,8 @@ struct RootView: View {
     var body: some View {
         Group {
             if library.channels.isEmpty {
-                OnboardingView()
+                if library.isLoading { LoadingView() }   // açılışta kayıtlı kaynak yükleniyor
+                else { OnboardingView() }
             } else {
                 RootTabView()
             }
@@ -16,6 +17,24 @@ struct RootView: View {
         .tint(Color.sgAccent)
         .background(Color.sgGround.ignoresSafeArea())
         .task { await library.restoreLastSession() }   // kayıtlı Xtream → otomatik giriş
+    }
+}
+
+/// Markalı yükleme ekranı (açılışta kaynak geri yüklenirken).
+struct LoadingView: View {
+    var body: some View {
+        VStack(spacing: 16) {
+            RoundedRectangle(cornerRadius: 18)
+                .fill(LinearGradient(colors: [Color(hex: 0x1E2A42), Color.sgSurface],
+                                     startPoint: .topLeading, endPoint: .bottomTrailing))
+                .frame(width: 72, height: 72)
+                .overlay(Image(systemName: "play.rectangle.fill").font(.system(size: 30)).foregroundStyle(Color.sgAccent))
+                .shadow(color: Color.sgAccent.opacity(0.35), radius: 20)
+            ProgressView().tint(Color.sgAccent)
+            Text("cheesino yükleniyor…").font(.caption).foregroundStyle(Color.sgDim)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.sgGround.ignoresSafeArea())
     }
 }
 
