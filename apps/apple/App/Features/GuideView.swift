@@ -105,18 +105,24 @@ struct GuideView: View {
     private func programBlock(_ p: EpgEntry, channel: Channel) -> some View {
         let w = max(24, CGFloat(p.stop.timeIntervalSince(p.start) / 60) * ppm)
         let isNow = p.isLiveNow
+        let isPast = p.stop < Date()
+        let catchup = isPast ? library.catchupChannel(for: channel, program: p) : nil
         return VStack(alignment: .leading, spacing: 2) {
-            Text(p.title).font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(isNow ? Color.sgAccent2 : Color.sgText).lineLimit(1)
+            HStack(spacing: 4) {
+                if catchup != nil { Image(systemName: "arrow.uturn.backward").font(.system(size: 8, weight: .bold)).foregroundStyle(.sgAccent2) }
+                Text(p.title).font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(isNow ? Color.sgAccent2 : Color.sgText).lineLimit(1)
+            }
             Text("\(Self.hm.string(from: p.start))–\(Self.hm.string(from: p.stop))")
                 .font(.system(size: 10)).monospacedDigit().foregroundStyle(.sgMute)
         }
         .frame(width: w, height: rowH - 8, alignment: .leading)
         .padding(.horizontal, 9)
+        .opacity(isPast && catchup == nil ? 0.5 : 1)          // catchup yoksa geçmiş soluk
         .background(isNow ? Color.sgAccent.opacity(0.14) : Color.clear)
         .overlay(alignment: .trailing) { Rectangle().fill(Color.sgLineSoft).frame(width: 1) }
         .contentShape(Rectangle())
-        .onTapGesture { selected = channel }   // TODO: geçmiş blok + catchup → timeshift URL
+        .onTapGesture { selected = catchup ?? channel }        // catchup varsa timeshift, yoksa canlı
     }
 
     // MARK: - "Şimdi" çizgisi

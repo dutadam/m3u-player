@@ -138,6 +138,18 @@ final class LibraryStore: ObservableObject {
         channels = []; epg = nil; xtreamClient = nil
     }
 
+    /// Geçmiş bir EPG programı için catchup/timeshift kanalı üretir (spec §3).
+    /// Xtream stream_id kanal id'sinden ("live_123") ayıklanır; program geçmişte değilse nil.
+    func catchupChannel(for ch: Channel, program p: EpgEntry) -> Channel? {
+        guard let client = xtreamClient, p.start < Date(),
+              let sid = Int(ch.id.replacingOccurrences(of: "live_", with: "")) else { return nil }
+        let dur = max(1, Int(p.stop.timeIntervalSince(p.start) / 60))
+        let url = client.timeshiftURL(streamId: sid, durationMin: dur, start: p.start)
+        return Channel(id: "ts_\(sid)_\(Int(p.start.timeIntervalSince1970))",
+                       name: "\(ch.name) · \(p.title)", logo: ch.logo,
+                       group: "Catchup", url: url, kind: .vod)
+    }
+
     /// Bir dizinin bölümlerini getirir (oynatıcı için). PWA'daki manuel akışın yerine geçer.
     func loadSeries(seriesId: Int, name: String) async -> Series? {
         guard let client = xtreamClient else { return nil }
