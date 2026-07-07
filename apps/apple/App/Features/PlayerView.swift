@@ -4,8 +4,8 @@ import AVFoundation
 import Core
 import Design
 
-/// Oynatıcı görünümü. Faz 1 iskelet: AVPlayer + StreamResolver fallback zinciri.
-/// VLCKit fallback (MKV/AVI) bir sonraki adımda entegre edilir (MobileVLCKit paketi).
+/// Oynatıcı görünümü. AVPlayer (HLS/MP4) + VLCKit (MKV/AVI/exotik) fallback, StreamResolver zinciriyle.
+/// VLCKit yalnız MobileVLCKit paketi eklendiğinde aktif olur (#if canImport); yoksa AVPlayer kullanılır.
 struct PlayerView: View {
     let channel: Channel
     @EnvironmentObject private var library: LibraryStore
@@ -15,12 +15,20 @@ struct PlayerView: View {
     @State private var index = 0
     @State private var showError = false
     @State private var progressTimer: Timer?
+    @State private var activeEngine: StreamResolver.Engine = .avPlayer
+    @State private var vlcURL: URL?
 
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            VideoPlayer(player: player)
-                .ignoresSafeArea()
+            Group {
+                if activeEngine == .avPlayer {
+                    VideoPlayer(player: player)
+                } else if let u = vlcURL {
+                    VLCPlayerView(url: u)
+                }
+            }
+            .ignoresSafeArea()
 
             VStack {
                 HStack {
@@ -59,11 +67,17 @@ struct PlayerView: View {
         playCurrent()
     }
 
-    /// Sıradaki adayı dener; AVPlayer için uygun olmayan (VLCKit) kaynakları şimdilik atlar.
+    /// Sıradaki adayı dener. Motor ipucuna göre AVPlayer veya VLCKit'e yönlendirir.
     private func playCurrent() {
         guard index < candidates.count else { showError = true; return }
         let c = candidates[index]
-        // NOT: c.engine == .vlcKit olan kaynaklar VLCKit entegrasyonuyla oynatılacak.
+        activeEngine = VLCPlayerView.isAvailable ? c.engine : .avPlayer   // paket yoksa AV'ye düş
+
+        if activeEngine == .vlcKit {
+            vlcURL = c.url            // VLCPlayerView oynatır (kendi hata/yeniden-bağlanma yönetimi)
+            return
+        }
+
         let item = AVPlayerItem(url: c.url)
         player.replaceCurrentItem(with: item)
         // VOD/dizi ise kaldığı yerden devam (canlıda anlamsız).
@@ -74,7 +88,7 @@ struct PlayerView: View {
         player.play()
         // Watchdog: ~12 sn içinde oynamazsa sıradaki kaynağa geç (spec §5).
         DispatchQueue.main.asyncAfter(deadline: .now() + 12) {
-            if player.timeControlStatus != .playing {
+            if activeEngine == .avPlayer, player.timeControlStatus != .playing {
                 index += 1
                 playCurrent()
             }

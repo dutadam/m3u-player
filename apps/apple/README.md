@@ -16,11 +16,17 @@ apps/apple/
     RootView.swift         kaynak yoksa Onboarding, varsa TabView (İzle/Canlı/Rehber/Ara/Kitaplık)
     Stores/LibraryStore.swift   Core'u tüketen @MainActor ObservableObject
     Features/
-      HomeView.swift        hero + yatay raylar + ChannelCard
-      GuideView.swift       EPG şimdi/sıradaki (tam grid sonraki adım)
-      PlayerView.swift      AVPlayer + StreamResolver fallback + watchdog
+      HomeView.swift        hero + raylar (Devam Et/Favoriler/Diziler) + ChannelCard
+      GuideView.swift       tam zaman-çizelgeli EPG grid + catchup dokunuşu
+      PlayerView.swift      AVPlayer + VLCKit fallback + watchdog + resume/favori
+      VLCPlayerView.swift   MKV/AVI oynatıcı (#if canImport MobileVLCKit)
+      SeriesViews.swift     dizi katalog + detay (sezon/bölüm, get_series_info)
       OnboardingView.swift  M3U/Xtream/Dosya/Keşfet + güven mesajı
       OtherViews.swift      Live/Search/Library/MultiView
+    Stores/
+      LibraryStore.swift    Core tüketen ana store (kanal/dizi/EPG/favori/recent/progress)
+      KeychainStore.swift   Xtream kimlik bilgisi (şifreli)
+      LocalStore.swift      favori/recent/progress kalıcılık + RecentItem/Progress
 ```
 
 ## Xcode kurulumu (Faz 1)
@@ -33,9 +39,10 @@ apps/apple/
 
 ## Durum
 
-Faz 1 iskelet: tasarım kod'a döküldü, Core entegre. Derleme Xcode'da yapılır (ortamda toolchain yok).
-Sıradaki adımlar: Xtream yanıt modelleri (live/vod/series listeleri), VLCKit entegrasyonu, tam EPG grid,
-Keychain kimlik saklama, iCloud sync.
+Faz 1: Core entegre; tam Xtream API (live/vod/series + get_series_info), tam EPG grid + catchup,
+Keychain kimlik saklama, favori/recent/resume kalıcılık, AVPlayer+VLCKit oynatıcı. Derleme Xcode'da
+yapılır (ortamda toolchain yok). Sıradaki: dosya seçici (UIDocumentPicker), iCloud/CloudKit sync,
+çoklu ekran tam entegrasyon, iptv-org keşfet (Faz 4).
 
 ## Ürün ismi
 
