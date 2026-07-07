@@ -19,7 +19,9 @@ struct OnboardingView: View {
     }
     @State private var tab: Tab = .xtream
     @State private var m3uURL = ""
-    @State private var server = "", user = "", pass = ""
+    @State private var server = ""
+    @State private var user = ""
+    @State private var pass = ""
     @State private var showFilePicker = false
 
     var body: some View {
