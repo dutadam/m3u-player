@@ -1,0 +1,39 @@
+# XcodeGen yapılandırması — dağınık Swift dosyalarını buildable bir Xcode projesine dönüştürür.
+# Kurulum:  brew install xcodegen  →  cd apps/apple && xcodegen generate  →  open Cheesino.xcodeproj
+# (Alternatif: Xcode'da elle Multiplatform App projesi açıp bu dosyaları + paketleri eklemek.)
+
+name: Cheesino
+options:
+  bundleIdPrefix: app.cheesino
+  deploymentTarget:
+    iOS: "16.0"
+    tvOS: "16.0"
+
+packages:
+  Core:
+    path: Packages/Core
+  Design:
+    path: Packages/Design
+
+targets:
+  Cheesino:
+    type: application
+    supportedDestinations: [iOS, tvOS]      # tek kod tabanı → iPhone/iPad/Apple TV
+    sources:
+      - path: App
+    dependencies:
+      - package: Core
+      - package: Design
+      # VOD/MKV fallback için Xcode'da ekleyin (opsiyonel; yoksa AVPlayer'a düşer):
+      # - package: MobileVLCKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.cheesino.app
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: App/Info.plist
+        SWIFT_VERSION: "5.9"
+        TARGETED_DEVICE_FAMILY: "1,2,3"       # iPhone, iPad, Apple TV
+        # İmzalama: gerçek cihaz/TestFlight için kendi Team ID'nizi girin
+        # DEVELOPMENT_TEAM: XXXXXXXXXX
