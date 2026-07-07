@@ -97,6 +97,26 @@ final class LibraryStore: ObservableObject {
         CloudStore.save(recents, key: LocalStore.Key.recents)
     }
 
+    func clearFavorites() {
+        favorites.removeAll()
+        LocalStore.save(favorites, key: LocalStore.Key.favorites)
+        CloudStore.save(favorites, key: LocalStore.Key.favorites)
+    }
+
+    func clearRecents() {
+        recents.removeAll()
+        LocalStore.save(recents, key: LocalStore.Key.recents)
+        CloudStore.save(recents, key: LocalStore.Key.recents)
+    }
+
+    /// Kullanıcı-tanımlı EPG (XMLTV) kaynağını yükler ve kalıcı yapar.
+    func setManualEPG(_ urlString: String) async {
+        guard let url = URL(string: urlString) else { return }
+        LocalStore.save(urlString, key: "cheesino.epgURL")
+        await loadEPG(from: url)
+    }
+    var manualEPGURL: String { LocalStore.load(String.self, key: "cheesino.epgURL") ?? "" }
+
     func saveProgress(url: String, position: Double, duration: Double) {
         guard duration > 30 else { return }
         progress[url] = WatchProgress(positionSec: position, durationSec: duration, updatedAt: .now)

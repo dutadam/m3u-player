@@ -59,11 +59,11 @@ struct LibraryView: View {
     var body: some View {
         NavigationStack {
             List {
+                NavigationLink { FavoritesView() } label: { Label("Favoriler", systemImage: "heart.fill") }
+                NavigationLink { RecentsView() } label: { Label("Son İzlenenler", systemImage: "clock.arrow.circlepath") }
                 NavigationLink { SeriesListView() } label: { Label("Diziler", systemImage: "play.tv.fill") }
                 NavigationLink { MultiView() } label: { Label("Çoklu Ekran", systemImage: "square.grid.2x2.fill") }
-                Label("Favoriler", systemImage: "heart.fill")
-                Label("Son İzlenenler", systemImage: "clock.arrow.circlepath")
-                Label("Ayarlar", systemImage: "gearshape.fill")
+                NavigationLink { SettingsView() } label: { Label("Ayarlar", systemImage: "gearshape.fill") }
             }
             .listStyle(.plain)
             .navigationTitle("Kitaplık")
