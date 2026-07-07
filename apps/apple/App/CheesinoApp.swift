@@ -1,8 +1,8 @@
 import SwiftUI
 
-// Uygulama giriş noktası. iOS · iPadOS · macOS · tvOS ortak.
+// Cheesino — uygulama giriş noktası. iOS · iPadOS · macOS · tvOS ortak.
 @main
-struct M3UPlayerApp: App {
+struct CheesinoApp: App {
     @StateObject private var library = LibraryStore()
 
     var body: some Scene {
@@ -12,4 +12,10 @@ struct M3UPlayerApp: App {
                 .preferredColorScheme(.dark)   // "Signal" — dark-committed
         }
     }
+}
+
+/// Marka sabitleri (tek kaynak).
+enum Brand {
+    static let name = "Cheesino"
+    static let tagline = "iOS'ta TiviMate kalitesinde yayın deneyimi"
 }

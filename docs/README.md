@@ -1,6 +1,6 @@
-# M3U Player — Cross-Platform IPTV Uygulaması (Docs)
+# Cheesino — Cross-Platform IPTV Uygulaması (Docs)
 
-iOS öncelikli, native-per-ecosystem bir IPTV oynatıcı. Bu klasör Faz 0 (temel & tasarım) çıktılarını içerir.
+iOS öncelikli, native-per-ecosystem bir IPTV oynatıcı (**Cheesino**). Bu klasör Faz 0 (temel & tasarım) çıktılarını içerir.
 
 ## İçindekiler
 

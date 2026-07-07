@@ -37,7 +37,6 @@ Faz 1 iskelet: tasarım kod'a döküldü, Core entegre. Derleme Xcode'da yapıl�
 Sıradaki adımlar: Xtream yanıt modelleri (live/vod/series listeleri), VLCKit entegrasyonu, tam EPG grid,
 Keychain kimlik saklama, iCloud sync.
 
-## Ürün ismi (açık karar)
+## Ürün ismi
 
-Şu an "M3U Player". Premium/store konumlandırması için marka ismi önerileri: **Signal, Lumen, Vega, Orbit, Eflatun,
-Yayın**. Karar verilince wordmark + ikon güncellenir. (Kod sabiti tek yerde: `M3UPlayerApp`.)
+**Cheesino.** Marka sabiti tek kaynakta: `App/CheesinoApp.swift` → `enum Brand`. Wordmark + ikon bu isimle güncellenecek.

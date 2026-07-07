@@ -50,20 +50,35 @@ final class LibraryStore: ObservableObject {
     }
 
     // MARK: - Xtream
+    private(set) var xtreamClient: XtreamClient?
+
     func loadXtream(_ creds: XtreamCredentials) async {
         isLoading = true; errorMessage = nil
         defer { isLoading = false }
         let client = XtreamClient(creds: creds, session: session)
+        xtreamClient = client
         do {
             let info = try await client.authenticate()
             guard info.isActive else { errorMessage = "Abonelik aktif değil."; return }
-            // NOT: canlı/VOD/dizi listelerinin çekilmesi bir sonraki adımda (yanıt modelleri) eklenecek.
-            // Şimdilik m3u_plus üzerinden yüklenebilir:
-            await loadM3U(from: client.apiURL(.accountInfo))  // placeholder — genişletilecek
+
+            // Canlı + VOD kanallarını paralel çek (dizi listesi lazy — açılınca get_series_info).
+            async let live = client.allLiveChannels()
+            async let vod = try? client.allVODChannels()   // bazı portallarda VOD yok → opsiyonel
+            var all = try await live
+            if let v = await vod { all += v }
+
+            guard !all.isEmpty else { errorMessage = "Sunucuda kanal bulunamadı."; return }
+            channels = all
             await loadEPG(from: client.xmltvURL)
         } catch {
             errorMessage = "Xtream girişi başarısız — sunucu/kullanıcı/şifreyi kontrol edin."
         }
+    }
+
+    /// Bir dizinin bölümlerini getirir (oynatıcı için). PWA'daki manuel akışın yerine geçer.
+    func loadSeries(seriesId: Int, name: String) async -> Series? {
+        guard let client = xtreamClient else { return nil }
+        return try? await client.fullSeries(seriesId: seriesId, name: name)
     }
 
     // MARK: - EPG

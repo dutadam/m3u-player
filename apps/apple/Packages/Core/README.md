@@ -10,6 +10,7 @@ iOS · iPadOS · macOS · tvOS ortak modülü. Spec: [`docs/spec/xtream-m3u-epg.
 | `Models.swift` | Channel/Playlist/EpgEntry/Series + Quality/Xtream normalize | `dq`, `_xtNorm` |
 | `M3UParser.swift` | M3U/M3U8 ayrıştırma, öznitelik + dizi/VOD tespiti | `parseM3U`, `detectSeries` |
 | `XtreamClient.swift` | `player_api.php` endpoint + stream/timeshift URL + auth | `loadXtream` (proxysiz) |
+| `XtreamModels.swift` + `XtreamClient+Fetch.swift` | Yanıt modelleri (tip-dayanıklı) + Channel/Series mapping | dizi JSON workaround'unun yerine |
 | `XMLTVParser.swift` | XMLTV EPG (SAX) + tvg-id/fuzzy eşleme indeksi | `parseXMLTV`, `getEPGNow` |
 | `StreamResolver.swift` | Kaynak fallback (HTTPS yükseltme + HTTP) + oynatıcı ipucu | `streamSources` |
 
