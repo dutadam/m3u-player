@@ -2,24 +2,12 @@ import SwiftUI
 import Core
 import Design
 
-/// Canlı kanallar (kategori grid/list). Faz 1 iskelet.
+/// Canlı kanallar — kategori-bazlı gözatma (binlerce kanal için ölçeklenir).
 struct LiveView: View {
     @EnvironmentObject private var library: LibraryStore
-    @State private var selected: Channel?
-    private let cols = [GridItem(.adaptive(minimum: 118), spacing: 11)]
-
     var body: some View {
         NavigationStack {
-            ScrollView {
-                LazyVGrid(columns: cols, spacing: 16) {
-                    ForEach(library.live) { ch in
-                        ChannelCard(channel: ch).onTapGesture { selected = ch }
-                    }
-                }.padding(SGMetric.gutter)
-            }
-            .background(Color.sgGround)
-            .navigationTitle("Canlı")
-            .fullScreenCover(item: $selected) { PlayerView(channel: $0) }
+            CategoryBrowseView(title: "Canlı", channels: library.live)
         }
     }
 }
@@ -54,13 +42,19 @@ struct SearchView: View {
     }
 }
 
-/// Kitaplık — favoriler / son izlenenler / çoklu ekran girişi. Faz 1 iskelet.
+/// Kitaplık — favoriler / son izlenenler / filmler / diziler / çoklu ekran / ayarlar.
 struct LibraryView: View {
+    @EnvironmentObject private var library: LibraryStore
     var body: some View {
         NavigationStack {
             List {
                 NavigationLink { FavoritesView() } label: { Label("Favoriler", systemImage: "heart.fill") }
                 NavigationLink { RecentsView() } label: { Label("Son İzlenenler", systemImage: "clock.arrow.circlepath") }
+                if !library.movies.isEmpty {
+                    NavigationLink { CategoryBrowseView(title: "Filmler", channels: library.movies) } label: {
+                        Label("Filmler", systemImage: "film.fill")
+                    }
+                }
                 NavigationLink { SeriesListView() } label: { Label("Diziler", systemImage: "play.tv.fill") }
                 NavigationLink { MultiView() } label: { Label("Çoklu Ekran", systemImage: "square.grid.2x2.fill") }
                 NavigationLink { SettingsView() } label: { Label("Ayarlar", systemImage: "gearshape.fill") }
