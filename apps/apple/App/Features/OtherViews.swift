@@ -59,6 +59,7 @@ struct LibraryView: View {
     var body: some View {
         NavigationStack {
             List {
+                NavigationLink { SeriesListView() } label: { Label("Diziler", systemImage: "play.tv.fill") }
                 NavigationLink { MultiView() } label: { Label("Çoklu Ekran", systemImage: "square.grid.2x2.fill") }
                 Label("Favoriler", systemImage: "heart.fill")
                 Label("Son İzlenenler", systemImage: "clock.arrow.circlepath")

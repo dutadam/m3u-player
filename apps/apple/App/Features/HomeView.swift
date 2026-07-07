@@ -22,6 +22,9 @@ struct HomeView: View {
                         ChannelRail(title: "Favoriler", channels: library.favoriteChannels) { selected = $0 }
                     }
 
+                    // "Diziler" — poster rayı, detaya gider
+                    if !library.series.isEmpty { SeriesRailHome(series: Array(library.series.prefix(20))) }
+
                     // "Canlı · Spor" rayı — grup adında spor geçenler
                     let sports = library.live.filter { $0.group.localizedCaseInsensitiveContains("spor") }
                     if !sports.isEmpty { ChannelRail(title: "Canlı · Spor", channels: sports) { selected = $0 } }
@@ -73,6 +76,27 @@ struct HeroCard: View {
         .frame(height: 230)
         .clipShape(RoundedRectangle(cornerRadius: 20))
         .padding(.horizontal, SGMetric.gutter)
+    }
+}
+
+/// Yatay dizi rayı — poster kartları, detaya gider.
+struct SeriesRailHome: View {
+    let series: [SeriesRef]
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Text("Diziler").font(.headline).foregroundStyle(.sgText)
+                .padding(.horizontal, SGMetric.gutter)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 11) {
+                    ForEach(series) { s in
+                        NavigationLink { SeriesDetailView(ref: s) } label: {
+                            SeriesPoster(ref: s).frame(width: 110)
+                        }.buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, SGMetric.gutter)
+            }
+        }
     }
 }
 

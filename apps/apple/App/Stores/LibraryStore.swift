@@ -6,6 +6,7 @@ import Core
 @MainActor
 final class LibraryStore: ObservableObject {
     @Published var channels: [Channel] = []
+    @Published var series: [SeriesRef] = []
     @Published var epg: EPGIndex?
     @Published var isLoading = false
     @Published var errorMessage: String?
@@ -114,6 +115,17 @@ final class LibraryStore: ObservableObject {
             guard !all.isEmpty else { errorMessage = "Sunucuda kanal bulunamadı."; return }
             channels = all
             KeychainStore.save(creds)            // başarılı giriş → kimlik bilgisini şifreli sakla
+
+            // Dizi listesi (bölümler lazy — detayda get_series_info ile çekilir).
+            if let sList = try? await client.seriesList() {
+                let cats = (try? await client.seriesCategories()) ?? []
+                let catMap = Dictionary(cats.map { ($0.categoryId, $0.categoryName) }, uniquingKeysWith: { a, _ in a })
+                series = sList.map {
+                    SeriesRef(id: $0.seriesId.value, name: $0.name,
+                              cover: $0.cover.flatMap { URL(string: $0) },
+                              genre: $0.genre, group: catMap[$0.categoryId ?? ""] ?? "Diziler")
+                }
+            }
             await loadEPG(from: client.xmltvURL)
         } catch {
             errorMessage = "Xtream girişi başarısız — sunucu/kullanıcı/şifreyi kontrol edin."
