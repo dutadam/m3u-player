@@ -57,7 +57,7 @@ struct GuideView: View {
                         .frame(width: 26, height: 26)
                         .background(Color.sgElevated, in: RoundedRectangle(cornerRadius: 7))
                     Text(ch.name).font(.system(size: 9.5, weight: .semibold))
-                        .foregroundStyle(.sgDim).lineLimit(1)
+                        .foregroundStyle(Color.sgDim).lineLimit(1)
                 }
                 .frame(width: chColW, height: rowH, alignment: .leading)
                 .padding(.leading, 8)
@@ -76,7 +76,7 @@ struct GuideView: View {
                 let t = windowStart.addingTimeInterval(Double(i) * 30 * 60)
                 Text(Self.hm.string(from: t))
                     .font(.system(size: 11, weight: .bold)).monospacedDigit()
-                    .foregroundStyle(.sgMute)
+                    .foregroundStyle(Color.sgMute)
                     .frame(width: 30 * ppm, alignment: .leading)
                     .padding(.leading, 6)
             }
@@ -90,7 +90,7 @@ struct GuideView: View {
         let programs = library.epg?.entries(for: ch) ?? []
         return ZStack(alignment: .topLeading) {
             if programs.isEmpty {
-                Text("Program bilgisi yok").font(.caption2).foregroundStyle(.sgMute)
+                Text("Program bilgisi yok").font(.caption2).foregroundStyle(Color.sgMute)
                     .frame(width: totalWidth, height: rowH, alignment: .leading).padding(.leading, 10)
             } else {
                 ForEach(programs, id: \.start) { p in
@@ -109,12 +109,12 @@ struct GuideView: View {
         let catchup = isPast ? library.catchupChannel(for: channel, program: p) : nil
         return VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 4) {
-                if catchup != nil { Image(systemName: "arrow.uturn.backward").font(.system(size: 8, weight: .bold)).foregroundStyle(.sgAccent2) }
+                if catchup != nil { Image(systemName: "arrow.uturn.backward").font(.system(size: 8, weight: .bold)).foregroundStyle(Color.sgAccent2) }
                 Text(p.title).font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(isNow ? Color.sgAccent2 : Color.sgText).lineLimit(1)
             }
             Text("\(Self.hm.string(from: p.start))–\(Self.hm.string(from: p.stop))")
-                .font(.system(size: 10)).monospacedDigit().foregroundStyle(.sgMute)
+                .font(.system(size: 10)).monospacedDigit().foregroundStyle(Color.sgMute)
         }
         .frame(width: w, height: rowH - 8, alignment: .leading)
         .padding(.horizontal, 9)
@@ -130,7 +130,7 @@ struct GuideView: View {
         Rectangle()
             .fill(Color.sgLive)
             .frame(width: 2)
-            .shadow(color: .sgLive.opacity(0.5), radius: 6)
+            .shadow(color: Color.sgLive.opacity(0.5), radius: 6)
             .offset(x: xPos(Date()))
             .frame(maxHeight: .infinity, alignment: .top)
     }

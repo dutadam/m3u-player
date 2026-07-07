@@ -38,7 +38,7 @@ struct MultiView: View {
             if slots[i] != nil {
                 PlayerLayerView(player: players[i])
             } else {
-                Image(systemName: "plus.circle").font(.title).foregroundStyle(.sgMute)
+                Image(systemName: "plus.circle").font(.title).foregroundStyle(Color.sgMute)
             }
             // üst şerit: kanal adı + ses durumu
             VStack {
@@ -71,7 +71,7 @@ struct MultiView: View {
         NavigationStack {
             List(library.live) { ch in
                 Button { assign(ch, to: slot); pickerFor = nil } label: {
-                    Text(ch.name).foregroundStyle(.sgText)
+                    Text(ch.name).foregroundStyle(Color.sgText)
                 }.listRowBackground(Color.sgGround)
             }
             .listStyle(.plain).background(Color.sgGround)

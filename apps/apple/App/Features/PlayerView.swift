@@ -34,7 +34,7 @@ struct PlayerView: View {
                 HStack {
                     VStack(alignment: .leading) {
                         Text(channel.name).font(.headline).foregroundStyle(.white)
-                        Text(channel.group).font(.caption).foregroundStyle(.sgDim)
+                        Text(channel.group).font(.caption).foregroundStyle(Color.sgDim)
                     }
                     Spacer()
                     Button { library.toggleFavorite(channel) } label: {
@@ -51,7 +51,7 @@ struct PlayerView: View {
                 Spacer()
                 if showError {
                     Text("Yayına ulaşılamadı. Kaynak geçersiz veya sunucu yanıt vermiyor.")
-                        .font(.footnote).foregroundStyle(.sgDim)
+                        .font(.footnote).foregroundStyle(Color.sgDim)
                         .padding().background(.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
                         .padding()
                 }

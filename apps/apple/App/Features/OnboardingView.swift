@@ -27,11 +27,11 @@ struct OnboardingView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text(Brand.name).font(.system(size: 15, weight: .heavy)).foregroundStyle(.sgAccent2)
+                Text(Brand.name).font(.system(size: 15, weight: .heavy)).foregroundStyle(Color.sgAccent2)
                 Text("Kaynağını ekle,\nizlemeye başla")
-                    .font(.system(size: 28, weight: .heavy)).foregroundStyle(.sgText)
+                    .font(.system(size: 28, weight: .heavy)).foregroundStyle(Color.sgText)
                 Text("Xtream Codes, M3U bağlantısı veya dosya. Hiçbir kanal uygulamada gömülü değil — kendi aboneliğini getirirsin.")
-                    .font(.subheadline).foregroundStyle(.sgDim)
+                    .font(.subheadline).foregroundStyle(Color.sgDim)
 
                 Picker("", selection: $tab) {
                     ForEach(Tab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
@@ -60,27 +60,27 @@ struct OnboardingView: View {
                             .padding(13)
                             .background(Color.sgSurface, in: RoundedRectangle(cornerRadius: 12))
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.sgLine))
-                            .foregroundStyle(.sgText)
+                            .foregroundStyle(Color.sgText)
                     }
                     .sheet(isPresented: $showFilePicker) {
                         DocumentPicker { text in library.loadM3U(text: text); showFilePicker = false }
                     }
                     #else
-                    Text("Dosya seçimi iOS/iPadOS'ta desteklenir.").foregroundStyle(.sgDim)
+                    Text("Dosya seçimi iOS/iPadOS'ta desteklenir.").foregroundStyle(Color.sgDim)
                     #endif
                 case .discover:
                     VStack(alignment: .leading, spacing: 10) {
                         Text("iptv-org — ücretsiz, yasal, topluluk kanalları. Kendi kaynağın olmadan hemen dene.")
-                            .font(.caption).foregroundStyle(.sgDim)
+                            .font(.caption).foregroundStyle(Color.sgDim)
                         ForEach(Self.discoverSources, id: \.code) { src in
                             Button {
                                 if let u = URL(string: Self.iptvOrgURL(src.code)) { Task { await library.loadM3U(from: u) } }
                             } label: {
                                 HStack {
                                     Text(src.flag).font(.title3)
-                                    Text(src.name).font(.system(size: 14, weight: .semibold)).foregroundStyle(.sgText)
+                                    Text(src.name).font(.system(size: 14, weight: .semibold)).foregroundStyle(Color.sgText)
                                     Spacer()
-                                    Image(systemName: "arrow.down.circle").foregroundStyle(.sgAccent2)
+                                    Image(systemName: "arrow.down.circle").foregroundStyle(Color.sgAccent2)
                                 }
                                 .padding(12)
                                 .background(Color.sgSurface, in: RoundedRectangle(cornerRadius: 11))
@@ -91,12 +91,12 @@ struct OnboardingView: View {
                 }
 
                 if let err = library.errorMessage {
-                    Text(err).font(.footnote).foregroundStyle(.sgLive)
+                    Text(err).font(.footnote).foregroundStyle(Color.sgLive)
                 }
 
                 Label("Kimlik bilgilerin cihazında Keychain ile şifreli saklanır. Sunucu yok, telemetri yok, üçüncü-parti proxy yok.",
                       systemImage: "checkmark.shield.fill")
-                    .font(.caption).foregroundStyle(.sgDim)
+                    .font(.caption).foregroundStyle(Color.sgDim)
                     .padding(.top, 8)
             }
             .padding()
@@ -106,7 +106,7 @@ struct OnboardingView: View {
 
     private func field(_ label: String, text: Binding<String>, secure: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(label).font(.caption).foregroundStyle(.sgMute)
+            Text(label).font(.caption).foregroundStyle(Color.sgMute)
             Group {
                 if secure { SecureField("", text: text) } else { TextField("", text: text) }
             }

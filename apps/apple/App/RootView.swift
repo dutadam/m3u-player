@@ -13,7 +13,7 @@ struct RootView: View {
                 RootTabView()
             }
         }
-        .tint(.sgAccent)
+        .tint(Color.sgAccent)
         .background(Color.sgGround.ignoresSafeArea())
         .task { await library.restoreLastSession() }   // kayıtlı Xtream → otomatik giriş
     }

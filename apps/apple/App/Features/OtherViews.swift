@@ -40,8 +40,8 @@ struct SearchView: View {
             List(results) { ch in
                 Button { selected = ch } label: {
                     VStack(alignment: .leading) {
-                        Text(ch.name).foregroundStyle(.sgText)
-                        Text(ch.group).font(.caption).foregroundStyle(.sgMute)
+                        Text(ch.name).foregroundStyle(Color.sgText)
+                        Text(ch.group).font(.caption).foregroundStyle(Color.sgMute)
                     }
                 }.listRowBackground(Color.sgGround)
             }

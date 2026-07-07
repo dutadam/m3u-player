@@ -39,11 +39,11 @@ struct SeriesPoster: View {
             ZStack {
                 RoundedRectangle(cornerRadius: 12).fill(Color.sgElevated)
                 AsyncImage(url: ref.cover) { $0.resizable().scaledToFill() } placeholder: {
-                    Image(systemName: "play.tv").font(.title).foregroundStyle(.sgMute)
+                    Image(systemName: "play.tv").font(.title).foregroundStyle(Color.sgMute)
                 }
             }
             .frame(height: 156).clipShape(RoundedRectangle(cornerRadius: 12))
-            Text(ref.name).font(.system(size: 12, weight: .semibold)).foregroundStyle(.sgText).lineLimit(2)
+            Text(ref.name).font(.system(size: 12, weight: .semibold)).foregroundStyle(Color.sgText).lineLimit(2)
         }
     }
 }
@@ -73,7 +73,7 @@ struct SeriesDetailView: View {
                     episodeList
                 } else {
                     Text("Bu dizide oynatılabilir bölüm bulunamadı.")
-                        .font(.footnote).foregroundStyle(.sgDim).padding(.top, 20)
+                        .font(.footnote).foregroundStyle(Color.sgDim).padding(.top, 20)
                 }
             }
             .padding(SGMetric.gutter)
@@ -93,14 +93,14 @@ struct SeriesDetailView: View {
             ZStack {
                 RoundedRectangle(cornerRadius: 12).fill(Color.sgElevated)
                 AsyncImage(url: series?.cover ?? ref.cover) { $0.resizable().scaledToFill() } placeholder: {
-                    Image(systemName: "play.tv").foregroundStyle(.sgMute)
+                    Image(systemName: "play.tv").foregroundStyle(Color.sgMute)
                 }
             }
             .frame(width: 110, height: 160).clipShape(RoundedRectangle(cornerRadius: 12))
             VStack(alignment: .leading, spacing: 6) {
-                Text(ref.name).font(.system(size: 18, weight: .bold)).foregroundStyle(.sgText)
-                if let g = series?.genre ?? ref.genre { Text(g).font(.caption).foregroundStyle(.sgAccent2) }
-                if let plot = series?.plot { Text(plot).font(.caption).foregroundStyle(.sgDim).lineLimit(6) }
+                Text(ref.name).font(.system(size: 18, weight: .bold)).foregroundStyle(Color.sgText)
+                if let g = series?.genre ?? ref.genre { Text(g).font(.caption).foregroundStyle(Color.sgAccent2) }
+                if let plot = series?.plot { Text(plot).font(.caption).foregroundStyle(Color.sgDim).lineLimit(6) }
             }
         }
     }
@@ -146,15 +146,15 @@ struct EpisodeRow: View {
         HStack(spacing: 12) {
             Text("S\(String(format: "%02d", ep.season))B\(String(format: "%02d", ep.episodeNum))")
                 .font(.system(size: 11, weight: .heavy)).monospacedDigit()
-                .foregroundStyle(.sgAccent2).frame(width: 58, alignment: .leading)
+                .foregroundStyle(Color.sgAccent2).frame(width: 58, alignment: .leading)
             ZStack {
                 RoundedRectangle(cornerRadius: 7).fill(Color.sgElevated)
                 AsyncImage(url: ep.thumb) { $0.resizable().scaledToFill() } placeholder: { EmptyView() }
             }
             .frame(width: 64, height: 38).clipShape(RoundedRectangle(cornerRadius: 7))
-            Text(ep.title).font(.system(size: 13)).foregroundStyle(.sgText).lineLimit(1)
+            Text(ep.title).font(.system(size: 13)).foregroundStyle(Color.sgText).lineLimit(1)
             Spacer()
-            Image(systemName: "play.circle.fill").foregroundStyle(.sgAccent)
+            Image(systemName: "play.circle.fill").foregroundStyle(Color.sgAccent)
         }
         .padding(.vertical, 4)
     }

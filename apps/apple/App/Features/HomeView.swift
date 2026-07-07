@@ -60,7 +60,7 @@ struct HeroCard: View {
                     if let q = channel.quality { QualityBadge(q.rawValue) }
                 }
                 Text(channel.name).font(.system(size: 22, weight: .heavy)).foregroundStyle(.white)
-                Text(channel.group).font(.subheadline).foregroundStyle(.sgDim)
+                Text(channel.group).font(.subheadline).foregroundStyle(Color.sgDim)
                 Button(action: onPlay) {
                     Label("İzle", systemImage: "play.fill")
                         .font(.system(size: 14, weight: .bold))
@@ -84,7 +84,7 @@ struct SeriesRailHome: View {
     let series: [SeriesRef]
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
-            Text("Diziler").font(.headline).foregroundStyle(.sgText)
+            Text("Diziler").font(.headline).foregroundStyle(Color.sgText)
                 .padding(.horizontal, SGMetric.gutter)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 11) {
@@ -108,7 +108,7 @@ struct ChannelRail: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
-            Text(title).font(.headline).foregroundStyle(.sgText)
+            Text(title).font(.headline).foregroundStyle(Color.sgText)
                 .padding(.horizontal, SGMetric.gutter)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 11) {
@@ -144,7 +144,7 @@ struct ChannelCard: View {
             }
             .frame(width: 118, height: 70)
             Text(channel.name).font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.sgText).lineLimit(1).frame(width: 118, alignment: .leading)
+                .foregroundStyle(Color.sgText).lineLimit(1).frame(width: 118, alignment: .leading)
         }
     }
 }
