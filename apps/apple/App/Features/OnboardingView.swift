@@ -22,7 +22,7 @@ struct OnboardingView: View {
 
                 Picker("", selection: $tab) {
                     ForEach(Tab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                }.pickerStyle(.segmented)
+                }.segmentedOnIOS()
 
                 switch tab {
                 case .m3u:
@@ -89,5 +89,16 @@ struct OnboardingView: View {
         .padding(13)
         .background(Color.sgAccent, in: RoundedRectangle(cornerRadius: 12))
         .foregroundStyle(.white)
+    }
+}
+
+private extension View {
+    /// Segmented picker stili yalnız iOS'ta var; tvOS'ta varsayılan stile düşer.
+    @ViewBuilder func segmentedOnIOS() -> some View {
+        #if os(iOS)
+        self.pickerStyle(.segmented)
+        #else
+        self
+        #endif
     }
 }

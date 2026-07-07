@@ -6,7 +6,7 @@ import Foundation
 public enum StreamResolver {
 
     /// Bir kaynağın hangi oynatıcıya gideceğine dair ipucu.
-    public enum Engine: Sendable {
+    public enum Engine: Sendable, Equatable {
         case avPlayer   // HLS (.m3u8) / MP4 — native
         case vlcKit     // MKV/AVI/TS/exotik codec — fallback
     }

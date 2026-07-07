@@ -14,14 +14,14 @@ final class LibraryStore: ObservableObject {
     // Kullanıcı durumu (kalıcı)
     @Published private(set) var favorites: Set<String> = []
     @Published private(set) var recents: [RecentItem] = []
-    @Published private(set) var progress: [String: Progress] = [:]
+    @Published private(set) var progress: [String: WatchProgress] = [:]
 
     private let session = URLSession.shared
 
     init() {
         favorites = LocalStore.load(Set<String>.self, key: LocalStore.Key.favorites) ?? []
         recents = LocalStore.load([RecentItem].self, key: LocalStore.Key.recents) ?? []
-        progress = LocalStore.load([String: Progress].self, key: LocalStore.Key.progress) ?? [:]
+        progress = LocalStore.load([String: WatchProgress].self, key: LocalStore.Key.progress) ?? [:]
     }
 
     // MARK: - Türetilmiş gruplar (UI için)
@@ -61,7 +61,7 @@ final class LibraryStore: ObservableObject {
 
     func saveProgress(url: String, position: Double, duration: Double) {
         guard duration > 30 else { return }
-        progress[url] = Progress(positionSec: position, durationSec: duration, updatedAt: .now)
+        progress[url] = WatchProgress(positionSec: position, durationSec: duration, updatedAt: .now)
         LocalStore.save(progress, key: LocalStore.Key.progress)
     }
     func resumePosition(for url: String) -> Double { progress[url]?.resumePosition ?? 0 }

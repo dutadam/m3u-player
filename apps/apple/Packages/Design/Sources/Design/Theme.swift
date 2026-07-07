@@ -37,7 +37,7 @@ public extension Color {
 
 // MARK: - Tipografi (SF Pro — uygulamanın native fontu)
 public enum SGFont {
-    public static let display  = Font.system(size: 30, weight: .heavy).width(.standard)      // hero
+    public static let display  = Font.system(size: 30, weight: .heavy)                       // hero
     public static let title    = Font.system(size: 22, weight: .bold)
     public static let headline = Font.system(size: 15, weight: .semibold)
     public static let body     = Font.system(size: 15, weight: .regular)

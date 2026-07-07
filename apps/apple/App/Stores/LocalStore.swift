@@ -31,8 +31,8 @@ struct RecentItem: Codable, Hashable, Identifiable {
     var watchedAt: Date
 }
 
-/// İzleme ilerlemesi (resume / devam et). Spec §6.
-struct Progress: Codable, Hashable {
+/// İzleme ilerlemesi (resume / devam et). Spec §6. (Foundation.Progress ile çakışmaması için WatchProgress.)
+struct WatchProgress: Codable, Hashable {
     var positionSec: Double
     var durationSec: Double
     var updatedAt: Date

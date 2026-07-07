@@ -5,6 +5,10 @@ import SwiftUI
 struct CheesinoApp: App {
     @StateObject private var library = LibraryStore()
 
+    init() {
+        DiagnosticsMonitor.shared.start()   // cihazda crash/hang teşhisi (telemetri yok)
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()

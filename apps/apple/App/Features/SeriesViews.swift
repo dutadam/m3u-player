@@ -106,18 +106,21 @@ struct SeriesDetailView: View {
     }
 
     private func seasonPicker(_ s: Core.Series) -> some View {
-        Menu {
-            ForEach(s.seasons, id: \.number) { se in
-                Button("Sezon \(se.number)") { season = se.number }
+        // Yatay sezon çipleri — iOS + tvOS uyumlu (Menu tvOS 17+ gerektirir).
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(s.seasons, id: \.number) { se in
+                    let on = se.number == season
+                    Button { season = se.number } label: {
+                        Text("Sezon \(se.number)")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(on ? Color.white : Color.sgDim)
+                            .padding(.horizontal, 14).padding(.vertical, 8)
+                            .background(on ? Color.sgAccent : Color.sgSurface, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
             }
-        } label: {
-            HStack {
-                Text("Sezon \(season)").font(.system(size: 14, weight: .semibold))
-                Image(systemName: "chevron.down").font(.caption)
-            }
-            .foregroundStyle(.sgText)
-            .padding(.horizontal, 14).padding(.vertical, 8)
-            .background(Color.sgSurface, in: Capsule())
         }
     }
 
