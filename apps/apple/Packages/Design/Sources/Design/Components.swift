@@ -32,9 +32,9 @@ public struct QualityBadge: View {
 
     private var bg: Color {
         switch text.uppercased() {
-        case "4K", "UHD": return .sgGold
-        case "FHD": return Color(hex: 0x8FD0FF)
-        default: return Color(hex: 0xC8CEDD)
+        case "4K", "UHD": return .sgGold          // premium → Güneş Sarısı
+        case "FHD": return Color(hex: 0xC8D2E6)
+        default: return Color(hex: 0x9AA6BE)
         }
     }
     public var body: some View {
@@ -54,7 +54,7 @@ public struct ProgressBarLine: View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
                 Capsule().fill(.white.opacity(0.16))
-                Capsule().fill(Color.sgTeal).frame(width: geo.size.width * fraction)
+                Capsule().fill(Color.sgProgress).frame(width: geo.size.width * fraction)
             }
         }
         .frame(height: 3)

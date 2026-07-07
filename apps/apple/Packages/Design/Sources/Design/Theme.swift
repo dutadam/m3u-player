@@ -1,27 +1,30 @@
 import SwiftUI
 
-// MARK: - "Signal" renk token'ları
-// Kaynak: docs/design/ui-preview.html :root. Dark-committed sinematik palet.
+// MARK: - Cheesino renk token'ları
+// Marka paleti · 60-30-10: %60 Gece Yarısı Lacivirdi (zemin) · %30 Cheesino Turuncusu (yapısal/marka/LIVE)
+// · %10 Güneş Sarısı (CTA / hover / logo şimşeği). Dark-committed, sinematik.
 public extension Color {
-    // Zemin & nötr
-    static let sgGround   = Color(hex: 0x0A0B0F)
-    static let sgSurface  = Color(hex: 0x13151D)
-    static let sgElevated = Color(hex: 0x1C1F29)
-    static let sgRaised   = Color(hex: 0x242836)
-    static let sgLine     = Color(hex: 0x262B38)
-    static let sgLineSoft = Color(hex: 0x1B1F2A)
-    // Metin
-    static let sgText     = Color(hex: 0xEDEFF6)
-    static let sgDim      = Color(hex: 0x9096AC)
-    static let sgMute     = Color(hex: 0x565C72)
-    // Aksan (etkileşim)
-    static let sgAccent   = Color(hex: 0x4C86FF)
-    static let sgAccent2  = Color(hex: 0x6FA0FF)
-    // Semantik (aksandan ayrı)
-    static let sgLive     = Color(hex: 0xFF3B4E)   // canlı
-    static let sgGold     = Color(hex: 0xF5C542)   // 4K/premium
-    static let sgTeal     = Color(hex: 0x34E0A1)   // ilerleme/başarı
-    static let sgWarn     = Color(hex: 0xF5A623)   // uyarı
+    // %60 — Zemin & nötr (Gece Yarısı Lacivirdi)
+    static let sgGround   = Color(hex: 0x0B0F19)   // en derin
+    static let sgSurface  = Color(hex: 0x0F172A)   // midnight navy
+    static let sgElevated = Color(hex: 0x172033)
+    static let sgRaised   = Color(hex: 0x1E2A42)
+    static let sgLine     = Color(hex: 0x24304A)
+    static let sgLineSoft = Color(hex: 0x172033)
+    // Metin (Saf Beyaz / Dijital Gri)
+    static let sgText     = Color(hex: 0xF8FAFC)
+    static let sgDim      = Color(hex: 0x94A0B8)
+    static let sgMute     = Color(hex: 0x5A6784)
+    // %30 — Cheesino Turuncusu (marka / yapısal / LIVE)
+    static let sgAccent   = Color(hex: 0xFF8A00)
+    static let sgAccent2  = Color(hex: 0xFFA733)
+    static let sgLive     = Color(hex: 0xFF8A00)   // canlı — marka turuncusu
+    // %10 — Güneş Sarısı (CTA / hover / şimşek)
+    static let sgCTA      = Color(hex: 0xFFD200)
+    static let sgGold     = Color(hex: 0xFFD200)   // 4K/premium rozeti
+    // Yardımcı semantik
+    static let sgProgress = Color(hex: 0xFFB25A)   // ilerleme (açık amber — turuncu ailesi)
+    static let sgWarn     = Color(hex: 0xF5A623)
 
     init(hex: UInt32, alpha: Double = 1) {
         self.init(.sRGB,

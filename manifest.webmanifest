@@ -1,13 +1,13 @@
 {
-  "name": "M3U Player",
-  "short_name": "M3U Player",
-  "description": "M3U ve Xtream Codes oynatıcı — HLS, EPG, favoriler, son izlenenler, PWA",
+  "name": "Cheesino",
+  "short_name": "Cheesino",
+  "description": "Cheesino — M3U ve Xtream Codes oynatıcı: HLS, EPG, favoriler, son izlenenler, PWA",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
-  "background_color": "#0B0B10",
-  "theme_color": "#0B0B10",
+  "background_color": "#0B0F19",
+  "theme_color": "#0B0F19",
   "orientation": "any",
   "icons": [
     {

@@ -5,12 +5,14 @@
    Type: San Francisco system stack — the real app's own typeface.
    ============================================================ */
 :root{
-  --ground:#0A0B0F; --surface:#13151D; --elevated:#1C1F29; --raised:#242836;
-  --line:#262B38; --line-soft:#1B1F2A;
-  --accent:#4C86FF; --accent-2:#6FA0FF; --accent-glow:rgba(76,134,255,.45);
-  --live:#FF3B4E; --live-glow:rgba(255,59,78,.5);
-  --gold:#F5C542; --teal:#34E0A1; --warn:#F5A623;
-  --text:#EDEFF6; --dim:#9096AC; --mute:#565C72;
+  /* Cheesino paleti · 60-30-10: navy zemin / turuncu yapısal / sarı CTA */
+  --ground:#0B0F19; --surface:#0F172A; --elevated:#172033; --raised:#1E2A42;
+  --line:#24304A; --line-soft:#172033;
+  --accent:#FF8A00; --accent-2:#FFA733; --accent-glow:rgba(255,138,0,.5);
+  --live:#FF8A00; --live-glow:rgba(255,138,0,.5);
+  --cta:#FFD200; --cta-glow:rgba(255,210,0,.55);
+  --gold:#FFD200; --teal:#FFB25A; --warn:#F5A623;
+  --text:#F8FAFC; --dim:#94A0B8; --mute:#5A6784;
   --r-lg:26px; --r-md:16px; --r-sm:11px;
   --shadow:0 30px 70px -20px rgba(0,0,0,.75), 0 8px 30px -12px rgba(0,0,0,.6);
   --maxw:1180px;
@@ -21,8 +23,8 @@ html{scroll-behavior:smooth}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto} *{animation:none!important;transition:none!important}}
 body{
   background:
-    radial-gradient(1200px 600px at 78% -8%, rgba(76,134,255,.12), transparent 60%),
-    radial-gradient(900px 500px at 10% 4%, rgba(255,59,78,.06), transparent 55%),
+    radial-gradient(1200px 600px at 78% -8%, rgba(255,138,0,.14), transparent 60%),
+    radial-gradient(900px 500px at 10% 4%, rgba(255,210,0,.06), transparent 55%),
     var(--ground);
   color:var(--text); font-family:var(--sans); line-height:1.5;
   -webkit-font-smoothing:antialiased; overflow-x:hidden;
@@ -34,10 +36,10 @@ a{color:inherit}
 /* ---------- Masthead ---------- */
 .masthead{padding:64px 0 26px;position:relative}
 .brandrow{display:flex;align-items:center;gap:13px}
-.mark{width:46px;height:46px;border-radius:13px;background:linear-gradient(150deg,var(--accent),#2E5FE0);
-  display:grid;place-items:center;box-shadow:0 0 34px var(--accent-glow);flex-shrink:0;position:relative}
-.mark::after{content:"";position:absolute;inset:0;border-radius:13px;border:1px solid rgba(255,255,255,.18)}
-.mark svg{width:24px;height:24px;fill:#fff}
+.mark{width:46px;height:46px;border-radius:13px;background:linear-gradient(150deg,#FFA733,#FF6A00);
+  display:grid;place-items:center;box-shadow:0 0 44px var(--accent-glow),0 8px 22px rgba(255,138,0,.4);flex-shrink:0;position:relative}
+.mark::after{content:"";position:absolute;inset:0;border-radius:13px;border:1px solid rgba(255,255,255,.22)}
+.mark svg{width:26px;height:26px}
 .brandname{font-size:20px;font-weight:700;letter-spacing:-.3px}
 .brandname small{display:block;font-size:11px;font-weight:600;color:var(--dim);letter-spacing:.4px}
 .eyebrow{margin-top:34px;font-size:12px;font-weight:700;letter-spacing:2.4px;text-transform:uppercase;color:var(--accent-2)}
@@ -118,7 +120,7 @@ a{color:inherit}
 .btn{border:none;font-family:inherit;font-weight:700;font-size:13px;border-radius:10px;padding:9px 15px;
   display:inline-flex;align-items:center;gap:7px;cursor:default}
 .btn svg{width:14px;height:14px}
-.btn-p{background:#fff;color:#0A0B0F} .btn-p svg{fill:#0A0B0F}
+.btn-p{background:var(--cta);color:#0B0F19;box-shadow:0 0 22px var(--cta-glow)} .btn-p svg{fill:#0B0F19}
 .btn-g{background:rgba(255,255,255,.14);color:#fff;backdrop-filter:blur(6px)} .btn-g svg{fill:#fff}
 
 /* rails */
@@ -286,11 +288,11 @@ a{color:inherit}
   <!-- ============ MASTHEAD ============ -->
   <header class="masthead">
     <div class="brandrow">
-      <div class="mark"><svg viewBox="0 0 24 24"><path d="M4 4h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1h-6l3 3v1H7v-1l3-3H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm6.5 3.2v6.6l5-3.3-5-3.3z"/></svg></div>
+      <div class="mark"><svg viewBox="0 0 24 24"><path d="M6.5 5 18.5 12 6.5 19Z" style="fill:#FFD200"/><circle cx="10.2" cy="11" r="1.1" style="fill:#E86A00"/><circle cx="11.8" cy="14.3" r=".85" style="fill:#E86A00"/><circle cx="13.4" cy="10.3" r=".62" style="fill:#E86A00"/><path d="M12.2 6.4 10 11.2h2.1l-1.5 4 4.4-5.2h-2.2l1.3-3.6Z" style="fill:#0B0F19;opacity:.28"/></svg></div>
       <div class="brandname">Cheesino <small>Design Spec · iOS · v0.1</small></div>
     </div>
 
-    <div class="eyebrow">Faz 0 · Görsel Şartname — “Signal” yönü</div>
+    <div class="eyebrow">Görsel Şartname · Cheesino markası</div>
     <h1 class="headline">iOS'ta <em>TiviMate kalitesinde</em> bir yayın deneyimi.</h1>
     <p class="sub">Bu doküman, native SwiftUI uygulamasının görsel referansıdır. Rakiplerin en zayıf olduğu üç noktaya —
       stabilite, arayüz ve EPG— karşı konumlanan, sinematik ve Apple-native bir tasarım dili. Karanlık, bilinçli bir tercih:
@@ -298,9 +300,9 @@ a{color:inherit}
 
     <div class="metabar">
       <span class="chip"><span class="dot"></span> iPhone öncelik · iPad · Mac · Apple&nbsp;TV</span>
-      <span class="chip"><b>Palet</b> Azure #4C86FF</span>
+      <span class="chip"><b>Marka</b> Turuncu #FF8A00</span>
+      <span class="chip"><b>CTA</b> Sarı #FFD200</span>
       <span class="chip"><b>Tip</b> SF Pro (native)</span>
-      <span class="chip"><b>Semantik</b> LIVE #FF3B4E</span>
     </div>
   </header>
 
@@ -311,7 +313,7 @@ a{color:inherit}
         <div class="sec-idx">01 — ANA EKRAN</div>
         <h2 class="sec-title" style="margin-top:8px">Sinematik giriş,<br>tek dokunuşla izleme</h2>
         <p class="fp">Netflix/Apple TV+ seviyesinde bir hero + yatay raylar. “Devam Et” en üstte: kullanıcı bıraktığı yerden
-          saniyeler içinde devam eder. Canlı içerik kırmızı <b style="color:var(--live)">LIVE</b> sinyaliyle, kalite rozetiyle
+          saniyeler içinde devam eder. Canlı içerik turuncu <b style="color:var(--live)">LIVE</b> sinyaliyle, kalite rozetiyle
           (<b style="color:var(--gold)">4K</b>/FHD/HD) net okunur.</p>
         <div class="featlist">
           <div class="feat"><div class="fi"><svg viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
@@ -475,7 +477,7 @@ a{color:inherit}
           <div class="island"></div>
           <div class="status"><span>20:41</span><span class="sig"><span class="batt"></span></span></div>
           <div class="ob">
-            <div class="brandrow" style="margin-top:6px"><div class="mark" style="width:38px;height:38px;border-radius:11px"><svg viewBox="0 0 24 24"><path d="M4 4h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1h-6l3 3v1H7v-1l3-3H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm6.5 3.2v6.6l5-3.3-5-3.3z"/></svg></div></div>
+            <div class="brandrow" style="margin-top:6px"><div class="mark" style="width:38px;height:38px;border-radius:11px"><svg viewBox="0 0 24 24"><path d="M6.5 5 18.5 12 6.5 19Z" style="fill:#FFD200"/><circle cx="10.2" cy="11" r="1.1" style="fill:#E86A00"/><circle cx="11.8" cy="14.3" r=".85" style="fill:#E86A00"/><circle cx="13.4" cy="10.3" r=".62" style="fill:#E86A00"/><path d="M12.2 6.4 10 11.2h2.1l-1.5 4 4.4-5.2h-2.2l1.3-3.6Z" style="fill:#0B0F19;opacity:.28"/></svg></div></div>
             <h2 class="ob-h">Kaynağını ekle,<br>izlemeye başla</h2>
             <p class="ob-p">Xtream Codes, M3U bağlantısı veya dosya. Hiçbir kanal uygulamada gömülü değil — kendi aboneliğini getirirsin.</p>
             <div class="ob-tabs"><span class="t">M3U URL</span><span class="t on">Xtream</span><span class="t">Dosya</span><span class="t">Keşfet</span></div>
@@ -498,26 +500,26 @@ a{color:inherit}
   <!-- ============ DESIGN SYSTEM ============ -->
   <section class="section">
     <div class="sec-head"><span class="sec-idx">03</span><h2 class="sec-title">Tasarım sistemi</h2></div>
-    <p class="sec-desc">SwiftUI için token seti. Aksan tek bir yerde harcanır (azure); LIVE/kalite semantik renkleri aksandan ayrıdır ve
-      duruma göre “bir bakışta” okunur. Mevcut PWA token'larının (<code style="color:var(--teal);font-family:ui-monospace,monospace;font-size:12px">--accent:#4F7FFF</code>) evrimidir.</p>
+    <p class="sec-desc">SwiftUI için token seti · 60-30-10 kuralı. %60 navy zemin, %30 Cheesino Turuncusu (marka/yapısal/LIVE),
+      %10 Güneş Sarısı yalnız CTA ve logo şimşeğinde. Sarı nadir kullanıldığı için harekete geçirici gücü yüksek kalır.</p>
 
     <div class="ds-grid">
       <div class="panel">
-        <h3>Renk · Zemin & Nötr</h3>
-        <div class="sw"><span class="chipc" style="background:#0A0B0F"></span><span class="nm">Ground</span><span class="rl">&nbsp;· zemin</span><span class="hx">#0A0B0F</span></div>
-        <div class="sw"><span class="chipc" style="background:#13151D"></span><span class="nm">Surface</span><span class="rl">&nbsp;· kart</span><span class="hx">#13151D</span></div>
-        <div class="sw"><span class="chipc" style="background:#1C1F29"></span><span class="nm">Elevated</span><span class="rl">&nbsp;· çıkıntı</span><span class="hx">#1C1F29</span></div>
-        <div class="sw"><span class="chipc" style="background:#262B38"></span><span class="nm">Line</span><span class="rl">&nbsp;· çizgi</span><span class="hx">#262B38</span></div>
-        <div class="sw"><span class="chipc" style="background:#EDEFF6"></span><span class="nm">Text</span><span class="rl">&nbsp;· metin</span><span class="hx">#EDEFF6</span></div>
-        <div class="sw"><span class="chipc" style="background:#9096AC"></span><span class="nm">Dim</span><span class="rl">&nbsp;· ikincil</span><span class="hx">#9096AC</span></div>
+        <h3>Renk · Zemin & Nötr <span style="color:var(--mute);font-weight:600">%60</span></h3>
+        <div class="sw"><span class="chipc" style="background:#0B0F19"></span><span class="nm">Ground</span><span class="rl">&nbsp;· zemin</span><span class="hx">#0B0F19</span></div>
+        <div class="sw"><span class="chipc" style="background:#0F172A"></span><span class="nm">Surface</span><span class="rl">&nbsp;· midnight navy</span><span class="hx">#0F172A</span></div>
+        <div class="sw"><span class="chipc" style="background:#172033"></span><span class="nm">Elevated</span><span class="rl">&nbsp;· çıkıntı</span><span class="hx">#172033</span></div>
+        <div class="sw"><span class="chipc" style="background:#24304A"></span><span class="nm">Line</span><span class="rl">&nbsp;· çizgi</span><span class="hx">#24304A</span></div>
+        <div class="sw"><span class="chipc" style="background:#F8FAFC"></span><span class="nm">Text</span><span class="rl">&nbsp;· metin</span><span class="hx">#F8FAFC</span></div>
+        <div class="sw"><span class="chipc" style="background:#94A0B8"></span><span class="nm">Dim</span><span class="rl">&nbsp;· ikincil</span><span class="hx">#94A0B8</span></div>
       </div>
 
       <div class="panel">
-        <h3>Renk · Aksan & Semantik</h3>
-        <div class="sw"><span class="chipc" style="background:#4C86FF;box-shadow:0 0 18px var(--accent-glow)"></span><span class="nm">Accent</span><span class="rl">&nbsp;· etkileşim</span><span class="hx">#4C86FF</span></div>
-        <div class="sw"><span class="chipc" style="background:#FF3B4E;box-shadow:0 0 18px var(--live-glow)"></span><span class="nm">Live</span><span class="rl">&nbsp;· canlı</span><span class="hx">#FF3B4E</span></div>
-        <div class="sw"><span class="chipc" style="background:#F5C542"></span><span class="nm">Gold</span><span class="rl">&nbsp;· 4K/premium</span><span class="hx">#F5C542</span></div>
-        <div class="sw"><span class="chipc" style="background:#34E0A1"></span><span class="nm">Teal</span><span class="rl">&nbsp;· ilerleme</span><span class="hx">#34E0A1</span></div>
+        <h3>Renk · Marka & CTA <span style="color:var(--mute);font-weight:600">%30 · %10</span></h3>
+        <div class="sw"><span class="chipc" style="background:#FF8A00;box-shadow:0 0 18px var(--accent-glow)"></span><span class="nm">Cheesino Turuncusu</span><span class="rl">&nbsp;· %30 yapısal/LIVE</span><span class="hx">#FF8A00</span></div>
+        <div class="sw"><span class="chipc" style="background:#FFD200;box-shadow:0 0 18px var(--cta-glow)"></span><span class="nm">Güneş Sarısı</span><span class="rl">&nbsp;· %10 CTA/şimşek</span><span class="hx">#FFD200</span></div>
+        <div class="sw"><span class="chipc" style="background:#FFB25A"></span><span class="nm">Amber</span><span class="rl">&nbsp;· ilerleme</span><span class="hx">#FFB25A</span></div>
+        <div class="sw"><span class="chipc" style="background:#FFA733"></span><span class="nm">Turuncu-2</span><span class="rl">&nbsp;· hover</span><span class="hx">#FFA733</span></div>
         <div class="sw"><span class="chipc" style="background:#F5A623"></span><span class="nm">Warn</span><span class="rl">&nbsp;· uyarı</span><span class="hx">#F5A623</span></div>
         <div class="comp-demo" style="margin-top:16px">
           <span class="live"><i></i>LIVE</span><span class="q q-4k">4K</span><span class="q q-fhd">FHD</span><span class="q q-hd">HD</span><span class="tag">CATCHUP</span>
@@ -559,9 +561,9 @@ a{color:inherit}
       <div class="note"><div class="nk">Karar · Tema</div><h4>Bilinçli dark-committed</h4>
         <p>Bir yayın/video uygulaması sinematik ve karanlıktır — poster ve canlı görüntü öne çıkar. Tek-tema, eksiklik değil,
           subject'e sadık bir tercih. Işık teması yalnızca ayarlarda opsiyonel “yüksek kontrast” olarak düşünülür.</p></div>
-      <div class="note"><div class="nk">Karar · Aksan</div><h4>Azure + kırmızı sinyal ayrı</h4>
-        <p>Etkileşim = azure (<code>#4C86FF</code>). “Canlı” asla aksanla karışmaz — kendi kırmızı sinyali (<code>#FF3B4E</code>) ve
-          nabız animasyonu var. Kalite (4K altın) ve ilerleme (teal) da ayrı semantik kanallar.</p></div>
+      <div class="note"><div class="nk">Karar · Renk</div><h4>60-30-10: navy · turuncu · sarı</h4>
+        <p>%60 Gece Yarısı Lacivirdi zemin sinema salonu etkisi verir. %30 Cheesino Turuncusu (<code>#FF8A00</code>) marka/yapısal
+          kimlik ve LIVE. %10 Güneş Sarısı (<code>#FFD200</code>) yalnız CTA'larda ve logo şimşeğinde patlar — nadir olduğu için güçlü.</p></div>
       <div class="note"><div class="nk">Karar · Tipografi</div><h4>SF Pro — uygulamanın gerçek fontu</h4>
         <p>Native SwiftUI uygulaması zaten SF Pro kullanacak; prototipte de onu kullanmak dürüst ve tutarlı. Karakter; ölçek,
           ağırlık ve EPG'de <code>tabular-nums</code> ile taşınır — süslü webfont değil.</p></div>
@@ -578,7 +580,7 @@ a{color:inherit}
   </section>
 
   <footer class="footer">
-    <b>Cheesino — iOS Görsel Şartname v0.1 · “Signal”</b><br>
+    <b>Cheesino — iOS Görsel Şartname v0.2</b><br>
     Native SwiftUI implementasyonu için referans. Palet, tipografi ve bileşenler bu dokümandan türetilir.<br>
     Sonraki adım: onay → yüksek-öncelikli ekranların SwiftUI'de gerçeklenmesi (Faz 1).
   </footer>
