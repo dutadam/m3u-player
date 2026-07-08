@@ -29,8 +29,19 @@ struct PlayerView: View {
     @State private var scrubValue: Double = 0
     @State private var isScrubbing = false
     @State private var fillMode = false
+    @State private var endReached = false
 
-    init(channel: Channel) { _current = State(initialValue: channel) }
+    // Dizi bölüm kuyruğu (otomatik sonraki bölüm için)
+    let queue: [Channel]
+    @State private var queueIndex: Int
+
+    init(channel: Channel, queue: [Channel] = [], queueIndex: Int = 0) {
+        _current = State(initialValue: channel)
+        self.queue = queue
+        _queueIndex = State(initialValue: queueIndex)
+    }
+
+    private var hasNext: Bool { !queue.isEmpty && queueIndex + 1 < queue.count }
 
     private var isLive: Bool { current.kind == .live }
     private var nowTitle: String? { library.epg?.nowPlaying(for: current)?.title }
@@ -57,6 +68,23 @@ struct PlayerView: View {
             if showError { errorOverlay }
 
             if controlsVisible { controls.transition(.opacity) }
+
+            // "Sonraki Bölüm" — son 40 sn, kuyrukta sıradaki varsa
+            if !isLive, hasNext, durationSeconds > 40, currentSeconds >= durationSeconds - 40 {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Button { playNext() } label: {
+                            Label("Sonraki Bölüm", systemImage: "forward.end.fill")
+                                .font(.system(size: 14, weight: .semibold))
+                                .padding(.horizontal, 16).padding(.vertical, 10)
+                                .background(Color.sgAccent, in: Capsule()).foregroundStyle(.white)
+                                .shadow(color: Color.sgAccent.opacity(0.4), radius: 10)
+                        }.padding(.trailing, 20).padding(.bottom, 110)
+                    }
+                }
+            }
         }
         .animation(.easeInOut(duration: 0.2), value: controlsVisible)
         .onAppear { library.addRecent(current); start(); startTicker() }
@@ -171,7 +199,18 @@ struct PlayerView: View {
         candidates = StreamResolver.candidates(for: current.url)
         index = 0
         isBuffering = true
+        endReached = false
         playCurrent()
+    }
+
+    /// Sıradaki bölüme geç (dizi kuyruğu).
+    private func playNext() {
+        guard queueIndex + 1 < queue.count else { return }
+        saveProgress()
+        queueIndex += 1
+        current = queue[queueIndex]
+        library.addRecent(current)
+        start()
     }
 
     private func playCurrent() {
@@ -268,6 +307,10 @@ struct PlayerView: View {
     }
     private func updateStatus() {
         if !isScrubbing { scrubValue = fractionProgress }
+        // Bölüm bitişi → otomatik sonraki bölüm (dizi kuyruğu)
+        if !isLive, durationSeconds > 1, currentSeconds >= durationSeconds - 1 {
+            if !endReached { endReached = true; if hasNext { playNext() } }
+        }
         if activeEngine == .vlcKit {
             isBuffering = false
             isPlaying = vlc.isPlaying

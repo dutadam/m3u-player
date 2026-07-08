@@ -85,7 +85,10 @@ struct SeriesDetailView: View {
             season = series?.seasons.first?.number ?? 0
             loading = false
         }
-        .fullScreenCover(item: $playing) { PlayerView(channel: $0) }
+        .fullScreenCover(item: $playing) { ch in
+            let q = (currentSeason?.episodes ?? []).map { channel(for: $0) }
+            PlayerView(channel: ch, queue: q, queueIndex: q.firstIndex { $0.id == ch.id } ?? 0)
+        }
     }
 
     private var header: some View {
