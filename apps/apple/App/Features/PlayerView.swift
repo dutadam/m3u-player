@@ -107,11 +107,18 @@ struct PlayerView: View {
         }
     }
 
+    private var needsVLC: Bool {
+        !VLCPlayerView.isAvailable && candidates.contains { $0.engine == .vlcKit }
+    }
+
     private var errorOverlay: some View {
         VStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle").font(.largeTitle).foregroundStyle(Color.sgWarn)
-            Text("Yayına ulaşılamadı").font(.headline).foregroundStyle(.white)
-            Text("Kaynak geçersiz veya sunucu yanıt vermiyor.").font(.caption).foregroundStyle(Color.sgDim)
+            Text(needsVLC ? "VLCKit gerekli" : "Yayına ulaşılamadı").font(.headline).foregroundStyle(.white)
+            Text(needsVLC
+                 ? "Bu içerik MKV/AVI/TS formatında — Apple oynatıcı desteklemiyor. Xcode'da MobileVLCKit paketini ekleyin."
+                 : "Kaynak geçersiz veya sunucu yanıt vermiyor.")
+                .font(.caption).foregroundStyle(Color.sgDim).multilineTextAlignment(.center)
             HStack(spacing: 12) {
                 Button("Yeniden Dene") { showError = false; start() }
                     .padding(.horizontal, 16).padding(.vertical, 9)
