@@ -13,21 +13,24 @@ final class PlayerContainerView: UIView {
 
 struct PlayerLayerView: UIViewRepresentable {
     let player: AVPlayer
+    var gravity: AVLayerVideoGravity = .resizeAspectFill
     func makeUIView(context: Context) -> PlayerContainerView {
         let v = PlayerContainerView()
         v.playerLayer.player = player
-        v.playerLayer.videoGravity = .resizeAspectFill
+        v.playerLayer.videoGravity = gravity
         v.backgroundColor = .black
         return v
     }
     func updateUIView(_ uiView: PlayerContainerView, context: Context) {
         if uiView.playerLayer.player !== player { uiView.playerLayer.player = player }
+        uiView.playerLayer.videoGravity = gravity
     }
 }
 
 #else
 struct PlayerLayerView: View {
     let player: AVPlayer
+    var gravity: Int = 0
     var body: some View { Color.black }
 }
 #endif

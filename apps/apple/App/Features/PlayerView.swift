@@ -28,6 +28,7 @@ struct PlayerView: View {
     @State private var showTracks = false
     @State private var scrubValue: Double = 0
     @State private var isScrubbing = false
+    @State private var fillMode = false
 
     init(channel: Channel) { _current = State(initialValue: channel) }
 
@@ -39,8 +40,11 @@ struct PlayerView: View {
             Color.black.ignoresSafeArea()
 
             Group {
-                if activeEngine == .avPlayer { PlayerLayerView(player: player) }
-                else if let u = vlcURL { VLCPlayerView(controller: vlc, url: u) }
+                if activeEngine == .avPlayer {
+                    PlayerLayerView(player: player, gravity: fillMode ? .resizeAspectFill : .resizeAspect)
+                } else if let u = vlcURL {
+                    VLCPlayerView(controller: vlc, url: u)
+                }
             }
             .ignoresSafeArea()
             .contentShape(Rectangle())
@@ -110,6 +114,15 @@ struct PlayerView: View {
                     if isLive {
                         iconButton("backward.fill") { step(-1) }
                         iconButton("forward.fill") { step(1) }
+                    } else {
+                        iconButton("gobackward.10") { skip(-10) }
+                        iconButton("goforward.10") { skip(10) }
+                    }
+                    // Doldur/sığdır — yalnız AVPlayer içeriğinde (VLC kendi katmanında oynar)
+                    if activeEngine == .avPlayer {
+                        iconButton(fillMode ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right") {
+                            fillMode.toggle(); showControls()
+                        }
                     }
                     iconButton("captions.bubble") { vlc.refreshTracks(); showTracks = true; showControls() }
                     #if os(iOS)
@@ -212,6 +225,12 @@ struct PlayerView: View {
         else if let d = player.currentItem?.duration.seconds, d > 0, d.isFinite {
             player.seek(to: CMTime(seconds: d * f, preferredTimescale: 600))
         }
+    }
+    private func skip(_ delta: Double) {
+        let d = durationSeconds
+        guard d > 0 else { return }
+        seek(toFraction: max(0, min(d, currentSeconds + delta)) / d)
+        showControls()
     }
     private func timeStr(_ s: Double) -> String {
         guard s.isFinite, s >= 0 else { return "0:00" }
