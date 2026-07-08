@@ -47,9 +47,10 @@ public enum StreamResolver {
         // canlıyı MPEG-TS olarak sunar; AVPlayer .ts oynatamaz, VLC oynatır.
         if original.pathExtension.lowercased() == "m3u8" {
             for u in urls {
-                var comps = URLComponents(url: u, resolvingAgainstBaseURL: false)
-                comps?.path = ((comps?.path ?? "") as NSString).deletingPathExtension + ".ts"
-                if let ts = comps?.url { out.append(Candidate(url: ts, engine: .vlcKit)) }
+                guard var comps = URLComponents(url: u, resolvingAgainstBaseURL: false) else { continue }
+                let base = (comps.path as NSString).deletingPathExtension
+                comps.path = base + ".ts"
+                if let ts = comps.url { out.append(Candidate(url: ts, engine: .vlcKit)) }
             }
         }
         return out
