@@ -42,6 +42,13 @@ final class VLCController: ObservableObject {
     var currentSubtitle: Int { Int(player.currentVideoSubTitleIndex) }
     func setAudio(_ id: Int) { player.currentAudioTrackIndex = Int32(id) }
     func setSubtitle(_ id: Int) { player.currentVideoSubTitleIndex = Int32(id) }
+
+    // Seek / süre (VOD)
+    var position: Double { Double(player.position) }                     // 0..1
+    var lengthSeconds: Double { Double(player.media?.length.intValue ?? 0) / 1000 }
+    var timeSeconds: Double { Double(player.time.intValue) / 1000 }
+    func seek(toFraction f: Double) { player.position = Float(max(0, min(1, f))) }
+    func togglePlay() { if player.isPlaying { player.pause() } else { player.play() } }
 }
 
 struct VLCPlayerView: UIViewRepresentable {
@@ -84,6 +91,11 @@ final class VLCController: ObservableObject {
     var currentSubtitle: Int { -1 }
     func setAudio(_ id: Int) {}
     func setSubtitle(_ id: Int) {}
+    var position: Double { 0 }
+    var lengthSeconds: Double { 0 }
+    var timeSeconds: Double { 0 }
+    func seek(toFraction f: Double) {}
+    func togglePlay() {}
 }
 
 struct VLCPlayerView: View {

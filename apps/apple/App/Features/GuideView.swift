@@ -28,7 +28,7 @@ struct GuideView: View {
                 HStack(alignment: .top, spacing: 0) {
                     channelColumn
                     ScrollView(.horizontal, showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: 0) {
+                        LazyVStack(alignment: .leading, spacing: 0) {
                             timeHeader
                             ForEach(library.live) { ch in
                                 timelineRow(for: ch)
@@ -48,7 +48,7 @@ struct GuideView: View {
 
     // MARK: - Sol sabit kanal sütunu
     private var channelColumn: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        LazyVStack(alignment: .leading, spacing: 0) {
             Color.clear.frame(height: headerH)          // zaman başlığıyla hizala
             ForEach(library.live) { ch in
                 HStack(spacing: 6) {

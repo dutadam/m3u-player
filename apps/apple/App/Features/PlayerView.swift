@@ -26,6 +26,8 @@ struct PlayerView: View {
     @State private var attemptStart = Date()
     @StateObject private var vlc = VLCController()
     @State private var showTracks = false
+    @State private var scrubValue: Double = 0
+    @State private var isScrubbing = false
 
     init(channel: Channel) { _current = State(initialValue: channel) }
 
@@ -90,17 +92,30 @@ struct PlayerView: View {
             Spacer()
 
             // Alt
-            HStack(spacing: 16) {
-                if isLive { LivePill(current.kind == .live ? "CANLI" : "LIVE") }
-                Spacer()
-                if isLive {
-                    iconButton("backward.fill") { step(-1) }
-                    iconButton("forward.fill") { step(1) }
+            VStack(spacing: 10) {
+                // Seek çubuğu — yalnız VOD/dizi
+                if !isLive {
+                    HStack(spacing: 9) {
+                        Text(timeStr(currentSeconds)).font(.caption2).monospacedDigit().foregroundStyle(.white)
+                        Slider(value: $scrubValue, in: 0...1) { editing in
+                            isScrubbing = editing
+                            if !editing { seek(toFraction: scrubValue) }
+                        }.tint(Color.sgAccent)
+                        Text(timeStr(durationSeconds)).font(.caption2).monospacedDigit().foregroundStyle(.white)
+                    }
                 }
-                iconButton("captions.bubble") { vlc.refreshTracks(); showTracks = true; showControls() }
-                #if os(iOS)
-                AirPlayButton().frame(width: 40, height: 40)
-                #endif
+                HStack(spacing: 16) {
+                    if isLive { LivePill("CANLI") }
+                    Spacer()
+                    if isLive {
+                        iconButton("backward.fill") { step(-1) }
+                        iconButton("forward.fill") { step(1) }
+                    }
+                    iconButton("captions.bubble") { vlc.refreshTracks(); showTracks = true; showControls() }
+                    #if os(iOS)
+                    AirPlayButton().frame(width: 40, height: 40)
+                    #endif
+                }
             }
             .padding()
             .background(LinearGradient(colors: [.clear, .black.opacity(0.6)], startPoint: .top, endPoint: .bottom))
@@ -171,9 +186,37 @@ struct PlayerView: View {
     }
 
     private func togglePlay() {
-        if player.timeControlStatus == .playing { player.pause(); isPlaying = false }
-        else { player.play(); isPlaying = true }
+        if activeEngine == .vlcKit {
+            vlc.togglePlay(); isPlaying = vlc.isPlaying
+        } else {
+            if player.timeControlStatus == .playing { player.pause(); isPlaying = false }
+            else { player.play(); isPlaying = true }
+        }
         showControls()
+    }
+
+    // MARK: - Birleşik seek (aktif motor)
+    private var durationSeconds: Double {
+        activeEngine == .vlcKit ? vlc.lengthSeconds : (player.currentItem?.duration.seconds ?? 0)
+    }
+    private var currentSeconds: Double {
+        activeEngine == .vlcKit ? vlc.timeSeconds : player.currentTime().seconds
+    }
+    private var fractionProgress: Double {
+        if activeEngine == .vlcKit { return vlc.position }
+        let d = player.currentItem?.duration.seconds ?? 0
+        return d > 0 ? player.currentTime().seconds / d : 0
+    }
+    private func seek(toFraction f: Double) {
+        if activeEngine == .vlcKit { vlc.seek(toFraction: f) }
+        else if let d = player.currentItem?.duration.seconds, d > 0, d.isFinite {
+            player.seek(to: CMTime(seconds: d * f, preferredTimescale: 600))
+        }
+    }
+    private func timeStr(_ s: Double) -> String {
+        guard s.isFinite, s >= 0 else { return "0:00" }
+        let t = Int(s), h = t / 3600, m = (t % 3600) / 60, sec = t % 60
+        return h > 0 ? String(format: "%d:%02d:%02d", h, m, sec) : String(format: "%d:%02d", m, sec)
     }
 
     private func step(_ d: Int) {
@@ -205,8 +248,10 @@ struct PlayerView: View {
         }
     }
     private func updateStatus() {
+        if !isScrubbing { scrubValue = fractionProgress }
         if activeEngine == .vlcKit {
             isBuffering = false
+            isPlaying = vlc.isPlaying
             if vlc.audioTracks.isEmpty && vlc.isPlaying { vlc.refreshTracks() }   // track'ler oynama başlayınca gelir
             return
         }
