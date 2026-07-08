@@ -30,6 +30,13 @@ final class StreamResolverTests: XCTestCase {
         XCTAssertEqual(StreamResolver.candidates(for: URL(string: "https://x/live/u/p/1")!).first?.engine, .avPlayer)
     }
 
+    func testM3U8AddsTSVLCFallback() {
+        // Xtream canlı: .m3u8 → AVPlayer adayı + .ts VLC fallback
+        let c = StreamResolver.candidates(for: URL(string: "http://portal:8080/live/u/p/1001.m3u8")!)
+        XCTAssertTrue(c.contains { $0.url.absoluteString.hasSuffix("1001.m3u8") && $0.engine == .avPlayer })
+        XCTAssertTrue(c.contains { $0.url.absoluteString.hasSuffix("1001.ts") && $0.engine == .vlcKit })
+    }
+
     func testIOSHLSVariant() {
         let bare = URL(string: "http://x/live/u/p/1001")!
         XCTAssertEqual(StreamResolver.iOSHLSVariant(of: bare)?.absoluteString, "http://x/live/u/p/1001.m3u8")

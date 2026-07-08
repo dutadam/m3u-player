@@ -49,9 +49,12 @@ Xcode hataları tek tek gösterir; yukarıdan aşağı düzelt, tekrar derle. Mi
 > **Neden cihaz şart:** HTTP yayınlar (ATS), PiP, arka plan ses, codec'ler ve uzun-oturum stabilitesi
 > **yalnız gerçek cihazda** doğrulanır. Simülatör bunların çoğunu yansıtmaz.
 
-## 6. VLCKit (MKV/AVI — opsiyonel)
-- Xcode → **File → Add Package Dependencies** → `https://github.com/videolan/vlckit` (veya CocoaPods `MobileVLCKit`).
-- Hedefe bağla. Kod zaten `#if canImport(MobileVLCKit)` ile hazır; paket yoksa AVPlayer'a düşer.
+## 6. VLCKit (MKV/AVI/TS — Xtream oynatma için GEREKLİ)
+Xtream içeriği çoğunlukla MKV/AVI (film/dizi) ve MPEG-TS (canlı) — AVPlayer bunları oynatamaz, VLC oynatır.
+Artık `project.yml`'ye **otomatik ekli** (`tylerjonesio/vlckit-spm`). `xcodegen generate` paketi çeker
+(~200MB, Git LFS — ilk sefer biraz sürer). Kod `#if canImport(MobileVLCKit)` ile hazır; paket gelince aktifleşir.
+
+> tvOS için TVVLCKit ayrıdır; şu an hedef **iOS-only** (tvOS 10-foot UI ile birlikte sonra eklenecek).
 
 ## 7. Core birim testleri
 - Xcode: şema **Core** → **Cmd+U**. Veya terminal:

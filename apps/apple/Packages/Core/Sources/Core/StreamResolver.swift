@@ -41,7 +41,18 @@ public enum StreamResolver {
         }
         if urls.isEmpty { add(original) }
 
-        return urls.map { Candidate(url: $0, engine: engine(for: $0)) }
+        var out = urls.map { Candidate(url: $0, engine: engine(for: $0)) }
+
+        // Xtream canlı: .m3u8 (AVPlayer/HLS) oynamazsa .ts (VLC/MPEG-TS) dene. Çoğu Xtream paneli
+        // canlıyı MPEG-TS olarak sunar; AVPlayer .ts oynatamaz, VLC oynatır.
+        if original.pathExtension.lowercased() == "m3u8" {
+            for u in urls {
+                var comps = URLComponents(url: u, resolvingAgainstBaseURL: false)
+                comps?.path = ((comps?.path ?? "") as NSString).deletingPathExtension + ".ts"
+                if let ts = comps?.url { out.append(Candidate(url: ts, engine: .vlcKit)) }
+            }
+        }
+        return out
     }
 
     /// iOS Safari/AVPlayer, uzantısız Xtream canlı URL'lerinde `.m3u8` ekiyle daha iyi çalışır.
