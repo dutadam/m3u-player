@@ -23,6 +23,7 @@ struct PlayerView: View {
     @State private var showError = false
     @State private var ticker: Timer?
     @State private var hideTask: DispatchWorkItem?
+    @State private var attemptStart = Date()
     @StateObject private var vlc = VLCController()
     @State private var showTracks = false
 
@@ -150,14 +151,16 @@ struct PlayerView: View {
         player.replaceCurrentItem(with: item)
         let resume = library.resumePosition(for: current.url.absoluteString)
         if !isLive, resume > 0 { player.seek(to: CMTime(seconds: resume, preferredTimescale: 1)) }
+        attemptStart = Date()
         player.play(); isPlaying = true
-        // Watchdog: 12 sn içinde oynamazsa sıradaki kaynak.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 12) {
-            if activeEngine == .avPlayer, player.timeControlStatus != .playing, !showError {
-                index += 1; playCurrent()
-            }
-        }
         showControls()
+    }
+
+    /// Sıradaki kaynağa geç; tükendiyse hata göster.
+    private func advance() {
+        index += 1
+        if index < candidates.count { playCurrent() }
+        else { showError = true; isBuffering = false }
     }
 
     private func togglePlay() {
@@ -200,10 +203,13 @@ struct PlayerView: View {
             if vlc.audioTracks.isEmpty && vlc.isPlaying { vlc.refreshTracks() }   // track'ler oynama başlayınca gelir
             return
         }
+        // Kaynak başarısız oldu veya 12 sn'de oynamadıysa hemen sıradaki adaya geç.
+        if player.currentItem?.status == .failed { advance(); return }
         let s = player.timeControlStatus
         isPlaying = (s == .playing)
-        isBuffering = (s == .waitingToPlayAtSpecifiedRate)
-        if !isLive { saveProgress() }
+        isBuffering = (s != .playing)
+        if s == .playing { if !isLive { saveProgress() } }
+        else if Date().timeIntervalSince(attemptStart) > 12 { advance() }
     }
     private func saveProgress() {
         guard !isLive, let item = player.currentItem, item.duration.isNumeric else { return }

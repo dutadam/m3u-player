@@ -24,20 +24,19 @@ public enum StreamResolver {
         var urls: [URL] = []
         func add(_ u: URL?) { if let u, !urls.contains(u) { urls.append(u) } }
 
-        if original.scheme?.lowercased() == "https" {
-            add(original)
-        } else {
-            // HTTP → önce HTTPS yükseltmesi (443 ve varsa aynı port), sonra orijinal HTTP.
+        // Native'de ATS HTTP'ye izin verir → ORİJİNALİ ÖNCE dene. Xtream sunucuları genelde
+        // belirli bir portta düz HTTP sunar; HTTPS'e zorlamak "connection refused"/TLS hatası verir.
+        add(original)
+        if original.scheme?.lowercased() == "http" {
+            // HTTPS yalnızca fallback (bazı sunucular TLS de sunar).
             var https = URLComponents(url: original, resolvingAgainstBaseURL: false)
-            https?.scheme = "https"
-            https?.port = nil
+            https?.scheme = "https"; https?.port = nil
             add(https?.url)
             if let port = original.port {
                 var withPort = URLComponents(url: original, resolvingAgainstBaseURL: false)
                 withPort?.scheme = "https"; withPort?.port = port
                 add(withPort?.url)
             }
-            add(original) // native: mixed-content engeli olmadığı için HTTP her zaman geçerli aday
         }
         if urls.isEmpty { add(original) }
 
