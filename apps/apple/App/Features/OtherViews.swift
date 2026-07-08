@@ -2,13 +2,37 @@ import SwiftUI
 import Core
 import Design
 
-/// Canlı kanallar — kategori-bazlı gözatma (binlerce kanal için ölçeklenir).
+/// Canlı kanallar — kategori-bazlı gözatma + Rehber girişi.
 struct LiveView: View {
     @EnvironmentObject private var library: LibraryStore
     var body: some View {
         NavigationStack {
             CategoryBrowseView(title: "Canlı", channels: library.live)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        NavigationLink { GuideView() } label: {
+                            Label("Rehber", systemImage: "rectangle.grid.1x2")
+                        }
+                    }
+                }
         }
+    }
+}
+
+/// Filmler (VOD) — kategori-bazlı gözatma.
+struct MoviesView: View {
+    @EnvironmentObject private var library: LibraryStore
+    var body: some View {
+        NavigationStack {
+            CategoryBrowseView(title: "Filmler", channels: library.movies)
+        }
+    }
+}
+
+/// Diziler sekmesi — katalog + detay.
+struct SeriesTabView: View {
+    var body: some View {
+        NavigationStack { SeriesListView() }
     }
 }
 
@@ -50,13 +74,8 @@ struct LibraryView: View {
             List {
                 NavigationLink { FavoritesView() } label: { Label("Favoriler", systemImage: "heart.fill") }
                 NavigationLink { RecentsView() } label: { Label("Son İzlenenler", systemImage: "clock.arrow.circlepath") }
-                if !library.movies.isEmpty {
-                    NavigationLink { CategoryBrowseView(title: "Filmler", channels: library.movies) } label: {
-                        Label("Filmler", systemImage: "film.fill")
-                    }
-                }
-                NavigationLink { SeriesListView() } label: { Label("Diziler", systemImage: "play.tv.fill") }
                 NavigationLink { MultiView() } label: { Label("Çoklu Ekran", systemImage: "square.grid.2x2.fill") }
+                NavigationLink { CategoryManagerView() } label: { Label("Kategori Yönetimi", systemImage: "line.3.horizontal.decrease.circle") }
                 NavigationLink { SettingsView() } label: { Label("Ayarlar", systemImage: "gearshape.fill") }
             }
             .listStyle(.plain)

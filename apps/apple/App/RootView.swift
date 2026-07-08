@@ -38,20 +38,25 @@ struct LoadingView: View {
     }
 }
 
-/// Ana sekmeler — tasarım şartnamesindeki tab bar (İzle/Canlı/Rehber/Ara/Kitaplık).
+/// Ana sekmeler — içerik türüne göre net ayrım: Ana Sayfa · Canlı · Filmler · Diziler · Ara.
 struct RootTabView: View {
+    @EnvironmentObject private var library: LibraryStore
     var body: some View {
         TabView {
             HomeView()
-                .tabItem { Label("İzle", systemImage: "house.fill") }
+                .tabItem { Label("Ana Sayfa", systemImage: "house.fill") }
             LiveView()
                 .tabItem { Label("Canlı", systemImage: "dot.radiowaves.left.and.right") }
-            GuideView()
-                .tabItem { Label("Rehber", systemImage: "rectangle.grid.1x2") }
+            if !library.movies.isEmpty {
+                MoviesView()
+                    .tabItem { Label("Filmler", systemImage: "film.fill") }
+            }
+            if !library.series.isEmpty {
+                SeriesTabView()
+                    .tabItem { Label("Diziler", systemImage: "play.tv.fill") }
+            }
             SearchView()
                 .tabItem { Label("Ara", systemImage: "magnifyingglass") }
-            LibraryView()
-                .tabItem { Label("Kitaplık", systemImage: "square.stack.fill") }
         }
     }
 }

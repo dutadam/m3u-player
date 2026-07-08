@@ -6,38 +6,42 @@ import Design
 struct HomeView: View {
     @EnvironmentObject private var library: LibraryStore
     @State private var selected: Channel?
+    @State private var showLibrary = false
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    if let hero = library.live.first { HeroCard(channel: hero) { selected = hero } }
+                    if let hero = library.visibleLive.first { HeroCard(channel: hero) { selected = hero } }
 
-                    // "Devam Et" — son izlenenler (en üstte)
                     if !library.recentChannels.isEmpty {
                         ChannelRail(title: "Devam Et", channels: library.recentChannels) { selected = $0 }
                     }
-                    // "Favoriler"
                     if !library.favoriteChannels.isEmpty {
                         ChannelRail(title: "Favoriler", channels: library.favoriteChannels) { selected = $0 }
                     }
 
-                    // "Diziler" — poster rayı, detaya gider
-                    if !library.series.isEmpty { SeriesRailHome(series: Array(library.series.prefix(20))) }
-
-                    // "Canlı · Spor" rayı — grup adında spor geçenler
-                    let sports = library.live.filter { $0.group.localizedCaseInsensitiveContains("spor") }
+                    // Net içerik ayrımı (gizli kategoriler hariç)
+                    let sports = library.visibleLive.filter { $0.group.localizedCaseInsensitiveContains("spor") }
                     if !sports.isEmpty { ChannelRail(title: "Canlı · Spor", channels: sports) { selected = $0 } }
-
-                    // Diğer gruplar
-                    ForEach(library.groups.keys.sorted().prefix(6), id: \.self) { group in
-                        ChannelRail(title: group, channels: library.groups[group] ?? []) { selected = $0 }
+                    if !library.visibleLive.isEmpty {
+                        ChannelRail(title: "Canlı TV", channels: Array(library.visibleLive.prefix(20))) { selected = $0 }
                     }
+                    if !library.visibleMovies.isEmpty {
+                        ChannelRail(title: "Filmler", channels: Array(library.visibleMovies.prefix(20))) { selected = $0 }
+                    }
+                    if !library.series.isEmpty { SeriesRailHome(series: Array(library.series.prefix(20))) }
                 }
                 .padding(.vertical, 12)
             }
             .background(Color.sgGround)
-            .navigationTitle("İzle")
+            .navigationTitle("Ana Sayfa")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { showLibrary = true } label: { Image(systemName: "square.stack.fill") }
+                }
+            }
+            .sheet(isPresented: $showLibrary) { LibraryView() }
             .fullScreenCover(item: $selected) { PlayerView(channel: $0) }
         }
     }

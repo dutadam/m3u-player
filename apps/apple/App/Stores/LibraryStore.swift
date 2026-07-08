@@ -15,6 +15,7 @@ final class LibraryStore: ObservableObject {
     @Published private(set) var favorites: Set<String> = []
     @Published private(set) var recents: [RecentItem] = []
     @Published private(set) var progress: [String: WatchProgress] = [:]
+    @Published private(set) var hiddenCategories: Set<String> = []
 
     private let session = URLSession.shared
 
@@ -24,6 +25,7 @@ final class LibraryStore: ObservableObject {
         favorites = LocalStore.load(Set<String>.self, key: LocalStore.Key.favorites) ?? []
         recents = LocalStore.load([RecentItem].self, key: LocalStore.Key.recents) ?? []
         progress = LocalStore.load([String: WatchProgress].self, key: LocalStore.Key.progress) ?? [:]
+        hiddenCategories = LocalStore.load(Set<String>.self, key: "cheesino.hiddenCats") ?? []
         // iCloud: başka cihazdan gelen durumu birleştir + değişiklikleri dinle.
         mergeFromCloud()
         cloudObserver = CloudStore.startObserving { [weak self] in
@@ -67,6 +69,17 @@ final class LibraryStore: ObservableObject {
     var favoriteChannels: [Channel] { channels.filter { favorites.contains($0.url.absoluteString) } }
     func channel(forURL url: String) -> Channel? { channels.first { $0.url.absoluteString == url } }
     var recentChannels: [Channel] { recents.compactMap { channel(forURL: $0.url) } }
+
+    // MARK: - Kategori gizleme (Xtream'den gelenler dahil)
+    var allCategories: [String] { Set(channels.map(\.group) + series.map(\.group)).sorted() }
+    var visibleLive: [Channel] { live.filter { !hiddenCategories.contains($0.group) } }
+    var visibleMovies: [Channel] { movies.filter { !hiddenCategories.contains($0.group) } }
+    func isCategoryHidden(_ g: String) -> Bool { hiddenCategories.contains(g) }
+    func toggleCategoryHidden(_ g: String) {
+        if hiddenCategories.contains(g) { hiddenCategories.remove(g) } else { hiddenCategories.insert(g) }
+        LocalStore.save(hiddenCategories, key: "cheesino.hiddenCats")
+        CloudStore.save(hiddenCategories, key: "cheesino.hiddenCats")
+    }
 
     var groups: [String: [Channel]] {
         Dictionary(grouping: channels, by: \.group)

@@ -5,6 +5,7 @@ import Design
 /// Kategori-bazlı gözatma — kategori çipleri + filtreli grid. Binlerce kanallı gerçek
 /// IPTV listeleri için ölçeklenir (düz tek-grid yerine). Canlı ve VOD için ortak kullanılır.
 struct CategoryBrowseView: View {
+    @EnvironmentObject private var library: LibraryStore
     let title: String
     let channels: [Channel]
     @State private var category: String?          // nil = Tümü
@@ -13,11 +14,13 @@ struct CategoryBrowseView: View {
 
     private let cols = [GridItem(.adaptive(minimum: 118), spacing: 11)]
 
+    // Gizlenen kategoriler hariç
+    private var visible: [Channel] { channels.filter { !library.isCategoryHidden($0.group) } }
     private var categories: [String] {
-        Array(Set(channels.map(\.group))).sorted()
+        Array(Set(visible.map(\.group))).sorted()
     }
     private var filtered: [Channel] {
-        var list = category == nil ? channels : channels.filter { $0.group == category }
+        var list = category == nil ? visible : visible.filter { $0.group == category }
         if !query.isEmpty { list = list.filter { $0.name.localizedCaseInsensitiveContains(query) } }
         return list
     }
@@ -30,6 +33,11 @@ struct CategoryBrowseView: View {
                     chip("Tümü", on: category == nil) { category = nil }
                     ForEach(categories, id: \.self) { c in
                         chip(c, on: category == c) { category = c }
+                            .contextMenu {
+                                Button(role: .destructive) { library.toggleCategoryHidden(c) } label: {
+                                    Label("Kategoriyi Gizle", systemImage: "eye.slash")
+                                }
+                            }
                     }
                 }
                 .padding(.horizontal, SGMetric.gutter).padding(.vertical, 10)

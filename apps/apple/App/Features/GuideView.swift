@@ -22,28 +22,27 @@ struct GuideView: View {
     }
     private var totalWidth: CGFloat { CGFloat(spanHours * 60) * ppm }
 
+    // NavigationStack'sız — çağıran (Canlı sekmesi) push eder.
     var body: some View {
-        NavigationStack {
-            ScrollView(.vertical, showsIndicators: false) {
-                HStack(alignment: .top, spacing: 0) {
-                    channelColumn
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        LazyVStack(alignment: .leading, spacing: 0) {
-                            timeHeader
-                            ForEach(library.live) { ch in
-                                timelineRow(for: ch)
-                                    .frame(height: rowH)
-                                Divider().overlay(Color.sgLineSoft)
-                            }
+        ScrollView(.vertical, showsIndicators: false) {
+            HStack(alignment: .top, spacing: 0) {
+                channelColumn
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        timeHeader
+                        ForEach(library.live) { ch in
+                            timelineRow(for: ch)
+                                .frame(height: rowH)
+                            Divider().overlay(Color.sgLineSoft)
                         }
-                        .overlay(alignment: .topLeading) { nowLine }
                     }
+                    .overlay(alignment: .topLeading) { nowLine }
                 }
             }
-            .background(Color.sgGround)
-            .navigationTitle("Rehber")
-            .fullScreenCover(item: $selected) { PlayerView(channel: $0) }
         }
+        .background(Color.sgGround)
+        .navigationTitle("Rehber")
+        .fullScreenCover(item: $selected) { PlayerView(channel: $0) }
     }
 
     // MARK: - Sol sabit kanal sütunu
