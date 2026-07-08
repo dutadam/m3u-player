@@ -49,12 +49,23 @@ Xcode hataları tek tek gösterir; yukarıdan aşağı düzelt, tekrar derle. Mi
 > **Neden cihaz şart:** HTTP yayınlar (ATS), PiP, arka plan ses, codec'ler ve uzun-oturum stabilitesi
 > **yalnız gerçek cihazda** doğrulanır. Simülatör bunların çoğunu yansıtmaz.
 
-## 6. VLCKit (MKV/AVI/TS — Xtream oynatma için GEREKLİ)
+## 6. VLCKit (MKV/AVI/TS — Xtream film/dizi/canlı oynatma için GEREKLİ)
 Xtream içeriği çoğunlukla MKV/AVI (film/dizi) ve MPEG-TS (canlı) — AVPlayer bunları oynatamaz, VLC oynatır.
-Artık `project.yml`'ye **otomatik ekli** (`tylerjonesio/vlckit-spm`). `xcodegen generate` paketi çeker
-(~200MB, Git LFS — ilk sefer biraz sürer). Kod `#if canImport(MobileVLCKit)` ile hazır; paket gelince aktifleşir.
+Uygulama VLCKit olmadan da derlenir/çalışır (AVPlayer ile HLS/MP4), ama Xtream'in çoğu için VLCKit şart.
 
-> tvOS için TVVLCKit ayrıdır; şu an hedef **iOS-only** (tvOS 10-foot UI ile birlikte sonra eklenecek).
+**Xcode arayüzünden ekle (önerilen — doğru ürünü görerek seçersin):**
+1. Xcode → **File → Add Package Dependencies…**
+2. URL yapıştır (biri çalışır):
+   - `https://github.com/tylerjonesio/vlckit-spm`
+   - (alternatif) `https://github.com/rsaleass/VLCKit-SPM`
+3. **Add Package** → paket çözülür (~200MB Git LFS, ilk sefer birkaç dk).
+4. Ürün seçim ekranında listelenen ürünü (**MobileVLCKit** veya **VLCKit**) **Cheesino** hedefine ekle.
+5. Kod `#if canImport(MobileVLCKit)` ile hazır. Ürün adı `MobileVLCKit` modülü sağlıyorsa otomatik aktifleşir.
+   (Modül adı farklıysa — ör. `VLCKit` — bana söyle, `#if canImport` koşulunu ona göre güncelleyeyim.)
+
+> Not: `project.yml`'ye elle koymadım çünkü SPM ürün adı pakete göre değişip "Missing package product"
+> hatası veriyor. Xcode UI'dan eklemek en güvenli yol.
+> tvOS için TVVLCKit ayrıdır; şu an hedef **iOS-only**.
 
 ## 7. Core birim testleri
 - Xcode: şema **Core** → **Cmd+U**. Veya terminal:

@@ -13,11 +13,8 @@ packages:
     path: Packages/Core
   Design:
     path: Packages/Design
-  # VLCKit (MobileVLCKit) — Xtream MKV/AVI/TS ve exotik codec oynatma. iOS.
-  # tvOS için TVVLCKit ayrı; tvOS hedefi sonra eklenince ayrı yapılandırılır.
-  VLCKit:
-    url: https://github.com/tylerjonesio/vlckit-spm
-    from: "3.5.1"
+  # VLCKit — Xtream MKV/AVI/TS oynatma için. Xcode UI'dan manuel eklenir (doğru ürün adını
+  # seçerek), çünkü SPM ürün adı paket sürümüne göre değişebiliyor. Bkz. BUILD.md §6.
 
 targets:
   Cheesino:
@@ -30,8 +27,7 @@ targets:
     dependencies:
       - package: Core
       - package: Design
-      - package: VLCKit
-        product: MobileVLCKit
+      # VLCKit: Xcode → File → Add Package Dependencies (BUILD.md §6). Kod #if canImport ile hazır.
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.cheesino.app
