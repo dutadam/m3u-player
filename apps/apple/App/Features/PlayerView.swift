@@ -23,6 +23,8 @@ struct PlayerView: View {
     @State private var showError = false
     @State private var ticker: Timer?
     @State private var hideTask: DispatchWorkItem?
+    @StateObject private var vlc = VLCController()
+    @State private var showTracks = false
 
     init(channel: Channel) { _current = State(initialValue: channel) }
 
@@ -35,7 +37,7 @@ struct PlayerView: View {
 
             Group {
                 if activeEngine == .avPlayer { PlayerLayerView(player: player) }
-                else if let u = vlcURL { VLCPlayerView(url: u) }
+                else if let u = vlcURL { VLCPlayerView(controller: vlc, url: u) }
             }
             .ignoresSafeArea()
             .contentShape(Rectangle())
@@ -51,7 +53,8 @@ struct PlayerView: View {
         }
         .animation(.easeInOut(duration: 0.2), value: controlsVisible)
         .onAppear { library.addRecent(current); start(); startTicker() }
-        .onDisappear { saveProgress(); ticker?.invalidate(); player.pause() }
+        .onDisappear { saveProgress(); ticker?.invalidate(); player.pause(); vlc.stop() }
+        .sheet(isPresented: $showTracks) { tracksSheet }
     }
 
     // MARK: - Kontrol overlay
@@ -93,6 +96,7 @@ struct PlayerView: View {
                     iconButton("backward.fill") { step(-1) }
                     iconButton("forward.fill") { step(1) }
                 }
+                iconButton("captions.bubble") { vlc.refreshTracks(); showTracks = true; showControls() }
                 #if os(iOS)
                 AirPlayButton().frame(width: 40, height: 40)
                 #endif
@@ -191,7 +195,11 @@ struct PlayerView: View {
         }
     }
     private func updateStatus() {
-        guard activeEngine == .avPlayer else { isBuffering = false; return }
+        if activeEngine == .vlcKit {
+            isBuffering = false
+            if vlc.audioTracks.isEmpty && vlc.isPlaying { vlc.refreshTracks() }   // track'ler oynama başlayınca gelir
+            return
+        }
         let s = player.timeControlStatus
         isPlaying = (s == .playing)
         isBuffering = (s == .waitingToPlayAtSpecifiedRate)
@@ -203,6 +211,72 @@ struct PlayerView: View {
         if pos.isFinite, dur.isFinite {
             library.saveProgress(url: current.url.absoluteString, position: pos, duration: dur)
         }
+    }
+
+    // MARK: - Ses & Altyazı seçimi
+    private struct TrackItem: Identifiable {
+        let id: String; let name: String; let selected: Bool; let apply: () -> Void
+    }
+
+    private var tracksSheet: some View {
+        let audio = audioItems(), subs = subtitleItems()
+        return NavigationStack {
+            List {
+                Section("Ses") {
+                    if audio.isEmpty { Text("Tek ses parçası").foregroundStyle(Color.sgMute) }
+                    ForEach(audio) { trackRow($0) }
+                }
+                Section("Altyazı") {
+                    if subs.isEmpty { Text("Altyazı yok").foregroundStyle(Color.sgMute) }
+                    ForEach(subs) { trackRow($0) }
+                }
+            }
+            .navigationTitle("Ses & Altyazı")
+            .toolbar { Button("Bitti") { showTracks = false } }
+        }
+    }
+
+    private func trackRow(_ t: TrackItem) -> some View {
+        Button { t.apply(); showTracks = false } label: {
+            HStack {
+                Text(t.name).foregroundStyle(Color.sgText)
+                Spacer()
+                if t.selected { Image(systemName: "checkmark").foregroundStyle(Color.sgAccent) }
+            }
+        }
+    }
+
+    private func audioItems() -> [TrackItem] {
+        if activeEngine == .vlcKit {
+            return vlc.audioTracks.map { t in
+                TrackItem(id: "a\(t.id)", name: t.name, selected: vlc.currentAudio == t.id) { vlc.setAudio(t.id) }
+            }
+        }
+        guard let item = player.currentItem,
+              let group = item.asset.mediaSelectionGroup(forMediaCharacteristic: .audible) else { return [] }
+        let cur = item.currentMediaSelection.selectedMediaOption(in: group)
+        return group.options.map { opt in
+            TrackItem(id: opt.displayName, name: opt.displayName,
+                      selected: cur.map { opt.isEqual($0) } ?? false) { item.select(opt, in: group) }
+        }
+    }
+
+    private func subtitleItems() -> [TrackItem] {
+        if activeEngine == .vlcKit {
+            // VLC listesi genelde "Disable" içerir.
+            return vlc.subtitleTracks.map { t in
+                TrackItem(id: "s\(t.id)", name: t.name, selected: vlc.currentSubtitle == t.id) { vlc.setSubtitle(t.id) }
+            }
+        }
+        guard let item = player.currentItem,
+              let group = item.asset.mediaSelectionGroup(forMediaCharacteristic: .legible) else { return [] }
+        let cur = item.currentMediaSelection.selectedMediaOption(in: group)
+        var items = [TrackItem(id: "off", name: "Kapalı", selected: cur == nil) { item.select(nil, in: group) }]
+        items += group.options.map { opt in
+            TrackItem(id: opt.displayName, name: opt.displayName,
+                      selected: cur.map { opt.isEqual($0) } ?? false) { item.select(opt, in: group) }
+        }
+        return items
     }
 }
 

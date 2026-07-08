@@ -1,56 +1,99 @@
 import SwiftUI
 
-// VLCKit oynatıcı sarmalayıcı — MKV/AVI/exotik codec fallback (StreamResolver.Engine.vlcKit).
+// VLCKit oynatıcı + ses/altyazı track kontrolü. MKV/AVI/TS/exotik codec fallback.
 // MobileVLCKit paketi eklenmeden proje derlensin diye `#if canImport` ile korunur.
-// Xcode: File → Add Packages → https://github.com/videolan/vlckit (veya CocoaPods "MobileVLCKit").
+// project.yml'ye eklendi: tylerjonesio/vlckit-spm → MobileVLCKit.
 
-#if canImport(MobileVLCKit) && (os(iOS) || os(tvOS))
+/// Ses/altyazı track seçeneği (her iki motor için ortak model).
+struct TrackOption: Identifiable, Hashable {
+    let id: Int
+    let name: String
+}
+
+#if canImport(MobileVLCKit) && os(iOS)
 import MobileVLCKit
 
+/// VLCMediaPlayer'ı saran controller — track listeleri + seçim.
+final class VLCController: ObservableObject {
+    static var isAvailable: Bool { true }
+    let player = VLCMediaPlayer()
+    @Published var audioTracks: [TrackOption] = []
+    @Published var subtitleTracks: [TrackOption] = []
+
+    func play(url: URL) {
+        if player.media == nil || player.media?.url != url {
+            player.media = VLCMedia(url: url)
+        }
+        player.play()
+    }
+    func pause() { player.pause() }
+    func stop() { player.stop() }
+    var isPlaying: Bool { player.isPlaying }
+
+    func refreshTracks() {
+        let aIdx = player.audioTrackIndexes as? [NSNumber] ?? []
+        let aNames = player.audioTrackNames as? [String] ?? []
+        audioTracks = zip(aIdx, aNames).map { TrackOption(id: $0.intValue, name: $1) }
+        let sIdx = player.videoSubTitlesIndexes as? [NSNumber] ?? []
+        let sNames = player.videoSubTitlesNames as? [String] ?? []
+        subtitleTracks = zip(sIdx, sNames).map { TrackOption(id: $0.intValue, name: $1) }
+    }
+    var currentAudio: Int { Int(player.currentAudioTrackIndex) }
+    var currentSubtitle: Int { Int(player.currentVideoSubTitleIndex) }
+    func setAudio(_ id: Int) { player.currentAudioTrackIndex = Int32(id) }
+    func setSubtitle(_ id: Int) { player.currentVideoSubTitleIndex = Int32(id) }
+}
+
 struct VLCPlayerView: UIViewRepresentable {
+    @ObservedObject var controller: VLCController
     let url: URL
     static var isAvailable: Bool { true }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+    final class Coordinator { var url: URL? }
 
     func makeUIView(context: Context) -> UIView {
         let view = UIView()
         view.backgroundColor = .black
-        let player = VLCMediaPlayer()
-        player.drawable = view
-        player.media = VLCMedia(url: url)
-        player.play()
-        context.coordinator.player = player
+        controller.player.drawable = view
+        controller.play(url: url)
         context.coordinator.url = url
         return view
     }
-
     func updateUIView(_ uiView: UIView, context: Context) {
-        guard context.coordinator.url != url else { return }
-        context.coordinator.url = url
-        context.coordinator.player?.media = VLCMedia(url: url)
-        context.coordinator.player?.play()
+        if context.coordinator.url != url {         // kanal değişti → yeniden oynat
+            context.coordinator.url = url
+            controller.play(url: url)
+        }
     }
-
-    static func dismantleUIView(_ uiView: UIView, coordinator: Coordinator) {
-        coordinator.player?.stop()
-    }
-
-    func makeCoordinator() -> Coordinator { Coordinator() }
-    final class Coordinator { var player: VLCMediaPlayer?; var url: URL? }
 }
 
 #else
 
-/// MobileVLCKit yokken yer-tutucu. Paket eklenince gerçek VLC oynatıcı derlenir.
+/// MobileVLCKit yokken no-op controller + yer-tutucu.
+final class VLCController: ObservableObject {
+    static var isAvailable: Bool { false }
+    @Published var audioTracks: [TrackOption] = []
+    @Published var subtitleTracks: [TrackOption] = []
+    func play(url: URL) {}
+    func pause() {}
+    func stop() {}
+    var isPlaying: Bool { false }
+    func refreshTracks() {}
+    var currentAudio: Int { -1 }
+    var currentSubtitle: Int { -1 }
+    func setAudio(_ id: Int) {}
+    func setSubtitle(_ id: Int) {}
+}
+
 struct VLCPlayerView: View {
+    @ObservedObject var controller: VLCController
     let url: URL
     static var isAvailable: Bool { false }
     var body: some View {
         Color.black.overlay(
             Text("Bu format VLCKit gerektirir.\nXcode'da MobileVLCKit paketini ekleyin.")
-                .multilineTextAlignment(.center)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .padding()
+                .multilineTextAlignment(.center).font(.footnote).foregroundStyle(.secondary).padding()
         )
     }
 }
