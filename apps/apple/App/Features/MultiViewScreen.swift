@@ -34,6 +34,7 @@ struct MultiView: View {
     @State private var pickerFor: Int?
     @State private var fullscreenSlot: Int?
     @State private var didRestore = false
+    @State private var activeSlots: Set<Int> = []      // o an oynayan (yüklü) slotlar
 
     // MARK: - Kalıcı yapılandırma
     private struct Config: Codable { var layout: String; var slotIds: [String?] }
@@ -169,17 +170,27 @@ struct MultiView: View {
     }
 
     /// Tek doğruluk kaynağı: yalnız görünür + dolu slotlar oynar; gerisi durur. Tam ekranda
-    /// sadece o slot oynar. Aktif slotun sesi açık, diğerleri sessiz.
+    /// sadece o slot oynar. Aktif slotun sesi açık, diğerleri sessiz. Yeniden görünür olan
+    /// slotların canlı akışı tazelenir (duraklatılmış canlı yayın geri gelmez → siyah kalırdı).
     private func syncPlayback() {
+        var nowActive = Set<Int>()
         for i in 0..<players.count {
             let visible = fullscreenSlot == nil ? (i < layout.count) : (i == fullscreenSlot)
-            if visible, slots[i] != nil {
+            if visible, let ch = slots[i] {
+                nowActive.insert(i)
+                if !activeSlots.contains(i) { loadItem(ch, into: i) }   // yeniden görünür → tazele
                 players[i].isMuted = (i != activeIndex)
                 players[i].play()
             } else {
                 players[i].pause()
             }
         }
+        activeSlots = nowActive
+    }
+
+    private func loadItem(_ ch: Channel, into slot: Int) {
+        let url = StreamResolver.candidates(for: ch.url).first?.url ?? ch.url
+        players[slot].replaceCurrentItem(with: AVPlayerItem(url: url))
     }
 
     // MARK: - Mantık
@@ -215,8 +226,7 @@ struct MultiView: View {
 
     private func assign(_ ch: Channel, to slot: Int, persist doPersist: Bool = true) {
         slots[slot] = ch
-        let url = StreamResolver.candidates(for: ch.url).first?.url ?? ch.url
-        players[slot].replaceCurrentItem(with: AVPlayerItem(url: url))
+        activeSlots.remove(slot)      // yeni kanal → syncPlayback tazelesin
         syncPlayback()
         if doPersist { persist() }
     }
@@ -224,6 +234,7 @@ struct MultiView: View {
     private func clear(_ slot: Int) {
         players[slot].replaceCurrentItem(with: nil)
         slots[slot] = nil
+        activeSlots.remove(slot)
         syncPlayback()
         persist()
     }
@@ -266,7 +277,7 @@ private struct MultiChannelPicker: View {
             .listStyle(.plain).background(Color.sgGround)
             .navigationTitle("Hücre \(slot + 1) — Kanal")
             #if !os(tvOS)
-            .searchable(text: $query, prompt: "Kanal ara")
+            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Kanal ara")
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Kapat") { dismiss() } } }
             #endif
         }
