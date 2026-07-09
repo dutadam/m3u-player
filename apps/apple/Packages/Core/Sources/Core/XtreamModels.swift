@@ -20,6 +20,21 @@ public struct LenientInt: Codable, Hashable, Sendable, ExpressibleByIntegerLiter
     }
 }
 
+/// Double değeri Double veya String olarak decode edebilen yardımcı (rating alanları tutarsız gelir).
+public struct LenientDouble: Codable, Hashable, Sendable {
+    public let value: Double
+    public init(_ v: Double) { value = v }
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.singleValueContainer()
+        if let d = try? c.decode(Double.self) { value = d }
+        else if let s = try? c.decode(String.self), let d = Double(s) { value = d }
+        else { value = 0 }
+    }
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.singleValueContainer(); try c.encode(value)
+    }
+}
+
 public struct XtreamCategory: Codable, Hashable, Sendable {
     public let categoryId: String
     public let categoryName: String
@@ -53,13 +68,17 @@ public struct XtreamVodStream: Codable, Hashable, Sendable {
     public let streamIcon: String?
     public let categoryId: String?
     public let containerExtension: String?
+    public let rating: LenientDouble?          // 0..10 (akıllı kategoriler)
+    public let added: LenientInt?              // unix ts (Son Eklenenler)
     enum CodingKeys: String, CodingKey {
-        case name
+        case name, rating, added
         case streamId = "stream_id"
         case streamIcon = "stream_icon"
         case categoryId = "category_id"
         case containerExtension = "container_extension"
     }
+    public var ratingValue: Double? { rating.map(\.value).flatMap { $0 > 0 ? $0 : nil } }
+    public var addedDate: Date? { added.map { Date(timeIntervalSince1970: TimeInterval($0.value)) } }
 }
 
 public struct XtreamSeriesItem: Codable, Hashable, Sendable {

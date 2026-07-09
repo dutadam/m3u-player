@@ -75,7 +75,9 @@ public extension XtreamClient {
                 logo: s.streamIcon.flatMap { URL(string: $0) },
                 group: catMap[s.categoryId ?? ""] ?? "Filmler",
                 url: vodURL(streamId: s.streamId.value, ext: s.containerExtension ?? "mp4"),
-                kind: .vod
+                kind: .vod,
+                rating: s.ratingValue,
+                added: s.addedDate
             )
         }
     }

@@ -76,6 +76,23 @@ final class LibraryStore: ObservableObject {
     var allCategories: [String] { Set(channels.map(\.group) + series.map(\.group)).sorted() }
     var visibleLive: [Channel] { live.filter { !hiddenCategories.contains($0.group) } }
     var visibleMovies: [Channel] { movies.filter { !hiddenCategories.contains($0.group) } }
+
+    // MARK: - Akıllı kategoriler (metadata'dan üretilen sistem kategorileri)
+    /// Son Eklenenler — eklenme tarihine göre (metadata `added`).
+    var recentlyAddedMovies: [Channel] {
+        visibleMovies.filter { $0.added != nil }.sorted { ($0.added ?? .distantPast) > ($1.added ?? .distantPast) }
+    }
+    /// IMDb/Yüksek Puanlı — 7.5+ puan, puana göre.
+    var topRatedMovies: [Channel] {
+        visibleMovies.filter { ($0.rating ?? 0) >= 7.5 }.sorted { ($0.rating ?? 0) > ($1.rating ?? 0) }
+    }
+    /// Kült & Klasik — kategori adında "kült/klasik/classic" geçenler.
+    var cultClassicMovies: [Channel] {
+        visibleMovies.filter { c in
+            let g = c.group.lowercased()
+            return g.contains("kült") || g.contains("kult") || g.contains("klasik") || g.contains("classic")
+        }
+    }
     func isCategoryHidden(_ g: String) -> Bool { hiddenCategories.contains(g) }
     func toggleCategoryHidden(_ g: String) {
         if hiddenCategories.contains(g) { hiddenCategories.remove(g) } else { hiddenCategories.insert(g) }

@@ -29,12 +29,16 @@ public struct Channel: Identifiable, Hashable, Codable, Sendable {
     public var tvgId: String?        // EPG eşleme anahtarı
     public var kind: MediaKind
     public var quality: Quality?
+    public var rating: Double?       // VOD puanı (IMDb/TMDB, akıllı kategoriler için)
+    public var added: Date?          // eklenme tarihi (Son Eklenenler için)
 
     public init(id: String, name: String, logo: URL? = nil, group: String,
-                url: URL, tvgId: String? = nil, kind: MediaKind = .live, quality: Quality? = nil) {
+                url: URL, tvgId: String? = nil, kind: MediaKind = .live, quality: Quality? = nil,
+                rating: Double? = nil, added: Date? = nil) {
         self.id = id; self.name = name; self.logo = logo; self.group = group
         self.url = url; self.tvgId = tvgId; self.kind = kind
         self.quality = quality ?? Quality.detect(from: name)
+        self.rating = rating; self.added = added
     }
 }
 

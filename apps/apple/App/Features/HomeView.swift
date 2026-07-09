@@ -27,8 +27,19 @@ struct HomeView: View {
                     if !library.visibleLive.isEmpty {
                         ChannelRail(title: "Canlı TV", channels: Array(library.visibleLive.prefix(20))) { selected = $0 }
                     }
+
+                    // Akıllı film kategorileri (metadata'dan üretilen)
+                    if !library.recentlyAddedMovies.isEmpty {
+                        MovieRail(title: "Son Eklenenler", movies: library.recentlyAddedMovies)
+                    }
+                    if !library.topRatedMovies.isEmpty {
+                        MovieRail(title: "Yüksek Puanlı · IMDb", movies: library.topRatedMovies)
+                    }
+                    if !library.cultClassicMovies.isEmpty {
+                        MovieRail(title: "Kült & Klasik", movies: library.cultClassicMovies)
+                    }
                     if !library.visibleMovies.isEmpty {
-                        ChannelRail(title: "Filmler", channels: Array(library.visibleMovies.prefix(20))) { selected = $0 }
+                        MovieRail(title: "Filmler", movies: library.visibleMovies)
                     }
                     if !library.series.isEmpty { SeriesRailHome(series: Array(library.series.prefix(20))) }
                 }
@@ -42,6 +53,7 @@ struct HomeView: View {
                 }
             }
             .sheet(isPresented: $showLibrary) { LibraryView() }
+            .navigationDestination(for: Channel.self) { MovieDetailView(channel: $0) }
             .fullScreenCover(item: $selected) { PlayerView(channel: $0) }
         }
     }
@@ -94,6 +106,32 @@ struct HeroCard: View {
         .frame(height: 230)
         .clipShape(RoundedRectangle(cornerRadius: 20))
         .padding(.horizontal, SGMetric.gutter)
+    }
+}
+
+/// Yatay film rayı — 2:3 poster kartları, film detayına gider (izlendi/ilerleme rozetli).
+struct MovieRail: View {
+    @EnvironmentObject private var library: LibraryStore
+    let title: String
+    let movies: [Channel]
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Text(title).font(.headline).foregroundStyle(Color.sgText)
+                .padding(.horizontal, SGMetric.gutter)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 11) {
+                    ForEach(movies.prefix(20)) { m in
+                        NavigationLink(value: m) {
+                            PosterCard(title: m.name, poster: m.logo,
+                                       watched: library.isWatched(m.url.absoluteString),
+                                       progress: library.watchFraction(for: m.url.absoluteString),
+                                       width: 120)
+                        }.buttonStyle(PressableStyle())
+                    }
+                }
+                .padding(.horizontal, SGMetric.gutter)
+            }
+        }
     }
 }
 
