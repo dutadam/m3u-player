@@ -169,20 +169,96 @@ struct LiveCategoryRail: View {
     }
 }
 
-/// Filmler (VOD) — kategori-bazlı gözatma.
+/// Filmler — ana sayfa dilinde kategori rayları (son eklenene göre, 30 içerik) + akıllı raylar.
+/// Ray başlığındaki "Tümü ›" mevcut kategori grid'ine gider.
 struct MoviesView: View {
     @EnvironmentObject private var library: LibraryStore
+    @State private var cats: [String] = []
+    @State private var byCat: [String: [Channel]] = [:]
+
     var body: some View {
         NavigationStack {
-            CategoryBrowseView(title: "Filmler", channels: library.movies, poster: true)
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 20) {
+                    if !library.recentlyAddedMovies.isEmpty {
+                        MovieRail(title: "Son Eklenenler", movies: library.recentlyAddedMovies)
+                    }
+                    if !library.topRatedMovies.isEmpty {
+                        MovieRail(title: "Yüksek Puanlı · IMDb", movies: library.topRatedMovies)
+                    }
+                    ForEach(cats, id: \.self) { c in
+                        if let ms = byCat[c], !ms.isEmpty {
+                            MovieRail(title: c, movies: ms, category: c)
+                        }
+                    }
+                    if cats.isEmpty {
+                        Text("Film bulunamadı").font(.subheadline)
+                            .foregroundStyle(Color.sgDim).frame(maxWidth: .infinity).padding(.top, 40)
+                    }
+                }
+                .padding(.vertical, 10)
+            }
+            .background(Color.sgGround)
+            .navigationTitle("Filmler")
+            .navigationDestination(for: Channel.self) { MovieDetailView(channel: $0) }
+            .navigationDestination(for: MovieCatDest.self) { d in
+                CategoryBrowseView(title: d.name, channels: library.movies.filter { $0.group == d.name }, poster: true)
+            }
+            .onAppear(perform: rebuild)
+            .onChange(of: library.channels.count) { _ in rebuild() }
+            .onChange(of: library.hiddenCategories) { _ in rebuild() }
         }
+    }
+
+    private func rebuild() {
+        var d: [String: [Channel]] = [:]
+        for m in library.visibleMovies { d[m.group, default: []].append(m) }
+        for k in d.keys { d[k]?.sort { ($0.added ?? .distantPast) > ($1.added ?? .distantPast) } }
+        cats = d.keys.sorted { (d[$0]?.first?.added ?? .distantPast) > (d[$1]?.first?.added ?? .distantPast) }
+        byCat = d
     }
 }
 
-/// Diziler sekmesi — katalog + detay.
+/// Diziler — kategori rayları (ana sayfa dili) + "Tümü ›" ile kategori grid'i.
 struct SeriesTabView: View {
+    @EnvironmentObject private var library: LibraryStore
+    @State private var cats: [String] = []
+    @State private var byCat: [String: [SeriesRef]] = [:]
+
     var body: some View {
-        NavigationStack { SeriesListView() }
+        NavigationStack {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 20) {
+                    ForEach(cats, id: \.self) { c in
+                        if let ss = byCat[c], !ss.isEmpty {
+                            SeriesRailHome(title: c, series: ss, category: c)
+                        }
+                    }
+                    if cats.isEmpty {
+                        Text("Dizi bulunamadı").font(.subheadline)
+                            .foregroundStyle(Color.sgDim).frame(maxWidth: .infinity).padding(.top, 40)
+                    }
+                }
+                .padding(.vertical, 10)
+            }
+            .background(Color.sgGround)
+            .navigationTitle("Diziler")
+            .navigationDestination(for: SeriesRef.self) { SeriesDetailView(ref: $0) }
+            .navigationDestination(for: SeriesCatDest.self) { d in
+                SeriesGridView(category: d.name,
+                               series: library.series.filter { $0.group == d.name && !library.isCategoryHidden($0.group) })
+            }
+            .onAppear(perform: rebuild)
+            .onChange(of: library.series.count) { _ in rebuild() }
+            .onChange(of: library.hiddenCategories) { _ in rebuild() }
+        }
+    }
+
+    private func rebuild() {
+        var d: [String: [SeriesRef]] = [:]
+        for s in library.series where !library.isCategoryHidden(s.group) { d[s.group, default: []].append(s) }
+        cats = d.keys.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+        byCat = d
     }
 }
 

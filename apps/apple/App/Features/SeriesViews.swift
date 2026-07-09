@@ -32,6 +32,25 @@ struct SeriesListView: View {
     }
 }
 
+/// Bir kategorideki tüm diziler — poster grid ("Tümü ›" hedefi).
+struct SeriesGridView: View {
+    let category: String
+    let series: [SeriesRef]
+    private let cols = [GridItem(.adaptive(minimum: 112), spacing: 12)]
+    var body: some View {
+        ScrollView {
+            LazyVGrid(columns: cols, spacing: 16) {
+                ForEach(series) { s in
+                    NavigationLink(value: s) { SeriesPoster(ref: s) }.buttonStyle(PressableStyle())
+                }
+            }
+            .padding(SGMetric.gutter)
+        }
+        .background(Color.sgGround)
+        .navigationTitle(category)
+    }
+}
+
 struct SeriesPoster: View {
     @EnvironmentObject private var library: LibraryStore
     let ref: SeriesRef
