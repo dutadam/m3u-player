@@ -2,22 +2,169 @@ import SwiftUI
 import Core
 import Design
 
-/// Canlı kanallar — kategori-bazlı gözatma + Rehber girişi.
+/// Canlı — kategori bazlı yatay raylar + benzer kanal (kalite varyantı) gruplama.
+/// Rehber ve Çoklu Ekran girişleri ikon+metin etiketli belirgin kartlar.
 struct LiveView: View {
     @EnvironmentObject private var library: LibraryStore
+    @State private var selected: Channel?
+    @State private var cats: [String] = []
+    @State private var grouped: [String: [ChannelGroup]] = [:]
+
     var body: some View {
         NavigationStack {
-            CategoryBrowseView(title: "Canlı", channels: library.live)
-                .toolbar {
-                    ToolbarItemGroup(placement: .topBarTrailing) {
-                        NavigationLink { MultiView() } label: {
-                            Label("Çoklu Ekran", systemImage: "square.grid.2x2")
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 20) {
+                    actionRow
+                    ForEach(cats, id: \.self) { cat in
+                        if let gs = grouped[cat], !gs.isEmpty {
+                            LiveCategoryRail(category: cat, groups: gs) { selected = $0 }
                         }
-                        NavigationLink { GuideView() } label: {
-                            Label("Rehber", systemImage: "rectangle.grid.1x2")
+                    }
+                    if cats.isEmpty {
+                        Text("Canlı kanal bulunamadı").font(.subheadline)
+                            .foregroundStyle(Color.sgDim).padding(.top, 40)
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .padding(.vertical, 10)
+            }
+            .background(Color.sgGround)
+            .navigationTitle("Canlı")
+            .navigationDestination(for: LiveDest.self) { dest in
+                switch dest {
+                case .guide: GuideView()
+                case .multi: MultiView()
+                case .category(let c): CategoryBrowseView(title: c, channels: library.live.filter { $0.group == c })
+                }
+            }
+            .fullScreenCover(item: $selected) { PlayerView(channel: $0) }
+            .onAppear(perform: rebuild)
+            .onChange(of: library.channels.count) { _ in rebuild() }
+            .onChange(of: library.hiddenCategories) { _ in rebuild() }
+        }
+    }
+
+    private var actionRow: some View {
+        HStack(spacing: 12) {
+            NavigationLink(value: LiveDest.guide) {
+                LiveActionCard(title: "Rehber", subtitle: "TV yayın akışı", icon: "rectangle.grid.1x2.fill")
+            }.buttonStyle(PressableStyle())
+            NavigationLink(value: LiveDest.multi) {
+                LiveActionCard(title: "Çoklu Ekran", subtitle: "6 yayına kadar", icon: "square.grid.2x2.fill")
+            }.buttonStyle(PressableStyle())
+        }
+        .padding(.horizontal, SGMetric.gutter)
+    }
+
+    /// visibleLive'ı tek geçişte kategori → base-ad → varyant olarak grupla (kalite HD/FHD/4K birleşir).
+    private func rebuild() {
+        var order: [String] = []
+        var seen = Set<String>()
+        var buckets: [String: [String: [Channel]]] = [:]
+        for ch in library.visibleLive {
+            if !seen.contains(ch.group) { seen.insert(ch.group); order.append(ch.group) }
+            let base = Self.baseName(ch.name)
+            buckets[ch.group, default: [:]][base, default: []].append(ch)
+        }
+        var out: [String: [ChannelGroup]] = [:]
+        for (cat, bmap) in buckets {
+            out[cat] = bmap.map { ChannelGroup(id: cat + "|" + $0.key, base: $0.key, category: cat, variants: $0.value) }
+                           .sorted { $0.base.localizedCaseInsensitiveCompare($1.base) == .orderedAscending }
+        }
+        cats = order
+        grouped = out
+    }
+
+    /// Kalite eklerini sök → benzer kanalları aynı gruba topla.
+    static func baseName(_ n: String) -> String {
+        var s = " " + n.uppercased() + " "
+        for t in [" 4K ", " UHD ", " FHD ", " FULLHD ", " FULL HD ", " HD ", " SD ",
+                  " HEVC ", " H265 ", " H.265 ", " RAW ", " ᴴᴰ "] {
+            s = s.replacingOccurrences(of: t, with: " ")
+        }
+        let joined = s.split(separator: " ").joined(separator: " ")
+        return joined.isEmpty ? n : joined
+    }
+}
+
+/// Canlı ekranı navigasyon hedefleri.
+enum LiveDest: Hashable { case guide, multi, category(String) }
+
+/// Benzer kanal grubu (aynı base ad, farklı kalite varyantları).
+struct ChannelGroup: Identifiable, Hashable {
+    let id: String
+    let base: String
+    let category: String
+    let variants: [Channel]
+    var primary: Channel { variants.max { qRank($0) < qRank($1) } ?? variants[0] }
+    private func qRank(_ c: Channel) -> Int {
+        switch c.quality {
+        case .uhd4k?: return 4
+        case .fhd?: return 3
+        case .hd?: return 2
+        case .sd?: return 1
+        case .none: return 0
+        }
+    }
+}
+
+/// İkon + başlık + alt-metin etiketli aksiyon kartı (Rehber / Çoklu Ekran).
+struct LiveActionCard: View {
+    let title: String; let subtitle: String; let icon: String
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon).font(.system(size: 20, weight: .semibold)).foregroundStyle(.white)
+                .frame(width: 42, height: 42)
+                .background(LinearGradient(colors: [Color.sgAccent, Color.sgAccent2],
+                                           startPoint: .topLeading, endPoint: .bottomTrailing),
+                            in: RoundedRectangle(cornerRadius: 11))
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title).font(.system(size: 14, weight: .bold)).foregroundStyle(Color.sgText)
+                Text(subtitle).font(.system(size: 10)).foregroundStyle(Color.sgMute)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity)
+        .background(Color.sgSurface, in: RoundedRectangle(cornerRadius: 13))
+    }
+}
+
+/// Kategori rayı — başlık + "Tümü" + yatay kanal kartları.
+struct LiveCategoryRail: View {
+    let category: String
+    let groups: [ChannelGroup]
+    var onPlay: (Channel) -> Void
+    var body: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            HStack {
+                Text(category).font(.headline).foregroundStyle(Color.sgText).lineLimit(1)
+                Spacer()
+                NavigationLink(value: LiveDest.category(category)) {
+                    Text("Tümü ›").font(.system(size: 12, weight: .semibold)).foregroundStyle(Color.sgAccent)
+                }
+            }
+            .padding(.horizontal, SGMetric.gutter)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 11) {
+                    ForEach(groups.prefix(20)) { g in
+                        Button { onPlay(g.primary) } label: {
+                            ChannelCard(channel: g.primary, displayName: g.base)
+                        }
+                        .buttonStyle(PressableStyle())
+                        .contextMenu {
+                            if g.variants.count > 1 {
+                                ForEach(g.variants) { v in
+                                    Button { onPlay(v) } label: {
+                                        Label(v.quality?.rawValue ?? v.name, systemImage: "play.fill")
+                                    }
+                                }
+                            }
                         }
                     }
                 }
+                .padding(.horizontal, SGMetric.gutter)
+            }
         }
     }
 }

@@ -178,9 +178,10 @@ struct ChannelRail: View {
     }
 }
 
-/// Kanal kartı (logo + isim + kalite).
+/// Kanal kartı (logo + isim + kalite). displayName ile grup base adı gösterilebilir.
 struct ChannelCard: View {
     let channel: Channel
+    var displayName: String? = nil
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
             ZStack(alignment: .topLeading) {
@@ -190,7 +191,7 @@ struct ChannelCard: View {
                 AsyncImage(url: channel.logo) { img in
                     img.resizable().scaledToFit().padding(10)
                 } placeholder: {
-                    Text(String(channel.name.prefix(2)).uppercased())
+                    Text(String((displayName ?? channel.name).prefix(2)).uppercased())
                         .font(.system(size: 15, weight: .heavy)).foregroundStyle(.white.opacity(0.9))
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
@@ -199,7 +200,7 @@ struct ChannelCard: View {
                 }
             }
             .frame(width: 118, height: 70)
-            Text(channel.name).font(.system(size: 12, weight: .semibold))
+            Text(displayName ?? channel.name).font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(Color.sgText).lineLimit(1).frame(width: 118, alignment: .leading)
         }
     }
