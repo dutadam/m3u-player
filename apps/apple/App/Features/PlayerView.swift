@@ -34,6 +34,13 @@ struct PlayerView: View {
     @State private var askResume = false
     @State private var resumeSeconds: Double = 0
     @State private var wantResumeTo: Double?
+    // Stabilite: otomatik yeniden bağlanma + donma watchdog
+    @State private var didPlay = false
+    @State private var reconnecting = false
+    @State private var reconnectAttempts = 0
+    @State private var lastAdvance = Date()
+    @State private var lastSec: Double = -1
+    @State private var userPaused = false
     @StateObject private var pip = PiPController()
 
     // Dizi bölüm kuyruğu (otomatik sonraki bölüm için)
@@ -75,8 +82,17 @@ struct PlayerView: View {
                 .contentShape(Rectangle())
                 .onTapGesture { toggleControls() }
 
-            if isBuffering && !showError {
+            if isBuffering && !showError && !reconnecting {
                 ProgressView().tint(.white).scaleEffect(1.4)
+            }
+
+            if reconnecting && !showError {
+                VStack(spacing: 10) {
+                    ProgressView().tint(.white).scaleEffect(1.2)
+                    Text("Yeniden bağlanılıyor… (\(reconnectAttempts))")
+                        .font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
+                }
+                .padding(18).background(.black.opacity(0.55), in: RoundedRectangle(cornerRadius: 14))
             }
 
             if showError { errorOverlay }
@@ -252,6 +268,12 @@ struct PlayerView: View {
         isBuffering = true
         endReached = false
         wantResumeTo = nil
+        didPlay = false
+        reconnecting = false
+        reconnectAttempts = 0
+        lastAdvance = Date()
+        lastSec = -1
+        userPaused = false
         // VOD/dizi'de kayıtlı ilerleme varsa "Baştan / Devam Et" sor.
         let r = library.resumePosition(for: current.url.absoluteString)
         if !isLive, r > 5 { resumeSeconds = r; askResume = true }
@@ -307,6 +329,8 @@ struct PlayerView: View {
             if player.timeControlStatus == .playing { player.pause(); isPlaying = false }
             else { player.play(); isPlaying = true }
         }
+        userPaused = !isPlaying
+        lastAdvance = Date()      // devam ederken watchdog'u sıfırla
         showControls()
     }
 
@@ -374,23 +398,58 @@ struct PlayerView: View {
         if let target = wantResumeTo, durationSeconds > 1 {
             seek(toFraction: min(0.999, target / durationSeconds)); wantResumeTo = nil
         }
+        // İlerleme takibi (watchdog): oynatma zamanı ilerliyorsa "akıyor"; ilerleme yoksa donma.
+        let cur = currentSeconds
+        if cur > lastSec + 0.2 {
+            lastSec = cur; lastAdvance = Date()
+            if cur > 0.5 {                      // gerçekten oynadı (ilk aday-geçişini bozma)
+                didPlay = true
+                if reconnecting { reconnecting = false; reconnectAttempts = 0 }
+            }
+        }
         // Bölüm bitişi → otomatik sonraki bölüm (dizi kuyruğu)
         if !isLive, durationSeconds > 1, currentSeconds >= durationSeconds - 1 {
             if !endReached { endReached = true; if hasNext { playNext() } }
         }
+        let frozen = didPlay && !reconnecting && !userPaused && Date().timeIntervalSince(lastAdvance) > 10
+
         if activeEngine == .vlcKit {
-            isBuffering = false
+            isBuffering = reconnecting || (!vlc.isPlaying && !didPlay)
             isPlaying = vlc.isPlaying
             if vlc.audioTracks.isEmpty && vlc.isPlaying { vlc.refreshTracks() }   // track'ler oynama başlayınca gelir
+            if isLive && frozen { reconnect() }
             return
         }
-        // Kaynak başarısız oldu veya 12 sn'de oynamadıysa hemen sıradaki adaya geç.
-        if player.currentItem?.status == .failed { advance(); return }
+        // Akış oynadıktan sonra kopan/donan canlı yayında yeniden bağlan; ilk bağlantıda aday-geçişi yap.
+        if player.currentItem?.status == .failed {
+            (didPlay && isLive) ? reconnect() : advance(); return
+        }
         let s = player.timeControlStatus
         isPlaying = (s == .playing)
-        isBuffering = (s != .playing)
+        isBuffering = (s != .playing) || reconnecting
         if s == .playing { if !isLive { saveProgress() } }
-        else if Date().timeIntervalSince(attemptStart) > 12 { advance() }
+        if isLive && frozen { reconnect() }
+        else if !didPlay && s != .playing && Date().timeIntervalSince(attemptStart) > 12 { advance() }
+    }
+
+    /// Canlı yayın koptu/dondu → aynı kaynağa artan gecikmeyle yeniden bağlan (maks 6 deneme).
+    private func reconnect() {
+        guard isLive else { advance(); return }
+        reconnectAttempts += 1
+        if reconnectAttempts > 6 { reconnecting = false; showError = true; isBuffering = false; return }
+        reconnecting = true
+        lastAdvance = Date()          // tekrar tetiklemeyi önle
+        let delay = min(Double(reconnectAttempts), 5)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            guard reconnecting else { return }
+            lastSec = -1
+            if activeEngine == .vlcKit, let u = vlcURL {
+                vlc.reload(url: u)     // aynı URL → media'yı sıfırla ve tekrar oynat
+            } else {
+                index = 0
+                playCurrent()
+            }
+        }
     }
     private func saveProgress() {
         guard !isLive, let item = player.currentItem, item.duration.isNumeric else { return }

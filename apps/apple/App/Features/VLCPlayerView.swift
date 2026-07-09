@@ -28,6 +28,12 @@ final class VLCController: ObservableObject {
     }
     func pause() { player.pause() }
     func stop() { player.stop() }
+    /// Aynı URL'yi zorla yeniden yükle (canlı yayın koptuğunda yeniden bağlanma).
+    func reload(url: URL) {
+        player.stop()
+        player.media = VLCMedia(url: url)
+        player.play()
+    }
     var isPlaying: Bool { player.isPlaying }
 
     func refreshTracks() {
@@ -85,6 +91,7 @@ final class VLCController: ObservableObject {
     func play(url: URL) {}
     func pause() {}
     func stop() {}
+    func reload(url: URL) {}
     var isPlaying: Bool { false }
     func refreshTracks() {}
     var currentAudio: Int { -1 }
