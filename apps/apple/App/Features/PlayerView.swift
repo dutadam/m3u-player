@@ -312,7 +312,14 @@ struct PlayerView: View {
             vlcURL = c.url; isBuffering = false; isPlaying = true
             return
         }
-        let item = AVPlayerItem(url: c.url)
+        // Özel User-Agent varsa AVURLAsset başlığıyla ver.
+        let asset: AVURLAsset
+        if let h = AppSettings.uaHeaders {
+            asset = AVURLAsset(url: c.url, options: ["AVURLAssetHTTPHeaderFieldsKey": h])
+        } else {
+            asset = AVURLAsset(url: c.url)
+        }
+        let item = AVPlayerItem(asset: asset)
         player.replaceCurrentItem(with: item)
         attemptStart = Date()
         player.play(); isPlaying = true

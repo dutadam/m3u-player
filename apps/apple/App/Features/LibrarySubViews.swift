@@ -67,7 +67,9 @@ struct RecentsView: View {
 struct SettingsView: View {
     @EnvironmentObject private var library: LibraryStore
     @State private var epgURL = ""
+    @State private var userAgent = ""
     @State private var showSignOut = false
+    @State private var cacheCleared = false
 
     private var appVersion: String {
         let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0"
@@ -86,15 +88,42 @@ struct SettingsView: View {
                     .disabled(epgURL.isEmpty)
             }
 
+            Section {
+                TextField("User-Agent (opsiyonel)", text: $userAgent)
+                    #if !os(tvOS)
+                    .autocorrectionDisabled().textInputAutocapitalization(.never)
+                    #endif
+                Button("User-Agent'ı Uygula") { Task { await library.applyUserAgent(userAgent) } }
+                    .disabled(userAgent == library.userAgent)
+            } header: { Text("Bağlantı") } footer: {
+                Text("Bazı IPTV panelleri özel User-Agent ister (örn. VLC/…). Boş bırakırsan varsayılan kullanılır.")
+            }
+
             Section("Kaynak") {
                 Button(role: .destructive) { showSignOut = true } label: {
                     Label("Çıkış / Kaynağı Değiştir", systemImage: "rectangle.portrait.and.arrow.right")
                 }
             }
 
+            if !library.reminders.isEmpty {
+                Section("Hatırlatıcılar (\(library.reminders.count))") {
+                    ForEach(library.reminders.values.sorted { $0.start < $1.start }) { r in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(r.programTitle).foregroundStyle(Color.sgText).lineLimit(1)
+                            Text("\(r.channelName) · \(r.start.formatted(date: .abbreviated, time: .shortened))")
+                                .font(.caption).foregroundStyle(Color.sgMute)
+                        }
+                    }
+                    Button(role: .destructive) { library.clearReminders() } label: { Text("Tümünü Temizle") }
+                }
+            }
+
             Section("Depolama") {
                 Button("Favorileri Temizle") { library.clearFavorites() }
                 Button("Son İzlenenleri Temizle") { library.clearRecents() }
+                Button(cacheCleared ? "Önbellek Temizlendi ✓" : "Önbelleği Temizle") {
+                    library.clearCache(); cacheCleared = true
+                }.disabled(cacheCleared)
             }
 
             Section("Hakkında") {
@@ -105,7 +134,7 @@ struct SettingsView: View {
             }
         }
         .navigationTitle("Ayarlar")
-        .onAppear { epgURL = library.manualEPGURL }
+        .onAppear { epgURL = library.manualEPGURL; userAgent = library.userAgent; library.pruneReminders() }
         .confirmationDialog("Çıkış yapılsın mı? Kaydedilen kaynak ve kimlik bilgisi silinir.",
                             isPresented: $showSignOut, titleVisibility: .visible) {
             Button("Çıkış Yap", role: .destructive) { library.signOut() }

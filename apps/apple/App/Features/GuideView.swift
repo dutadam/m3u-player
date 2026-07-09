@@ -8,7 +8,7 @@ import Design
 struct GuideView: View {
     @EnvironmentObject private var library: LibraryStore
     @State private var selected: Channel?
-    @State private var catchupFor: Channel?
+    @State private var programsFor: Channel?
     @State private var query = ""
 
     private var channels: [Channel] {
@@ -26,7 +26,7 @@ struct GuideView: View {
                         .foregroundStyle(Color.sgDim).padding(.top, 40)
                 } else {
                     ForEach(channels) { ch in
-                        GuideRow(channel: ch, onPlay: { selected = ch }, onCatchup: { catchupFor = ch })
+                        GuideRow(channel: ch, onPlay: { selected = ch }, onPrograms: { programsFor = ch })
                         Divider().overlay(Color.sgLineSoft)
                     }
                 }
@@ -39,7 +39,7 @@ struct GuideView: View {
         .searchable(text: $query, prompt: "Kanal ara")
         #endif
         .fullScreenCover(item: $selected) { PlayerView(channel: $0) }
-        .sheet(item: $catchupFor) { ChannelCatchupSheet(channel: $0) }
+        .sheet(item: $programsFor) { ChannelProgramsSheet(channel: $0) }
     }
 }
 
@@ -48,7 +48,7 @@ private struct GuideRow: View {
     @EnvironmentObject private var library: LibraryStore
     let channel: Channel
     var onPlay: () -> Void
-    var onCatchup: () -> Void
+    var onPrograms: () -> Void
 
     var body: some View {
         let entries = library.epg?.entries(for: channel) ?? []
@@ -90,10 +90,10 @@ private struct GuideRow: View {
             }
             .buttonStyle(PressableStyle())
 
-            if channel.supportsCatchup {
-                Button(action: onCatchup) {
-                    Image(systemName: "clock.arrow.circlepath")
-                        .font(.system(size: 18, weight: .semibold)).foregroundStyle(Color.sgAccent2)
+            if !entries.isEmpty {
+                Button(action: onPrograms) {
+                    Image(systemName: channel.supportsCatchup ? "clock.arrow.circlepath" : "list.bullet.rectangle")
+                        .font(.system(size: 17, weight: .semibold)).foregroundStyle(Color.sgAccent2)
                         .frame(width: 40, height: 40)
                         .background(Color.sgSurface, in: Circle())
                 }.buttonStyle(.plain)
@@ -109,8 +109,8 @@ private struct GuideRow: View {
     }
 }
 
-/// Kanalın program listesi — geçmiş (catchup/timeshift), şimdi (canlı), gelecek (bilgi).
-struct ChannelCatchupSheet: View {
+/// Kanalın program listesi — geçmiş (catchup/timeshift), şimdi (canlı), gelecek (hatırlatıcı).
+struct ChannelProgramsSheet: View {
     @EnvironmentObject private var library: LibraryStore
     @Environment(\.dismiss) private var dismiss
     let channel: Channel
@@ -144,30 +144,36 @@ struct ChannelCatchupSheet: View {
         let now = Date()
         let isNow = p.start <= now && now < p.stop
         let isPast = p.stop <= now
+        let isFuture = p.start > now
         let catchup = isPast ? library.catchupChannel(for: channel, program: p) : nil
         let playable = isNow ? channel : catchup
 
-        Button {
-            if let playable { selected = playable }
-        } label: {
-            HStack(spacing: 10) {
-                Image(systemName: isNow ? "dot.radiowaves.left.and.right" : (isPast ? "arrow.uturn.backward" : "clock"))
-                    .font(.system(size: 13)).foregroundStyle(isNow ? Color.sgLive : (playable != nil ? Color.sgAccent2 : Color.sgMute))
-                    .frame(width: 22)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(p.title).font(.system(size: 14, weight: isNow ? .bold : .semibold))
-                        .foregroundStyle(playable != nil ? Color.sgText : Color.sgMute).lineLimit(1)
-                    Text("\(Self.hm.string(from: p.start)) – \(Self.hm.string(from: p.stop))" + (isNow ? " · CANLI" : ""))
-                        .font(.system(size: 11)).monospacedDigit().foregroundStyle(Color.sgMute)
-                }
-                Spacer()
-                if playable != nil {
-                    Image(systemName: "play.circle.fill").foregroundStyle(Color.sgAccent)
-                }
+        HStack(spacing: 10) {
+            Image(systemName: isNow ? "dot.radiowaves.left.and.right" : (isPast ? "arrow.uturn.backward" : "clock"))
+                .font(.system(size: 13)).foregroundStyle(isNow ? Color.sgLive : (playable != nil ? Color.sgAccent2 : Color.sgMute))
+                .frame(width: 22)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(p.title).font(.system(size: 14, weight: isNow ? .bold : .semibold))
+                    .foregroundStyle(playable != nil || isFuture ? Color.sgText : Color.sgMute).lineLimit(1)
+                Text("\(Self.hm.string(from: p.start)) – \(Self.hm.string(from: p.stop))" + (isNow ? " · CANLI" : ""))
+                    .font(.system(size: 11)).monospacedDigit().foregroundStyle(Color.sgMute)
             }
-            .padding(.vertical, 3)
+            Spacer()
+            if let playable {
+                Button { selected = playable } label: {
+                    Image(systemName: "play.circle.fill").font(.system(size: 22)).foregroundStyle(Color.sgAccent)
+                }.buttonStyle(.plain)
+            } else if isFuture {
+                // Hatırlatıcı (yerel bildirim)
+                Button {
+                    Task { await library.toggleReminder(channel, p) }
+                } label: {
+                    Image(systemName: library.isReminderSet(channel, p) ? "bell.fill" : "bell")
+                        .font(.system(size: 18)).foregroundStyle(library.isReminderSet(channel, p) ? Color.sgAccent : Color.sgMute)
+                }.buttonStyle(.plain)
+            }
         }
-        .disabled(playable == nil)
+        .padding(.vertical, 3)
         .listRowBackground(Color.sgGround)
     }
 

@@ -22,7 +22,7 @@ final class VLCController: ObservableObject {
 
     func play(url: URL) {
         if player.media == nil || player.media?.url != url {
-            player.media = VLCMedia(url: url)
+            player.media = Self.makeMedia(url)
         }
         player.play()
     }
@@ -31,8 +31,16 @@ final class VLCController: ObservableObject {
     /// Aynı URL'yi zorla yeniden yükle (canlı yayın koptuğunda yeniden bağlanma).
     func reload(url: URL) {
         player.stop()
-        player.media = VLCMedia(url: url)
+        player.media = Self.makeMedia(url)
         player.play()
+    }
+
+    /// Özel User-Agent varsa VLCMedia'ya http-user-agent option'ı ekle.
+    private static func makeMedia(_ url: URL) -> VLCMedia {
+        let media = VLCMedia(url: url)
+        let ua = AppSettings.userAgent.trimmingCharacters(in: .whitespaces)
+        if !ua.isEmpty { media.addOption(":http-user-agent=\(ua)") }
+        return media
     }
     var isPlaying: Bool { player.isPlaying }
 

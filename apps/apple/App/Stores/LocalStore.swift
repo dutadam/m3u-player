@@ -19,6 +19,30 @@ enum LocalStore {
         static let progress = "cheesino.progress"       // [String: Progress]
         static let lastSource = "cheesino.lastSource"   // PlaylistSource
         static let seriesResume = "cheesino.seriesResume" // [String: SeriesResume] (seriesId → son bölüm)
+        static let reminders = "cheesino.reminders"     // [String: Reminder]
+        static let userAgent = "cheesino.userAgent"     // String (özel User-Agent)
+    }
+}
+
+/// Program hatırlatıcısı — planlanmış yerel bildirim.
+struct Reminder: Codable, Hashable, Identifiable {
+    var id: String            // kanalId_programStartTs
+    var channelName: String
+    var programTitle: String
+    var fireDate: Date        // bildirim zamanı (program başlangıcından biraz önce)
+    var start: Date           // program başlangıcı
+}
+
+/// Uygulama ayarları (basit tek-değer erişimi). Kimlik bilgisi HARİÇ.
+enum AppSettings {
+    static var userAgent: String {
+        get { LocalStore.load(String.self, key: LocalStore.Key.userAgent) ?? "" }
+        set { LocalStore.save(newValue, key: LocalStore.Key.userAgent) }
+    }
+    /// Özel UA varsa HTTP başlığı sözlüğü, yoksa nil.
+    static var uaHeaders: [String: String]? {
+        let ua = userAgent.trimmingCharacters(in: .whitespaces)
+        return ua.isEmpty ? nil : ["User-Agent": ua]
     }
 }
 

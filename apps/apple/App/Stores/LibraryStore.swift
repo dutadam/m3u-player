@@ -1,5 +1,6 @@
 import Foundation
 import Core
+import UserNotifications
 
 /// Kanal/playlist durumunu yöneten store. Core modülünü tüketir.
 /// Faz 1 iskelet: yükleme + EPG indeksleme + türe göre bölütleme.
@@ -17,8 +18,16 @@ final class LibraryStore: ObservableObject {
     @Published private(set) var progress: [String: WatchProgress] = [:]
     @Published private(set) var hiddenCategories: Set<String> = []
     @Published private(set) var seriesResume: [String: SeriesResume] = [:]
+    @Published private(set) var reminders: [String: Reminder] = [:]
 
-    private let session = URLSession.shared
+    private var session = LibraryStore.makeSession()
+
+    /// Özel User-Agent varsa onu ekleyen URLSession üretir (bazı IPTV panelleri UA ister).
+    private static func makeSession() -> URLSession {
+        let config = URLSessionConfiguration.default
+        if let h = AppSettings.uaHeaders { config.httpAdditionalHeaders = h }
+        return URLSession(configuration: config)
+    }
 
     private var cloudObserver: NSObjectProtocol?
 
@@ -27,6 +36,7 @@ final class LibraryStore: ObservableObject {
         recents = LocalStore.load([RecentItem].self, key: LocalStore.Key.recents) ?? []
         progress = LocalStore.load([String: WatchProgress].self, key: LocalStore.Key.progress) ?? [:]
         seriesResume = LocalStore.load([String: SeriesResume].self, key: LocalStore.Key.seriesResume) ?? [:]
+        reminders = LocalStore.load([String: Reminder].self, key: LocalStore.Key.reminders) ?? [:]
         hiddenCategories = LocalStore.load(Set<String>.self, key: "cheesino.hiddenCats") ?? []
         // iCloud: başka cihazdan gelen durumu birleştir + değişiklikleri dinle.
         mergeFromCloud()
@@ -241,7 +251,78 @@ final class LibraryStore: ObservableObject {
     /// Kaydedilmiş kaynağı ve kimlik bilgisini temizle (çıkış).
     func signOut() {
         KeychainStore.clear()
-        channels = []; epg = nil; xtreamClient = nil
+        channels = []; series = []; epg = nil; xtreamClient = nil
+    }
+
+    // MARK: - Ayarlar: User-Agent + önbellek
+    var userAgent: String { AppSettings.userAgent }
+
+    /// Özel User-Agent'ı kaydeder, session'ı yeniden kurar ve kaynağı yeniden yükler.
+    func applyUserAgent(_ ua: String) async {
+        AppSettings.userAgent = ua
+        session = LibraryStore.makeSession()
+        if let creds = KeychainStore.load() { await loadXtream(creds) }
+    }
+
+    /// Görsel/HTTP önbelleğini temizler.
+    func clearCache() {
+        URLCache.shared.removeAllCachedResponses()
+    }
+
+    // MARK: - Program hatırlatıcıları (yerel bildirim)
+    private func reminderId(_ ch: Channel, _ p: EpgEntry) -> String {
+        "\(ch.id)_\(Int(p.start.timeIntervalSince1970))"
+    }
+    func isReminderSet(_ ch: Channel, _ p: EpgEntry) -> Bool {
+        reminders[reminderId(ch, p)] != nil
+    }
+
+    /// Program için hatırlatıcı ekler/kaldırır. Başlamadan ~2 dk önce yerel bildirim.
+    func toggleReminder(_ ch: Channel, _ p: EpgEntry) async {
+        let id = reminderId(ch, p)
+        if reminders[id] != nil {
+            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [id])
+            reminders[id] = nil
+            persistReminders()
+            return
+        }
+        // İzin iste
+        let center = UNUserNotificationCenter.current()
+        let granted = (try? await center.requestAuthorization(options: [.alert, .sound])) ?? false
+        guard granted else { errorMessage = "Bildirim izni verilmedi."; return }
+
+        let fire = p.start.addingTimeInterval(-120)          // 2 dk önce
+        guard fire > Date() else { errorMessage = "Program başlamış — hatırlatıcı kurulamaz."; return }
+
+        let content = UNMutableNotificationContent()
+        content.title = p.title
+        content.body = "\(ch.name) · başlıyor"
+        content.sound = .default
+        let comps = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: fire)
+        let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
+        try? await center.add(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
+
+        reminders[id] = Reminder(id: id, channelName: ch.name, programTitle: p.title, fireDate: fire, start: p.start)
+        persistReminders()
+    }
+
+    /// Süresi geçmiş hatırlatıcıları temizle (başlangıcı geçmiş olanlar).
+    func pruneReminders() {
+        let now = Date()
+        let expired = reminders.filter { $0.value.start < now }.map(\.key)
+        guard !expired.isEmpty else { return }
+        expired.forEach { reminders[$0] = nil }
+        persistReminders()
+    }
+
+    func clearReminders() {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: Array(reminders.keys))
+        reminders.removeAll()
+        persistReminders()
+    }
+
+    private func persistReminders() {
+        LocalStore.save(reminders, key: LocalStore.Key.reminders)
     }
 
     /// Geçmiş bir EPG programı için catchup/timeshift kanalı üretir (spec §3).
