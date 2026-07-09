@@ -228,6 +228,12 @@ final class LibraryStore: ObservableObject {
         return try? await client.fullSeries(seriesId: seriesId, name: name)
     }
 
+    /// Film detayı (get_vod_info). vodId, Channel.id "vod_<id>" içinden çıkarılır.
+    func loadMovieDetail(vodId: Int) async -> MovieDetail? {
+        guard let client = xtreamClient else { return nil }
+        return try? await client.movieDetail(vodId: vodId)
+    }
+
     // MARK: - EPG
     func loadEPG(from url: URL) async {
         do {

@@ -77,6 +77,30 @@ public struct Playlist: Identifiable, Hashable, Codable, Sendable {
     }
 }
 
+// MARK: - Film (VOD) detayı
+
+/// VOD detay ekranı için normalize model (get_vod_info'dan). TMDB backdrop/özet/oyuncu içerir.
+public struct MovieDetail: Hashable, Codable, Sendable {
+    public var plot: String?
+    public var cast: String?
+    public var director: String?
+    public var genre: String?
+    public var releaseDate: String?
+    public var rating: String?
+    public var duration: String?
+    public var cover: URL?
+    public var backdrop: URL?
+    public var tmdbId: String?
+
+    public init(plot: String? = nil, cast: String? = nil, director: String? = nil,
+                genre: String? = nil, releaseDate: String? = nil, rating: String? = nil,
+                duration: String? = nil, cover: URL? = nil, backdrop: URL? = nil, tmdbId: String? = nil) {
+        self.plot = plot; self.cast = cast; self.director = director; self.genre = genre
+        self.releaseDate = releaseDate; self.rating = rating; self.duration = duration
+        self.cover = cover; self.backdrop = backdrop; self.tmdbId = tmdbId
+    }
+}
+
 // MARK: - EPG
 
 public struct EpgEntry: Hashable, Codable, Sendable {

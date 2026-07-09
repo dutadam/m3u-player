@@ -32,6 +32,9 @@ public extension XtreamClient {
     func seriesInfo(seriesId: Int) async throws -> XtreamSeriesInfo {
         try await fetchJSON(apiURL(.seriesInfo, params: ["series_id": "\(seriesId)"]), as: XtreamSeriesInfo.self)
     }
+    func vodInfo(vodId: Int) async throws -> XtreamVodInfo {
+        try await fetchJSON(apiURL(.vodInfo, params: ["vod_id": "\(vodId)"]), as: XtreamVodInfo.self)
+    }
 
     private func catParam(_ id: String?) -> [String: String] {
         guard let id else { return [:] }
@@ -75,6 +78,25 @@ public extension XtreamClient {
                 kind: .vod
             )
         }
+    }
+
+    /// vod_id için film detayı (özet/oyuncu/backdrop/TMDB). Detay ekranı için.
+    func movieDetail(vodId: Int) async throws -> MovieDetail {
+        let raw = try await vodInfo(vodId: vodId)
+        let info = raw.info
+        let backdrop = info?.backdropPath?.first.flatMap { URL(string: $0) }
+        return MovieDetail(
+            plot: info?.plot.flatMap { $0.isEmpty ? nil : $0 },
+            cast: info?.cast.flatMap { $0.isEmpty ? nil : $0 },
+            director: info?.director.flatMap { $0.isEmpty ? nil : $0 },
+            genre: info?.genre.flatMap { $0.isEmpty ? nil : $0 },
+            releaseDate: info?.releaseDate.flatMap { $0.isEmpty ? nil : $0 },
+            rating: info?.rating.flatMap { $0.isEmpty || $0 == "0" ? nil : $0 },
+            duration: info?.duration.flatMap { $0.isEmpty ? nil : $0 },
+            cover: info?.movieImage.flatMap { URL(string: $0) },
+            backdrop: backdrop,
+            tmdbId: info?.tmdbId.flatMap { $0.isEmpty ? nil : $0 }
+        )
     }
 
     /// series_id için tam Series (sezon/bölüm + oynatma URL'leri). PWA workaround'unun native karşılığı.

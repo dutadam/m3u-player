@@ -76,6 +76,54 @@ public struct XtreamSeriesItem: Codable, Hashable, Sendable {
     }
 }
 
+/// get_vod_info yanıtı — film detay ekranı için (poster/backdrop/özet/oyuncu/TMDB).
+public struct XtreamVodInfo: Codable, Sendable {
+    public struct Info: Codable, Sendable {
+        public let movieImage: String?
+        public let backdropPath: [String]?
+        public let tmdbId: String?
+        public let genre: String?
+        public let plot: String?
+        public let cast: String?
+        public let director: String?
+        public let releaseDate: String?
+        public let rating: String?
+        public let duration: String?
+        public let youtubeTrailer: String?
+        enum CodingKeys: String, CodingKey {
+            case movieImage = "movie_image"
+            case backdropPath = "backdrop_path"
+            case tmdbId = "tmdb_id"
+            case genre, plot, cast, director, rating, duration
+            case releaseDate = "releasedate"
+            case youtubeTrailer = "youtube_trailer"
+        }
+        // Xtream `rating`/`tmdb_id` bazen sayı döndürür — esnek decode.
+        public init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            movieImage = try? c.decodeIfPresent(String.self, forKey: .movieImage)
+            backdropPath = try? c.decodeIfPresent([String].self, forKey: .backdropPath)
+            tmdbId = Self.lenientString(c, .tmdbId)
+            genre = try? c.decodeIfPresent(String.self, forKey: .genre)
+            plot = try? c.decodeIfPresent(String.self, forKey: .plot)
+            cast = try? c.decodeIfPresent(String.self, forKey: .cast)
+            director = try? c.decodeIfPresent(String.self, forKey: .director)
+            releaseDate = Self.lenientString(c, .releaseDate)
+            rating = Self.lenientString(c, .rating)
+            duration = try? c.decodeIfPresent(String.self, forKey: .duration)
+            youtubeTrailer = try? c.decodeIfPresent(String.self, forKey: .youtubeTrailer)
+        }
+        private static func lenientString(_ c: KeyedDecodingContainer<CodingKeys>, _ k: CodingKeys) -> String? {
+            if let s = try? c.decodeIfPresent(String.self, forKey: k) { return s }
+            if let d = try? c.decodeIfPresent(Double.self, forKey: k) { return String(d) }
+            if let i = try? c.decodeIfPresent(Int.self, forKey: k) { return String(i) }
+            return nil
+        }
+    }
+    public let info: Info?
+    enum CodingKeys: String, CodingKey { case info }
+}
+
 /// get_series_info yanıtı — PWA'daki manuel JSON-indir-seç akışının (index.html:1535) yerine geçer.
 public struct XtreamSeriesInfo: Codable, Sendable {
     public struct Info: Codable, Sendable {

@@ -56,7 +56,13 @@ struct CategoryBrowseView: View {
                 ScrollView {
                     LazyVGrid(columns: cols, spacing: 16) {
                         ForEach(filtered.prefix(400)) { ch in
-                            ChannelCard(channel: ch).onTapGesture { selected = ch }
+                            if ch.kind == .vod {
+                                // Filmler → sinematik detay ekranı (poster/özet/TMDB)
+                                NavigationLink(value: ch) { ChannelCard(channel: ch) }
+                                    .buttonStyle(.plain)
+                            } else {
+                                ChannelCard(channel: ch).onTapGesture { selected = ch }
+                            }
                         }
                     }
                     .padding(SGMetric.gutter)
@@ -68,6 +74,7 @@ struct CategoryBrowseView: View {
         #if !os(tvOS)
         .searchable(text: $query, prompt: "\(title) içinde ara")
         #endif
+        .navigationDestination(for: Channel.self) { MovieDetailView(channel: $0) }
         .fullScreenCover(item: $selected) { PlayerView(channel: $0) }
     }
 
