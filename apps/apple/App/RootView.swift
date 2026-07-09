@@ -1,4 +1,5 @@
 import SwiftUI
+import Core
 import Design
 
 /// Kök görünüm: kaynak yoksa onboarding, varsa sekmeli ana arayüz.
