@@ -57,7 +57,8 @@ public extension XtreamClient {
                 group: catMap[s.categoryId ?? ""] ?? "Canlı",
                 url: liveURL(streamId: s.streamId.value),
                 tvgId: s.epgChannelId.flatMap { $0.isEmpty ? nil : $0 },
-                kind: .live
+                kind: .live,
+                supportsCatchup: s.hasCatchup
             )
         }
     }

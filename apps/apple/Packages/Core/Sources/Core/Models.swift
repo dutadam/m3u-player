@@ -31,14 +31,15 @@ public struct Channel: Identifiable, Hashable, Codable, Sendable {
     public var quality: Quality?
     public var rating: Double?       // VOD puanı (IMDb/TMDB, akıllı kategoriler için)
     public var added: Date?          // eklenme tarihi (Son Eklenenler için)
+    public var supportsCatchup: Bool // canlıda geçmiş program (tv_archive/timeshift) var mı
 
     public init(id: String, name: String, logo: URL? = nil, group: String,
                 url: URL, tvgId: String? = nil, kind: MediaKind = .live, quality: Quality? = nil,
-                rating: Double? = nil, added: Date? = nil) {
+                rating: Double? = nil, added: Date? = nil, supportsCatchup: Bool = false) {
         self.id = id; self.name = name; self.logo = logo; self.group = group
         self.url = url; self.tvgId = tvgId; self.kind = kind
         self.quality = quality ?? Quality.detect(from: name)
-        self.rating = rating; self.added = added
+        self.rating = rating; self.added = added; self.supportsCatchup = supportsCatchup
     }
 }
 
