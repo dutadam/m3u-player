@@ -4,11 +4,15 @@ import XCTest
 final class StreamResolverTests: XCTestCase {
 
     func testHTTPSPassesThrough() {
+        // HTTPS .m3u8: şema yükseltmesi yok (zaten https) → ilk aday orijinal/AVPlayer.
+        // Ayrıca .m3u8 her zaman bir .ts VLC fallback'i ekler (bkz. testM3U8AddsTSVLCFallback).
         let u = URL(string: "https://secure.example.com/live/u/p/1.m3u8")!
         let c = StreamResolver.candidates(for: u)
-        XCTAssertEqual(c.count, 1)
         XCTAssertEqual(c.first?.url, u)
         XCTAssertEqual(c.first?.engine, .avPlayer)
+        // Sadece orijinal + .ts fallback (HTTP→HTTPS varyantı yok).
+        XCTAssertEqual(c.count, 2)
+        XCTAssertTrue(c.contains { $0.url.absoluteString.hasSuffix("1.ts") && $0.engine == .vlcKit })
     }
 
     func testHTTPUpgradesThenKeepsOriginal() {
