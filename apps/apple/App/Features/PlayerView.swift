@@ -30,6 +30,7 @@ struct PlayerView: View {
     @State private var isScrubbing = false
     @State private var fillMode = false
     @State private var endReached = false
+    @StateObject private var pip = PiPController()
 
     // Dizi bölüm kuyruğu (otomatik sonraki bölüm için)
     let queue: [Channel]
@@ -52,7 +53,9 @@ struct PlayerView: View {
 
             Group {
                 if activeEngine == .avPlayer {
-                    PlayerLayerView(player: player, gravity: fillMode ? .resizeAspectFill : .resizeAspect)
+                    PlayerLayerView(player: player, gravity: fillMode ? .resizeAspectFill : .resizeAspect) { layer in
+                        pip.setup(with: layer)
+                    }
                 } else if let u = vlcURL {
                     VLCPlayerView(controller: vlc, url: u)
                 }
@@ -87,8 +90,8 @@ struct PlayerView: View {
             }
         }
         .animation(.easeInOut(duration: 0.2), value: controlsVisible)
-        .onAppear { library.addRecent(current); start(); startTicker() }
-        .onDisappear { saveProgress(); ticker?.invalidate(); player.pause(); vlc.stop() }
+        .onAppear { AudioSessionManager.activatePlayback(); library.addRecent(current); start(); startTicker() }
+        .onDisappear { saveProgress(); ticker?.invalidate(); pip.teardown(); player.pause(); vlc.stop() }
         .sheet(isPresented: $showTracks) { tracksSheet }
     }
 
@@ -153,6 +156,12 @@ struct PlayerView: View {
                         }
                     }
                     iconButton("captions.bubble") { vlc.refreshTracks(); showTracks = true; showControls() }
+                    // PiP — yalnız AVPlayer içeriğinde ve cihaz destekliyorsa
+                    if activeEngine == .avPlayer && pip.isSupported {
+                        iconButton(pip.isActive ? "pip.exit" : "pip.enter", tint: pip.isPossible ? .white : Color.sgMute) {
+                            pip.toggle(); showControls()
+                        }
+                    }
                     #if os(iOS)
                     AirPlayButton().frame(width: 40, height: 40)
                     #endif

@@ -14,11 +14,13 @@ final class PlayerContainerView: UIView {
 struct PlayerLayerView: UIViewRepresentable {
     let player: AVPlayer
     var gravity: AVLayerVideoGravity = .resizeAspectFill
+    var onLayerReady: ((AVPlayerLayer) -> Void)? = nil   // PiP kurulumu için katman referansı
     func makeUIView(context: Context) -> PlayerContainerView {
         let v = PlayerContainerView()
         v.playerLayer.player = player
         v.playerLayer.videoGravity = gravity
         v.backgroundColor = .black
+        onLayerReady?(v.playerLayer)
         return v
     }
     func updateUIView(_ uiView: PlayerContainerView, context: Context) {
@@ -31,6 +33,7 @@ struct PlayerLayerView: UIViewRepresentable {
 struct PlayerLayerView: View {
     let player: AVPlayer
     var gravity: Int = 0
+    var onLayerReady: ((AVPlayerLayer) -> Void)? = nil
     var body: some View { Color.black }
 }
 #endif
