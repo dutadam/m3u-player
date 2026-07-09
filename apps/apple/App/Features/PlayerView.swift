@@ -41,6 +41,8 @@ struct PlayerView: View {
     @State private var lastAdvance = Date()
     @State private var lastSec: Double = -1
     @State private var userPaused = false
+    @State private var subDelay: Double = 0        // altyazı senkron (ms)
+    @State private var audioDelay: Double = 0       // ses senkron (ms)
     @StateObject private var pip = PiPController()
 
     // Dizi bölüm kuyruğu (otomatik sonraki bölüm için)
@@ -274,6 +276,8 @@ struct PlayerView: View {
         lastAdvance = Date()
         lastSec = -1
         userPaused = false
+        subDelay = 0; audioDelay = 0
+        vlc.setSubtitleDelay(ms: 0); vlc.setAudioDelay(ms: 0)
         // VOD/dizi'de kayıtlı ilerleme varsa "Baştan / Devam Et" sor.
         let r = library.resumePosition(for: current.url.absoluteString)
         if !isLive, r > 5 { resumeSeconds = r; askResume = true }
@@ -476,9 +480,34 @@ struct PlayerView: View {
                     if subs.isEmpty { Text("Altyazı yok").foregroundStyle(Color.sgMute) }
                     ForEach(subs) { trackRow($0) }
                 }
+                // Senkron gecikmeleri — yalnız VLC motorunda (AVPlayer desteklemez)
+                if activeEngine == .vlcKit {
+                    Section("Senkron") {
+                        delayRow("Altyazı gecikmesi", value: $subDelay) { vlc.setSubtitleDelay(ms: $0) }
+                        delayRow("Ses gecikmesi", value: $audioDelay) { vlc.setAudioDelay(ms: $0) }
+                    }
+                }
             }
             .navigationTitle("Ses & Altyazı")
             .toolbar { Button("Bitti") { showTracks = false } }
+        }
+    }
+
+    /// Senkron gecikme satırı — ±5 sn, 50 ms adım, sıfırlama.
+    private func delayRow(_ title: String, value: Binding<Double>, apply: @escaping (Double) -> Void) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(title).foregroundStyle(Color.sgText)
+                Spacer()
+                Text(String(format: "%+.0f ms", value.wrappedValue))
+                    .font(.caption).monospacedDigit().foregroundStyle(Color.sgAccent2)
+                Button { value.wrappedValue = 0; apply(0) } label: {
+                    Image(systemName: "arrow.counterclockwise")
+                }.buttonStyle(.plain).foregroundStyle(Color.sgMute)
+            }
+            Slider(value: value, in: -5000...5000, step: 50) { editing in
+                if !editing { apply(value.wrappedValue) }
+            }.tint(Color.sgAccent)
         }
     }
 

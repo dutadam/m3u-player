@@ -49,6 +49,10 @@ final class VLCController: ObservableObject {
     func setAudio(_ id: Int) { player.currentAudioTrackIndex = Int32(id) }
     func setSubtitle(_ id: Int) { player.currentVideoSubTitleIndex = Int32(id) }
 
+    // Senkron gecikmeleri (VLC µs cinsinden tutar; UI ms kullanır)
+    func setSubtitleDelay(ms: Double) { player.currentVideoSubTitleDelay = Int(ms * 1000) }
+    func setAudioDelay(ms: Double) { player.currentAudioPlaybackDelay = Int(ms * 1000) }
+
     // Seek / süre (VOD)
     var position: Double { Double(player.position) }                     // 0..1
     var lengthSeconds: Double { Double(player.media?.length.intValue ?? 0) / 1000 }
@@ -98,6 +102,8 @@ final class VLCController: ObservableObject {
     var currentSubtitle: Int { -1 }
     func setAudio(_ id: Int) {}
     func setSubtitle(_ id: Int) {}
+    func setSubtitleDelay(ms: Double) {}
+    func setAudioDelay(ms: Double) {}
     var position: Double { 0 }
     var lengthSeconds: Double { 0 }
     var timeSeconds: Double { 0 }
