@@ -78,6 +78,7 @@ struct MultiView: View {
                     ForEach(0..<layout.count, id: \.self) { i in cell(i) }
                 }
                 .padding(8)
+                .frame(minHeight: geo.size.height, alignment: .center)   // dikey ortala
             }
         }
     }
@@ -157,15 +158,27 @@ struct MultiView: View {
     }
 
     private func enterFullscreen(_ i: Int) {
-        setActive(i)
-        for (idx, p) in players.enumerated() where idx != i { p.pause() }   // diğerlerini duraklat
+        activeIndex = i
         withAnimation(.easeInOut(duration: 0.2)) { fullscreenSlot = i }
+        syncPlayback()
     }
 
     private func exitFullscreen() {
         withAnimation(.easeInOut(duration: 0.2)) { fullscreenSlot = nil }
-        for i in 0..<layout.count where slots[i] != nil {
-            players[i].isMuted = (i != activeIndex); players[i].play()
+        syncPlayback()
+    }
+
+    /// Tek doğruluk kaynağı: yalnız görünür + dolu slotlar oynar; gerisi durur. Tam ekranda
+    /// sadece o slot oynar. Aktif slotun sesi açık, diğerleri sessiz.
+    private func syncPlayback() {
+        for i in 0..<players.count {
+            let visible = fullscreenSlot == nil ? (i < layout.count) : (i == fullscreenSlot)
+            if visible, slots[i] != nil {
+                players[i].isMuted = (i != activeIndex)
+                players[i].play()
+            } else {
+                players[i].pause()
+            }
         }
     }
 
@@ -180,8 +193,8 @@ struct MultiView: View {
                 if let id, let ch = library.channels.first(where: { $0.id == id }) { assign(ch, to: i, persist: false) }
             }
             if slots.contains(where: { $0 != nil }) {
-                setActive(firstFilled ?? 0)
-                for i in layout.count..<Self.poolSize { players[i].pause() }   // görünmeyen slotları durdur
+                activeIndex = min(firstFilled ?? 0, layout.count - 1)
+                syncPlayback()
                 return
             }
         }
@@ -196,10 +209,7 @@ struct MultiView: View {
     private func changeLayout(_ l: Layout) {
         layout = l
         if activeIndex >= l.count { activeIndex = firstFilled.map { min($0, l.count - 1) } ?? 0 }
-        for i in 0..<players.count {
-            if i >= l.count { players[i].pause() }
-            else if slots[i] != nil { players[i].isMuted = (i != activeIndex); players[i].play() }
-        }
+        syncPlayback()
         persist()
     }
 
@@ -207,21 +217,20 @@ struct MultiView: View {
         slots[slot] = ch
         let url = StreamResolver.candidates(for: ch.url).first?.url ?? ch.url
         players[slot].replaceCurrentItem(with: AVPlayerItem(url: url))
-        players[slot].isMuted = (slot != activeIndex)
-        players[slot].play()
+        syncPlayback()
         if doPersist { persist() }
     }
 
     private func clear(_ slot: Int) {
-        players[slot].pause()
         players[slot].replaceCurrentItem(with: nil)
         slots[slot] = nil
+        syncPlayback()
         persist()
     }
 
     private func setActive(_ i: Int) {
         activeIndex = i
-        for (idx, p) in players.enumerated() { p.isMuted = (idx != i) }
+        syncPlayback()
     }
 
     private func persist() {

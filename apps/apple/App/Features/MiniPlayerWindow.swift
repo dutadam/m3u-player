@@ -52,6 +52,9 @@ struct MiniPlayerWindow: View {
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.sgLineSoft, lineWidth: 1))
                     .shadow(color: .black.opacity(0.5), radius: 12, y: 6)
+                // Şeffaf dokunma katmanı — VLC UIView dokunmayı yuttuğu için üstte ayrı katman.
+                Color.white.opacity(0.001)
+                    .frame(width: w, height: h)
                     .contentShape(Rectangle())
                     .onTapGesture { saveProgress(); onExpand(ch) }
 

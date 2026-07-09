@@ -31,6 +31,9 @@ struct PlayerView: View {
     @State private var isScrubbing = false
     @State private var fillMode = false
     @State private var endReached = false
+    @State private var askResume = false
+    @State private var resumeSeconds: Double = 0
+    @State private var wantResumeTo: Double?
     @StateObject private var pip = PiPController()
 
     // Dizi bölüm kuyruğu (otomatik sonraki bölüm için)
@@ -44,6 +47,8 @@ struct PlayerView: View {
     }
 
     private var hasNext: Bool { !queue.isEmpty && queueIndex + 1 < queue.count }
+    private var hasPrev: Bool { !queue.isEmpty && queueIndex > 0 }
+    private var isSeries: Bool { current.kind == .series && !queue.isEmpty }
 
     private var isLive: Bool { current.kind == .live }
     private var nowTitle: String? { library.epg?.nowPlaying(for: current)?.title }
@@ -62,8 +67,13 @@ struct PlayerView: View {
                 }
             }
             .ignoresSafeArea()
-            .contentShape(Rectangle())
-            .onTapGesture { toggleControls() }
+
+            // Şeffaf dokunma katmanı — VLC'nin UIView'ı dokunmayı yuttuğu için oynatıcının
+            // üstünde her zaman aktif bir katman; overlay'i açıp kapatır.
+            Color.black.opacity(controlsVisible ? 0.25 : 0.001)
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture { toggleControls() }
 
             if isBuffering && !showError {
                 ProgressView().tint(.white).scaleEffect(1.4)
@@ -94,6 +104,11 @@ struct PlayerView: View {
         .onAppear { AudioSessionManager.activatePlayback(); library.addRecent(current); start(); startTicker() }
         .onDisappear { saveProgress(); ticker?.invalidate(); pip.teardown(); player.pause(); vlc.stop() }
         .sheet(isPresented: $showTracks) { tracksSheet }
+        .confirmationDialog("Kaldığın yerden devam edilsin mi?", isPresented: $askResume, titleVisibility: .visible) {
+            Button("Devam Et · \(timeStr(resumeSeconds))") { wantResumeTo = resumeSeconds }
+            Button("Baştan Başlat") { wantResumeTo = nil }
+            Button("İptal", role: .cancel) { }
+        }
     }
 
     // MARK: - Kontrol overlay
@@ -117,13 +132,28 @@ struct PlayerView: View {
 
             Spacer()
 
-            // Orta play/pause
-            Button { togglePlay() } label: {
-                Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 40)).foregroundStyle(.white)
-                    .frame(width: 76, height: 76)
-                    .background(.white.opacity(0.14), in: Circle())
-            }.buttonStyle(.plain)
+            // Orta taşıma satırı — geri · oynat/duraklat · ileri (dizi: önceki/sonraki bölüm)
+            HStack(spacing: 24) {
+                if isSeries {
+                    transportButton("backward.end.fill", size: 21, enabled: hasPrev) { playPrev() }
+                }
+                // Canlı: önceki kanal · VOD/Dizi: 10 sn geri
+                transportButton(isLive ? "backward.fill" : "gobackward.10", size: 25) {
+                    isLive ? step(-1) : skip(-10)
+                }
+                Button { togglePlay() } label: {
+                    Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                        .font(.system(size: 38)).foregroundStyle(.white)
+                        .frame(width: 76, height: 76)
+                        .background(.white.opacity(0.16), in: Circle())
+                }.buttonStyle(.plain)
+                transportButton(isLive ? "forward.fill" : "goforward.10", size: 25) {
+                    isLive ? step(1) : skip(10)
+                }
+                if isSeries {
+                    transportButton("forward.end.fill", size: 21, enabled: hasNext) { playNext() }
+                }
+            }
 
             Spacer()
 
@@ -143,13 +173,6 @@ struct PlayerView: View {
                 HStack(spacing: 16) {
                     if isLive { LivePill("CANLI") }
                     Spacer()
-                    if isLive {
-                        iconButton("backward.fill") { step(-1) }
-                        iconButton("forward.fill") { step(1) }
-                    } else {
-                        iconButton("gobackward.10") { skip(-10) }
-                        iconButton("goforward.10") { skip(10) }
-                    }
                     // Doldur/sığdır — yalnız AVPlayer içeriğinde (VLC kendi katmanında oynar)
                     if activeEngine == .avPlayer {
                         iconButton(fillMode ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right") {
@@ -178,6 +201,17 @@ struct PlayerView: View {
             .padding()
             .background(LinearGradient(colors: [.clear, .black.opacity(0.6)], startPoint: .top, endPoint: .bottom))
         }
+    }
+
+    /// Ortadaki taşıma butonu (yarı saydam, devre-dışı destekli).
+    private func transportButton(_ name: String, size: CGFloat, enabled: Bool = true,
+                                 _ action: @escaping () -> Void) -> some View {
+        Button(action: { if enabled { action() } }) {
+            Image(systemName: name).font(.system(size: size, weight: .semibold))
+                .foregroundStyle(enabled ? .white : .white.opacity(0.3))
+                .frame(width: 52, height: 52)
+                .background(.white.opacity(enabled ? 0.10 : 0.03), in: Circle())
+        }.buttonStyle(.plain).disabled(!enabled)
     }
 
     private var needsVLC: Bool {
@@ -217,6 +251,10 @@ struct PlayerView: View {
         index = 0
         isBuffering = true
         endReached = false
+        wantResumeTo = nil
+        // VOD/dizi'de kayıtlı ilerleme varsa "Baştan / Devam Et" sor.
+        let r = library.resumePosition(for: current.url.absoluteString)
+        if !isLive, r > 5 { resumeSeconds = r; askResume = true }
         playCurrent()
     }
 
@@ -225,6 +263,16 @@ struct PlayerView: View {
         guard queueIndex + 1 < queue.count else { return }
         saveProgress()
         queueIndex += 1
+        current = queue[queueIndex]
+        library.addRecent(current)
+        start()
+    }
+
+    /// Önceki bölüme geç (dizi kuyruğu).
+    private func playPrev() {
+        guard queueIndex > 0 else { return }
+        saveProgress()
+        queueIndex -= 1
         current = queue[queueIndex]
         library.addRecent(current)
         start()
@@ -240,8 +288,6 @@ struct PlayerView: View {
         }
         let item = AVPlayerItem(url: c.url)
         player.replaceCurrentItem(with: item)
-        let resume = library.resumePosition(for: current.url.absoluteString)
-        if !isLive, resume > 0 { player.seek(to: CMTime(seconds: resume, preferredTimescale: 1)) }
         attemptStart = Date()
         player.play(); isPlaying = true
         showControls()
@@ -324,6 +370,10 @@ struct PlayerView: View {
     }
     private func updateStatus() {
         if !isScrubbing { scrubValue = fractionProgress }
+        // "Devam Et" seçildiyse süre hazır olunca kaldığı yere atla (her iki motor).
+        if let target = wantResumeTo, durationSeconds > 1 {
+            seek(toFraction: min(0.999, target / durationSeconds)); wantResumeTo = nil
+        }
         // Bölüm bitişi → otomatik sonraki bölüm (dizi kuyruğu)
         if !isLive, durationSeconds > 1, currentSeconds >= durationSeconds - 1 {
             if !endReached { endReached = true; if hasNext { playNext() } }
