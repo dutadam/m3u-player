@@ -21,7 +21,7 @@ struct SeriesListView: View {
             LazyVGrid(columns: cols, spacing: 16) {
                 ForEach(library.series) { s in
                     NavigationLink(value: s) { SeriesPoster(ref: s) }
-                        .buttonStyle(.plain)
+                        .buttonStyle(PressableStyle())
                 }
             }
             .padding(SGMetric.gutter)
@@ -33,18 +33,13 @@ struct SeriesListView: View {
 }
 
 struct SeriesPoster: View {
+    @EnvironmentObject private var library: LibraryStore
     let ref: SeriesRef
+    var width: CGFloat? = nil
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 12).fill(Color.sgElevated)
-                AsyncImage(url: ref.cover) { $0.resizable().scaledToFill() } placeholder: {
-                    Image(systemName: "play.tv").font(.title).foregroundStyle(Color.sgMute)
-                }
-            }
-            .frame(height: 156).clipShape(RoundedRectangle(cornerRadius: 12))
-            Text(ref.name).font(.system(size: 12, weight: .semibold)).foregroundStyle(Color.sgText).lineLimit(2)
-        }
+        PosterCard(title: ref.name, poster: ref.cover,
+                   continueBadge: library.seriesResume(for: String(ref.id)) != nil,
+                   width: width)
     }
 }
 
@@ -69,6 +64,7 @@ struct SeriesDetailView: View {
                 if loading {
                     ProgressView().frame(maxWidth: .infinity).padding(.top, 40)
                 } else if let s = series, !s.seasons.isEmpty {
+                    continueBar
                     seasonPicker(s)
                     episodeList
                 } else {
@@ -130,10 +126,50 @@ struct SeriesDetailView: View {
     private var episodeList: some View {
         VStack(spacing: 8) {
             ForEach(currentSeason?.episodes ?? []) { ep in
-                Button { playing = channel(for: ep) } label: { EpisodeRow(ep: ep) }
-                    .buttonStyle(.plain)
+                Button { play(ep) } label: {
+                    EpisodeRow(ep: ep,
+                               watched: library.isWatched(ep.url.absoluteString),
+                               progress: library.watchFraction(for: ep.url.absoluteString))
+                }.buttonStyle(PressableStyle())
             }
         }
+    }
+
+    // MARK: - Devam et
+    private var resumeInfo: SeriesResume? { library.seriesResume(for: String(ref.id)) }
+    private func episode(forURL url: String) -> Episode? {
+        series?.seasons.flatMap { $0.episodes }.first { $0.url.absoluteString == url }
+    }
+
+    @ViewBuilder private var continueBar: some View {
+        if let r = resumeInfo, let ep = episode(forURL: r.episodeURL) {
+            let f = library.watchFraction(for: r.episodeURL)
+            Button { season = ep.season; play(ep) } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "play.circle.fill").font(.system(size: 30)).foregroundStyle(.white)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Kaldığın yerden devam et").font(.system(size: 14, weight: .bold)).foregroundStyle(.white)
+                        Text("S\(ep.season)B\(ep.episodeNum)" + (ep.title.isEmpty ? "" : " · \(ep.title)"))
+                            .font(.caption).foregroundStyle(.white.opacity(0.85)).lineLimit(1)
+                        if f > 0.02 {
+                            ProgressView(value: f).tint(.white)
+                                .background(.white.opacity(0.25)).frame(height: 3)
+                        }
+                    }
+                    Spacer()
+                }
+                .padding(14)
+                .background(LinearGradient(colors: [Color.sgAccent, Color.sgAccent2],
+                                           startPoint: .leading, endPoint: .trailing),
+                            in: RoundedRectangle(cornerRadius: 14))
+            }.buttonStyle(PressableStyle())
+        }
+    }
+
+    private func play(_ ep: Episode) {
+        library.markSeries(SeriesResume(seriesId: String(ref.id), season: ep.season, episodeNum: ep.episodeNum,
+                                        episodeURL: ep.url.absoluteString, episodeTitle: ep.title, updatedAt: .now))
+        playing = channel(for: ep)
     }
 
     private func channel(for ep: Episode) -> Channel {
@@ -145,19 +181,31 @@ struct SeriesDetailView: View {
 
 struct EpisodeRow: View {
     let ep: Episode
+    var watched: Bool = false
+    var progress: Double = 0
     var body: some View {
         HStack(spacing: 12) {
             Text("S\(String(format: "%02d", ep.season))B\(String(format: "%02d", ep.episodeNum))")
                 .font(.system(size: 11, weight: .heavy)).monospacedDigit()
                 .foregroundStyle(Color.sgAccent2).frame(width: 58, alignment: .leading)
-            ZStack {
+            ZStack(alignment: .bottom) {
                 RoundedRectangle(cornerRadius: 7).fill(Color.sgElevated)
                 AsyncImage(url: ep.thumb) { $0.resizable().scaledToFill() } placeholder: { EmptyView() }
+                if progress > 0.02 && !watched {
+                    GeometryReader { g in
+                        ZStack(alignment: .leading) {
+                            Rectangle().fill(.black.opacity(0.5))
+                            Rectangle().fill(Color.sgAccent).frame(width: g.size.width * progress)
+                        }
+                    }.frame(height: 3)
+                }
             }
             .frame(width: 64, height: 38).clipShape(RoundedRectangle(cornerRadius: 7))
-            Text(ep.title).font(.system(size: 13)).foregroundStyle(Color.sgText).lineLimit(1)
+            Text(ep.title).font(.system(size: 13))
+                .foregroundStyle(watched ? Color.sgMute : Color.sgText).lineLimit(1)
             Spacer()
-            Image(systemName: "play.circle.fill").foregroundStyle(Color.sgAccent)
+            Image(systemName: watched ? "checkmark.circle.fill" : "play.circle.fill")
+                .foregroundStyle(watched ? Color.sgMute : Color.sgAccent)
         }
         .padding(.vertical, 4)
     }

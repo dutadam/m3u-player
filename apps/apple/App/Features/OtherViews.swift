@@ -27,7 +27,7 @@ struct MoviesView: View {
     @EnvironmentObject private var library: LibraryStore
     var body: some View {
         NavigationStack {
-            CategoryBrowseView(title: "Filmler", channels: library.movies)
+            CategoryBrowseView(title: "Filmler", channels: library.movies, poster: true)
         }
     }
 }

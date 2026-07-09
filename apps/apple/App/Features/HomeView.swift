@@ -108,8 +108,8 @@ struct SeriesRailHome: View {
                 HStack(spacing: 11) {
                     ForEach(series) { s in
                         NavigationLink { SeriesDetailView(ref: s) } label: {
-                            SeriesPoster(ref: s).frame(width: 110)
-                        }.buttonStyle(.plain)
+                            SeriesPoster(ref: s, width: 120)
+                        }.buttonStyle(PressableStyle())
                     }
                 }
                 .padding(.horizontal, SGMetric.gutter)

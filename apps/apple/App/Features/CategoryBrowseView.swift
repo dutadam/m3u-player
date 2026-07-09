@@ -8,11 +8,14 @@ struct CategoryBrowseView: View {
     @EnvironmentObject private var library: LibraryStore
     let title: String
     let channels: [Channel]
+    var poster: Bool = false                      // true → 2:3 poster kartları (Filmler)
     @State private var category: String?          // nil = Tümü
     @State private var query = ""
     @State private var selected: Channel?
 
-    private let cols = [GridItem(.adaptive(minimum: 118), spacing: 11)]
+    private var cols: [GridItem] {
+        [GridItem(.adaptive(minimum: poster ? 112 : 118), spacing: 11)]
+    }
 
     // Gizlenen kategoriler hariç
     private var visible: [Channel] { channels.filter { !library.isCategoryHidden($0.group) } }
@@ -58,10 +61,11 @@ struct CategoryBrowseView: View {
                         ForEach(filtered.prefix(400)) { ch in
                             if ch.kind == .vod {
                                 // Filmler → sinematik detay ekranı (poster/özet/TMDB)
-                                NavigationLink(value: ch) { ChannelCard(channel: ch) }
-                                    .buttonStyle(.plain)
+                                NavigationLink(value: ch) { card(ch) }
+                                    .buttonStyle(PressableStyle())
                             } else {
-                                ChannelCard(channel: ch).onTapGesture { selected = ch }
+                                Button { selected = ch } label: { card(ch) }
+                                    .buttonStyle(PressableStyle())
                             }
                         }
                     }
@@ -76,6 +80,16 @@ struct CategoryBrowseView: View {
         #endif
         .navigationDestination(for: Channel.self) { MovieDetailView(channel: $0) }
         .fullScreenCover(item: $selected) { PlayerView(channel: $0) }
+    }
+
+    @ViewBuilder private func card(_ ch: Channel) -> some View {
+        if poster {
+            PosterCard(title: ch.name, poster: ch.logo,
+                       watched: library.isWatched(ch.url.absoluteString),
+                       progress: library.watchFraction(for: ch.url.absoluteString))
+        } else {
+            ChannelCard(channel: ch)
+        }
     }
 
     private func chip(_ label: String, on: Bool, action: @escaping () -> Void) -> some View {

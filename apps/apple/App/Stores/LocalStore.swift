@@ -18,7 +18,18 @@ enum LocalStore {
         static let recents = "cheesino.recents"         // [RecentItem]
         static let progress = "cheesino.progress"       // [String: Progress]
         static let lastSource = "cheesino.lastSource"   // PlaylistSource
+        static let seriesResume = "cheesino.seriesResume" // [String: SeriesResume] (seriesId → son bölüm)
     }
+}
+
+/// Dizi "kaldığın yerden devam" — dizi başına son izlenen bölüm.
+struct SeriesResume: Codable, Hashable {
+    var seriesId: String
+    var season: Int
+    var episodeNum: Int
+    var episodeURL: String       // per-url ilerleme anahtarı (WatchProgress ile eşleşir)
+    var episodeTitle: String
+    var updatedAt: Date
 }
 
 /// Son izlenen öğe (hafif — kanal referansı).

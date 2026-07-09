@@ -16,6 +16,7 @@ final class LibraryStore: ObservableObject {
     @Published private(set) var recents: [RecentItem] = []
     @Published private(set) var progress: [String: WatchProgress] = [:]
     @Published private(set) var hiddenCategories: Set<String> = []
+    @Published private(set) var seriesResume: [String: SeriesResume] = [:]
 
     private let session = URLSession.shared
 
@@ -25,6 +26,7 @@ final class LibraryStore: ObservableObject {
         favorites = LocalStore.load(Set<String>.self, key: LocalStore.Key.favorites) ?? []
         recents = LocalStore.load([RecentItem].self, key: LocalStore.Key.recents) ?? []
         progress = LocalStore.load([String: WatchProgress].self, key: LocalStore.Key.progress) ?? [:]
+        seriesResume = LocalStore.load([String: SeriesResume].self, key: LocalStore.Key.seriesResume) ?? [:]
         hiddenCategories = LocalStore.load(Set<String>.self, key: "cheesino.hiddenCats") ?? []
         // iCloud: başka cihazdan gelen durumu birleştir + değişiklikleri dinle.
         mergeFromCloud()
@@ -137,6 +139,21 @@ final class LibraryStore: ObservableObject {
         CloudStore.save(progress, key: LocalStore.Key.progress)
     }
     func resumePosition(for url: String) -> Double { progress[url]?.resumePosition ?? 0 }
+
+    /// İzleme ilerlemesi 0..1 (kart rozeti/çubuğu için).
+    func watchFraction(for url: String) -> Double { progress[url]?.fraction ?? 0 }
+    /// %92+ izlendiyse "izlendi".
+    func isWatched(_ url: String) -> Bool { (progress[url]?.fraction ?? 0) >= 0.92 }
+    /// Devam edilebilir (başlamış ama bitmemiş).
+    func inProgress(_ url: String) -> Bool { let f = progress[url]?.fraction ?? 0; return f > 0.02 && f < 0.92 }
+
+    // MARK: - Dizi devam etme (seriesId → son bölüm)
+    func markSeries(_ r: SeriesResume) {
+        seriesResume[r.seriesId] = r
+        LocalStore.save(seriesResume, key: LocalStore.Key.seriesResume)
+        CloudStore.save(seriesResume, key: LocalStore.Key.seriesResume)
+    }
+    func seriesResume(for id: String) -> SeriesResume? { seriesResume[id] }
 
     // MARK: - M3U (URL)
     func loadM3U(from url: URL) async {
