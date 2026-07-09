@@ -4,18 +4,27 @@ import Design
 /// Kök görünüm: kaynak yoksa onboarding, varsa sekmeli ana arayüz.
 struct RootView: View {
     @EnvironmentObject private var library: LibraryStore
+    @StateObject private var mini = MiniPlayerStore()
+    @State private var expanded: Channel?
 
     var body: some View {
-        Group {
-            if library.channels.isEmpty {
-                if library.isLoading { LoadingView() }   // açılışta kayıtlı kaynak yükleniyor
-                else { OnboardingView() }
-            } else {
-                RootTabView()
+        ZStack {
+            Group {
+                if library.channels.isEmpty {
+                    if library.isLoading { LoadingView() }   // açılışta kayıtlı kaynak yükleniyor
+                    else { OnboardingView() }
+                } else {
+                    RootTabView()
+                }
             }
+            // VLC mini pencere — kök seviyede, sekmeler üstünde yüzer
+            MiniPlayerWindow { ch in mini.close(); expanded = ch }
         }
+        .environmentObject(mini)
         .tint(Color.sgAccent)
         .background(Color.sgGround.ignoresSafeArea())
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: mini.isActive)
+        .fullScreenCover(item: $expanded) { PlayerView(channel: $0) }
         .task { await library.restoreLastSession() }   // kayıtlı Xtream → otomatik giriş
     }
 }

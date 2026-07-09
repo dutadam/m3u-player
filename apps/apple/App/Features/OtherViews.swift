@@ -9,7 +9,10 @@ struct LiveView: View {
         NavigationStack {
             CategoryBrowseView(title: "Canlı", channels: library.live)
                 .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
+                    ToolbarItemGroup(placement: .topBarTrailing) {
+                        NavigationLink { MultiView() } label: {
+                            Label("Çoklu Ekran", systemImage: "square.grid.2x2")
+                        }
                         NavigationLink { GuideView() } label: {
                             Label("Rehber", systemImage: "rectangle.grid.1x2")
                         }

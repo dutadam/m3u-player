@@ -8,6 +8,7 @@ import Design
 /// Canlıda kanal ↑/↓, EPG "şimdi", AirPlay; VOD/dizide resume + ilerleme kaydı.
 struct PlayerView: View {
     @EnvironmentObject private var library: LibraryStore
+    @EnvironmentObject private var mini: MiniPlayerStore
     @Environment(\.dismiss) private var dismiss
 
     @State private var current: Channel
@@ -160,6 +161,13 @@ struct PlayerView: View {
                     if activeEngine == .avPlayer && pip.isSupported {
                         iconButton(pip.isActive ? "pip.exit" : "pip.enter", tint: pip.isPossible ? .white : Color.sgMute) {
                             pip.toggle(); showControls()
+                        }
+                    }
+                    // VLC içeriği → sistem PiP yok; uygulama-içi mini pencereye devret
+                    if activeEngine == .vlcKit {
+                        iconButton("pip.enter") {
+                            mini.present(channel: current, url: vlcURL ?? current.url, seekTo: vlc.position)
+                            dismiss()
                         }
                     }
                     #if os(iOS)
