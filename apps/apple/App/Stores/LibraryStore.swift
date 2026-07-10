@@ -22,6 +22,11 @@ final class LibraryStore: ObservableObject {
     @Published private(set) var seriesResume: [String: SeriesResume] = [:]
     @Published private(set) var reminders: [String: Reminder] = [:]
 
+    // Çoklu kaynak (playlist)
+    @Published private(set) var playlists: [PlaylistMeta] = []
+    @Published private(set) var activePlaylistId: String?
+    var activePlaylist: PlaylistMeta? { playlists.first { $0.id == activePlaylistId } }
+
     private var session = LibraryStore.makeSession()
 
     /// Özel User-Agent varsa onu ekleyen URLSession üretir (bazı IPTV panelleri UA ister).
@@ -40,8 +45,11 @@ final class LibraryStore: ObservableObject {
         seriesResume = LocalStore.load([String: SeriesResume].self, key: LocalStore.Key.seriesResume) ?? [:]
         reminders = LocalStore.load([String: Reminder].self, key: LocalStore.Key.reminders) ?? [:]
         hiddenCategories = LocalStore.load(Set<String>.self, key: "cheesino.hiddenCats") ?? []
-        // Kayıtlı kaynak varsa açılışta onboarding yerine yükleme ekranı göster (flaşı önle).
-        if KeychainStore.load() != nil { isLoading = true }
+        playlists = LocalStore.load([PlaylistMeta].self, key: LocalStore.Key.playlists) ?? []
+        activePlaylistId = LocalStore.load(String.self, key: LocalStore.Key.activePlaylist)
+        migrateLegacyIfNeeded()
+        // Aktif kaynak varsa açılışta onboarding yerine yükleme ekranı göster (flaşı önle).
+        if activePlaylist != nil { isLoading = true }
         // iCloud: başka cihazdan gelen durumu birleştir + değişiklikleri dinle.
         mergeFromCloud()
         cloudObserver = CloudStore.startObserving { [weak self] in
@@ -118,26 +126,108 @@ final class LibraryStore: ObservableObject {
         Dictionary(grouping: channels, by: \.group)
     }
 
-    /// Açılışta: önce diske cache'lenmiş içeriği anında göster, sonra (ayar açıksa) arka planda yenile.
+    /// Açılışta: aktif playlist'in cache'ini anında göster, sonra (ayar açıksa) arka planda yenile.
     /// Cache yoksa bloklayan tam yükleme yapılır.
     func restoreLastSession() async {
-        guard let creds = KeychainStore.load() else { isLoading = false; return }
+        guard let pl = activePlaylist else { isLoading = false; return }
         // Cache'i arka thread'de çöz (binlerce kanalın decode'u ana thread'i kilitlemesin).
-        let snap = await Task.detached(priority: .userInitiated) { ContentCache.load() }.value
+        let snap = await Task.detached(priority: .userInitiated) { ContentCache.load(id: pl.id) }.value
         if let snap, !snap.channels.isEmpty {
             channels = snap.channels
             series = snap.series
             lastUpdated = snap.savedAt
             isLoading = false
-            if AppSettings.autoRefresh { await loadXtream(creds, background: true) }
+            if AppSettings.autoRefresh { await reload(pl, background: true) }
         } else {
-            await loadXtream(creds)
+            await reload(pl, background: false)
         }
     }
 
-    /// Manuel yenileme (pull-to-refresh / buton).
+    /// Manuel yenileme (pull-to-refresh / buton) — aktif playlist.
     func refresh() async {
-        if let creds = KeychainStore.load() { await loadXtream(creds, background: true) }
+        if let pl = activePlaylist { await reload(pl, background: true) }
+    }
+
+    /// Bir playlist'in kaynağından içeriği yükler (Xtream veya M3U).
+    private func reload(_ pl: PlaylistMeta, background: Bool) async {
+        switch pl.kind {
+        case .xtream:
+            if let creds = KeychainStore.load(id: pl.id) { await loadXtream(creds, id: pl.id, background: background) }
+            else { errorMessage = "Kaynak kimlik bilgisi bulunamadı." }
+        case .m3u:
+            if let u = URL(string: pl.m3uURL ?? "") { await loadM3U(from: u, id: pl.id, background: background) }
+        }
+    }
+
+    // MARK: - Playlist yönetimi
+    private func persistPlaylists() {
+        LocalStore.save(playlists, key: LocalStore.Key.playlists)
+        if let a = activePlaylistId { LocalStore.save(a, key: LocalStore.Key.activePlaylist) }
+    }
+    private func setActive(_ id: String?) {
+        activePlaylistId = id
+        if let id { LocalStore.save(id, key: LocalStore.Key.activePlaylist) }
+    }
+
+    /// Yeni Xtream kaynağı ekle ve aktif yap.
+    func addXtream(name: String, creds: XtreamCredentials) async {
+        let id = UUID().uuidString
+        let nm = name.trimmingCharacters(in: .whitespaces).isEmpty ? (creds.server.host ?? "Xtream") : name
+        KeychainStore.save(creds, id: id)
+        playlists.append(PlaylistMeta(id: id, name: nm, kind: .xtream, m3uURL: nil,
+                                      server: creds.server.absoluteString, username: creds.username, createdAt: Date()))
+        setActive(id); persistPlaylists()
+        await loadXtream(creds, id: id, background: false)
+    }
+
+    /// Yeni M3U kaynağı ekle ve aktif yap.
+    func addM3U(name: String, url: URL) async {
+        let id = UUID().uuidString
+        let nm = name.trimmingCharacters(in: .whitespaces).isEmpty ? (url.host ?? "M3U") : name
+        playlists.append(PlaylistMeta(id: id, name: nm, kind: .m3u, m3uURL: url.absoluteString,
+                                      server: nil, username: nil, createdAt: Date()))
+        setActive(id); persistPlaylists()
+        await loadM3U(from: url, id: id, background: false)
+    }
+
+    /// Başka bir kaydedilmiş kaynağa geç.
+    func switchTo(_ id: String) async {
+        guard id != activePlaylistId, playlists.contains(where: { $0.id == id }) else { return }
+        setActive(id); persistPlaylists()
+        channels = []; series = []; epg = nil; lastUpdated = nil; errorMessage = nil
+        isLoading = true
+        await restoreLastSession()
+    }
+
+    func renamePlaylist(_ id: String, name: String) {
+        guard let i = playlists.firstIndex(where: { $0.id == id }) else { return }
+        playlists[i].name = name
+        persistPlaylists()
+    }
+
+    /// Bir kaynağı sil (aktifse sonrakine geç, yoksa onboarding).
+    func removePlaylist(_ id: String) async {
+        playlists.removeAll { $0.id == id }
+        KeychainStore.clear(id: id)
+        ContentCache.clear(id: id)
+        LocalStore.save(playlists, key: LocalStore.Key.playlists)
+        if activePlaylistId == id {
+            if let next = playlists.first?.id { await switchTo(next) }
+            else { setActive(nil); LocalStore.save("", key: LocalStore.Key.activePlaylist)
+                   channels = []; series = []; epg = nil; lastUpdated = nil }
+        }
+    }
+
+    /// Eski tek-kaynak (Keychain "xtream") kaydını playlist modeline taşı.
+    private func migrateLegacyIfNeeded() {
+        guard playlists.isEmpty, let creds = KeychainStore.load() else { return }
+        let id = UUID().uuidString
+        playlists = [PlaylistMeta(id: id, name: creds.server.host ?? "Kaynağım", kind: .xtream, m3uURL: nil,
+                                  server: creds.server.absoluteString, username: creds.username, createdAt: Date())]
+        KeychainStore.save(creds, id: id)
+        ContentCache.migrateLegacy(to: id)
+        setActive(id); persistPlaylists()
+        KeychainStore.clear()   // eski tekil kaydı temizle
     }
 
     // MARK: - Favoriler / son izlenenler / ilerleme
@@ -204,9 +294,10 @@ final class LibraryStore: ObservableObject {
     func seriesResume(for id: String) -> SeriesResume? { seriesResume[id] }
 
     // MARK: - M3U (URL)
-    func loadM3U(from url: URL) async {
-        isLoading = true; errorMessage = nil
-        defer { isLoading = false }
+    func loadM3U(from url: URL, id: String, background: Bool = false) async {
+        if background { isRefreshing = true } else { isLoading = true }
+        errorMessage = nil
+        defer { if background { isRefreshing = false } else { isLoading = false } }
         do {
             let (data, resp) = try await session.data(from: url)
             guard let http = resp as? HTTPURLResponse, 200..<300 ~= http.statusCode,
@@ -218,24 +309,33 @@ final class LibraryStore: ObservableObject {
                 errorMessage = "M3U içinde kanal bulunamadı."; return
             }
             channels = result.channels
+            series = []
+            lastUpdated = Date()
+            ContentCache.save(id: id, channels: result.channels, series: [])
             if let epgURL = result.epgURL { await loadEPG(from: epgURL) }
         } catch {
             errorMessage = "Ağ hatası: \(error.localizedDescription)"
         }
     }
 
-    // MARK: - M3U (dosya metni)
-    func loadM3U(text: String) {
+    // MARK: - M3U (dosya metni) — yenilenemez, önbellekten kalıcı
+    func addM3UFile(name: String, text: String) {
         let result = M3UParser.parse(text)
         guard !result.channels.isEmpty else { errorMessage = "M3U içinde kanal bulunamadı."; return }
-        channels = result.channels
+        let id = UUID().uuidString
+        let nm = name.trimmingCharacters(in: .whitespaces).isEmpty ? "M3U Dosyası" : name
+        playlists.append(PlaylistMeta(id: id, name: nm, kind: .m3u, m3uURL: nil, server: nil, username: nil, createdAt: Date()))
+        setActive(id); persistPlaylists()
+        channels = result.channels; series = []; lastUpdated = Date()
+        ContentCache.save(id: id, channels: result.channels, series: [])
+        if let epgURL = result.epgURL { Task { await loadEPG(from: epgURL) } }
     }
 
     // MARK: - Xtream
     private(set) var xtreamClient: XtreamClient?
 
     /// background=true → mevcut içerik ekranda kalır, yalnız isRefreshing yanar; başarıda değiştirilir.
-    func loadXtream(_ creds: XtreamCredentials, background: Bool = false) async {
+    func loadXtream(_ creds: XtreamCredentials, id: String, background: Bool = false) async {
         if background { isRefreshing = true } else { isLoading = true }
         errorMessage = nil
         defer { if background { isRefreshing = false } else { isLoading = false } }
@@ -253,7 +353,6 @@ final class LibraryStore: ObservableObject {
 
             guard !all.isEmpty else { errorMessage = "Sunucuda kanal bulunamadı."; return }
             channels = all
-            KeychainStore.save(creds)            // başarılı giriş → kimlik bilgisini şifreli sakla
 
             // Dizi listesi (bölümler lazy — detayda get_series_info ile çekilir).
             var refs: [SeriesRef] = []
@@ -268,34 +367,37 @@ final class LibraryStore: ObservableObject {
                 series = refs
             }
             lastUpdated = Date()
-            ContentCache.save(channels: all, series: refs)   // sonraki açılış için anlık görüntü
+            ContentCache.save(id: id, channels: all, series: refs)   // sonraki açılış için anlık görüntü
             await loadEPG(from: client.xmltvURL)
         } catch {
             errorMessage = "Xtream girişi başarısız — sunucu/kullanıcı/şifreyi kontrol edin."
         }
     }
 
-    /// Kaydedilmiş kaynağı ve kimlik bilgisini temizle (çıkış).
+    /// Tüm kaynakları ve kimlik bilgilerini temizle (tam sıfırlama).
     func signOut() {
-        KeychainStore.clear()
-        ContentCache.clear()
+        for pl in playlists { KeychainStore.clear(id: pl.id); ContentCache.clear(id: pl.id) }
+        KeychainStore.clear()   // eski tekil kayıt
+        playlists = []; setActive(nil)
+        LocalStore.save([PlaylistMeta](), key: LocalStore.Key.playlists)
+        LocalStore.save("", key: LocalStore.Key.activePlaylist)
         channels = []; series = []; epg = nil; xtreamClient = nil; lastUpdated = nil
     }
 
     // MARK: - Ayarlar: User-Agent + önbellek
     var userAgent: String { AppSettings.userAgent }
 
-    /// Özel User-Agent'ı kaydeder, session'ı yeniden kurar ve kaynağı yeniden yükler.
+    /// Özel User-Agent'ı kaydeder, session'ı yeniden kurar ve aktif kaynağı yeniden yükler.
     func applyUserAgent(_ ua: String) async {
         AppSettings.userAgent = ua
         session = LibraryStore.makeSession()
-        if let creds = KeychainStore.load() { await loadXtream(creds) }
+        if let pl = activePlaylist { await reload(pl, background: true) }
     }
 
-    /// Görsel/HTTP önbelleğini + içerik anlık görüntüsünü temizler.
+    /// Görsel/HTTP önbelleğini + aktif kaynağın içerik anlık görüntüsünü temizler.
     func clearCache() {
         URLCache.shared.removeAllCachedResponses()
-        ContentCache.clear()
+        if let id = activePlaylistId { ContentCache.clear(id: id) }
     }
 
     // MARK: - Program hatırlatıcıları (yerel bildirim)

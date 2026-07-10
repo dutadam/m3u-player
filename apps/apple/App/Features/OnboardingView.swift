@@ -18,6 +18,7 @@ struct OnboardingView: View {
                         : "https://iptv-org.github.io/iptv/countries/\(code).m3u"
     }
     @State private var tab: Tab = .xtream
+    @State private var name = ""
     @State private var m3uURL = ""
     @State private var server = ""
     @State private var user = ""
@@ -37,11 +38,13 @@ struct OnboardingView: View {
                     ForEach(Tab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                 }.segmentedOnIOS()
 
+                if tab != .discover { field("AD (opsiyonel)", text: $name) }
+
                 switch tab {
                 case .m3u:
                     field("M3U URL", text: $m3uURL)
                     connectButton("Yükle") {
-                        if let u = URL(string: m3uURL) { await library.loadM3U(from: u) }
+                        if let u = URL(string: m3uURL) { await library.addM3U(name: name, url: u) }
                     }
                 case .xtream:
                     field("SUNUCU", text: $server)
@@ -49,7 +52,7 @@ struct OnboardingView: View {
                     field("ŞİFRE", text: $pass, secure: true)
                     connectButton("Bağlan") {
                         if let s = XtreamCredentials.normalize(server) {
-                            await library.loadXtream(.init(server: s, username: user, password: pass))
+                            await library.addXtream(name: name, creds: .init(server: s, username: user, password: pass))
                         }
                     }
                 case .file:
@@ -63,7 +66,7 @@ struct OnboardingView: View {
                             .foregroundStyle(Color.sgText)
                     }
                     .sheet(isPresented: $showFilePicker) {
-                        DocumentPicker { text in library.loadM3U(text: text); showFilePicker = false }
+                        DocumentPicker { text in library.addM3UFile(name: name, text: text); showFilePicker = false }
                     }
                     #else
                     Text("Dosya seçimi iOS/iPadOS'ta desteklenir.").foregroundStyle(Color.sgDim)
@@ -74,7 +77,7 @@ struct OnboardingView: View {
                             .font(.caption).foregroundStyle(Color.sgDim)
                         ForEach(Self.discoverSources, id: \.code) { src in
                             Button {
-                                if let u = URL(string: Self.iptvOrgURL(src.code)) { Task { await library.loadM3U(from: u) } }
+                                if let u = URL(string: Self.iptvOrgURL(src.code)) { Task { await library.addM3U(name: "iptv-org · \(src.name)", url: u) } }
                             } label: {
                                 HStack {
                                     Text(src.flag).font(.title3)

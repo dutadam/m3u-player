@@ -21,6 +21,27 @@ enum LocalStore {
         static let seriesResume = "cheesino.seriesResume" // [String: SeriesResume] (seriesId → son bölüm)
         static let reminders = "cheesino.reminders"     // [String: Reminder]
         static let userAgent = "cheesino.userAgent"     // String (özel User-Agent)
+        static let playlists = "cheesino.playlists"     // [PlaylistMeta]
+        static let activePlaylist = "cheesino.activePlaylist" // String (aktif playlist id)
+    }
+}
+
+/// Kayıtlı kaynak (playlist) üst verisi. Şifre HARİÇ — o Keychain'de (id ile).
+struct PlaylistMeta: Codable, Identifiable, Hashable {
+    enum Kind: String, Codable { case xtream, m3u }
+    var id: String                 // UUID
+    var name: String
+    var kind: Kind
+    var m3uURL: String?            // .m3u için
+    var server: String?           // .xtream için (görüntü + yeniden yükleme)
+    var username: String?         // .xtream için (görüntü)
+    var createdAt: Date
+
+    var subtitle: String {
+        switch kind {
+        case .xtream: return [username, URL(string: server ?? "")?.host].compactMap { $0 }.joined(separator: " · ")
+        case .m3u: return URL(string: m3uURL ?? "")?.host ?? "M3U"
+        }
     }
 }
 
@@ -56,26 +77,34 @@ enum AppSettings {
 enum ContentCache {
     struct Snapshot: Codable { var channels: [Channel]; var series: [SeriesRef]; var savedAt: Date }
 
-    private static var fileURL: URL {
+    private static func fileURL(_ id: String) -> URL {
         let dir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-        return dir.appendingPathComponent("cheesino-content.json")
+        return dir.appendingPathComponent("cheesino-content-\(id).json")
     }
 
     /// Arka planda kaydet (binlerce kanalın encode'u ana thread'i kilitlemesin).
-    static func save(channels: [Channel], series: [SeriesRef]) {
+    static func save(id: String, channels: [Channel], series: [SeriesRef]) {
         let snap = Snapshot(channels: channels, series: series, savedAt: Date())
-        let url = fileURL
+        let url = fileURL(id)
         Task.detached(priority: .utility) {
             if let data = try? JSONEncoder().encode(snap) { try? data.write(to: url, options: .atomic) }
         }
     }
 
-    static func load() -> Snapshot? {
-        guard let data = try? Data(contentsOf: fileURL) else { return nil }
+    static func load(id: String) -> Snapshot? {
+        guard let data = try? Data(contentsOf: fileURL(id)) else { return nil }
         return try? JSONDecoder().decode(Snapshot.self, from: data)
     }
 
-    static func clear() { try? FileManager.default.removeItem(at: fileURL) }
+    static func clear(id: String) { try? FileManager.default.removeItem(at: fileURL(id)) }
+
+    /// Eski tek-kaynak cache dosyasını yeni playlist id'sine taşır (migrasyon).
+    static func migrateLegacy(to id: String) {
+        let legacy = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("cheesino-content.json")
+        guard FileManager.default.fileExists(atPath: legacy.path) else { return }
+        try? FileManager.default.moveItem(at: legacy, to: fileURL(id))
+    }
 }
 
 /// Dizi "kaldığın yerden devam" — dizi başına son izlenen bölüm.

@@ -118,8 +118,11 @@ struct SettingsView: View {
             }
 
             Section("Kaynak") {
+                NavigationLink { PlaylistsView() } label: {
+                    Label("Kaynakları Yönet", systemImage: "square.stack.3d.up.fill")
+                }
                 Button(role: .destructive) { showSignOut = true } label: {
-                    Label("Çıkış / Kaynağı Değiştir", systemImage: "rectangle.portrait.and.arrow.right")
+                    Label("Tüm Kaynakları Sıfırla", systemImage: "trash")
                 }
             }
 
@@ -153,10 +156,66 @@ struct SettingsView: View {
         }
         .navigationTitle("Ayarlar")
         .onAppear { epgURL = library.manualEPGURL; userAgent = library.userAgent; library.pruneReminders() }
-        .confirmationDialog("Çıkış yapılsın mı? Kaydedilen kaynak ve kimlik bilgisi silinir.",
+        .confirmationDialog("Tüm kaynaklar ve kimlik bilgileri silinsin mi?",
                             isPresented: $showSignOut, titleVisibility: .visible) {
-            Button("Çıkış Yap", role: .destructive) { library.signOut() }
+            Button("Tümünü Sıfırla", role: .destructive) { library.signOut() }
             Button("Vazgeç", role: .cancel) {}
+        }
+    }
+}
+
+/// Kaynaklar — kayıtlı playlist'ler; geçiş, ekle, yeniden adlandır, sil.
+struct PlaylistsView: View {
+    @EnvironmentObject private var library: LibraryStore
+    @State private var showAdd = false
+    @State private var renaming: PlaylistMeta?
+    @State private var newName = ""
+
+    var body: some View {
+        List {
+            Section {
+                if library.playlists.isEmpty {
+                    Text("Kayıtlı kaynak yok").foregroundStyle(Color.sgMute)
+                }
+                ForEach(library.playlists) { pl in
+                    Button { Task { await library.switchTo(pl.id) } } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: pl.kind == .xtream ? "server.rack" : "list.bullet.rectangle")
+                                .foregroundStyle(Color.sgAccent2).frame(width: 24)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(pl.name).foregroundStyle(Color.sgText).lineLimit(1)
+                                Text(pl.subtitle).font(.caption).foregroundStyle(Color.sgMute).lineLimit(1)
+                            }
+                            Spacer()
+                            if pl.id == library.activePlaylistId {
+                                Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.sgAccent)
+                            }
+                        }
+                    }
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) { Task { await library.removePlaylist(pl.id) } } label: {
+                            Label("Sil", systemImage: "trash")
+                        }
+                        Button { renaming = pl; newName = pl.name } label: { Label("Ad", systemImage: "pencil") }.tint(.gray)
+                    }
+                }
+            }
+            Section {
+                Button { showAdd = true } label: { Label("Kaynak Ekle", systemImage: "plus.circle.fill") }
+            }
+        }
+        .navigationTitle("Kaynaklar")
+        .onChange(of: library.playlists.count) { _ in showAdd = false }   // ekleme başarılı → kapat
+        .sheet(isPresented: $showAdd) {
+            NavigationStack {
+                OnboardingView()
+                    .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Kapat") { showAdd = false } } }
+            }
+        }
+        .alert("Yeniden Adlandır", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
+            TextField("Ad", text: $newName)
+            Button("Kaydet") { if let r = renaming { library.renamePlaylist(r.id, name: newName) }; renaming = nil }
+            Button("Vazgeç", role: .cancel) { renaming = nil }
         }
     }
 }

@@ -424,6 +424,7 @@ struct LibraryView: View {
     var body: some View {
         NavigationStack {
             List {
+                NavigationLink { PlaylistsView() } label: { Label("Kaynaklar", systemImage: "square.stack.3d.up.fill") }
                 NavigationLink { FavoritesView() } label: { Label("Favoriler", systemImage: "heart.fill") }
                 NavigationLink { RecentsView() } label: { Label("Son İzlenenler", systemImage: "clock.arrow.circlepath") }
                 NavigationLink { MultiView() } label: { Label("Çoklu Ekran", systemImage: "square.grid.2x2.fill") }
