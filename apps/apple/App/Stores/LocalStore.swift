@@ -1,4 +1,5 @@
 import Foundation
+import Core
 
 /// Basit Codable kalıcılık (favoriler, son izlenenler, ilerleme, playlist meta).
 /// Kimlik bilgisi HARİÇ her şey burada; kimlik bilgisi Keychain'de (bkz. KeychainStore).
