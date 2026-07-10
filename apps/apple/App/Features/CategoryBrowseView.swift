@@ -9,7 +9,8 @@ struct CategoryBrowseView: View {
     let title: String
     let channels: [Channel]
     var poster: Bool = false                      // true → 2:3 poster kartları (Filmler)
-    @State private var category: String?          // nil = Tümü
+    @State private var category: String?          // nil = Tümü (canlı)
+    @State private var genre: String?             // nil = Tüm türler (film)
     @State private var query = ""
     @State private var selected: Channel?
 
@@ -22,25 +23,41 @@ struct CategoryBrowseView: View {
     private var categories: [String] {
         Array(Set(visible.map(\.group))).sorted()
     }
+    /// Film modunda mevcut türler (metadata/çıkarım).
+    private var genreChips: [String] {
+        var s = Set<String>()
+        for ch in visible { s.formUnion(library.genres(for: ch)) }
+        return s.sorted()
+    }
     private var filtered: [Channel] {
-        var list = category == nil ? visible : visible.filter { $0.group == category }
+        var list = visible
+        if poster {
+            if let genre { list = list.filter { library.genres(for: $0).contains(genre) } }
+        } else if let category {
+            list = list.filter { $0.group == category }
+        }
         if !query.isEmpty { list = list.filter { $0.name.localizedCaseInsensitiveContains(query) } }
         return list
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            // Kategori çipleri
+            // Filtre çipleri — film modunda TÜR, canlı modunda KATEGORİ
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
-                    chip("Tümü", on: category == nil) { category = nil }
-                    ForEach(categories, id: \.self) { c in
-                        chip(c, on: category == c) { category = c }
-                            .contextMenu {
-                                Button(role: .destructive) { library.toggleCategoryHidden(c) } label: {
-                                    Label("Kategoriyi Gizle", systemImage: "eye.slash")
+                    if poster {
+                        chip("Tüm Türler", on: genre == nil) { genre = nil }
+                        ForEach(genreChips, id: \.self) { g in chip(g, on: genre == g) { genre = g } }
+                    } else {
+                        chip("Tümü", on: category == nil) { category = nil }
+                        ForEach(categories, id: \.self) { c in
+                            chip(c, on: category == c) { category = c }
+                                .contextMenu {
+                                    Button(role: .destructive) { library.toggleCategoryHidden(c) } label: {
+                                        Label("Kategoriyi Gizle", systemImage: "eye.slash")
+                                    }
                                 }
-                            }
+                        }
                     }
                 }
                 .padding(.horizontal, SGMetric.gutter).padding(.vertical, 10)

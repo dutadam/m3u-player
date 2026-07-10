@@ -17,17 +17,40 @@ struct GuideView: View {
         return base.filter { $0.name.localizedCaseInsensitiveContains(query) }
     }
 
+    /// Kategoriye göre bölümlenmiş (sıra korunur).
+    private var sections: [(name: String, channels: [Channel])] {
+        var order: [String] = []; var map: [String: [Channel]] = [:]
+        for ch in channels {
+            if map[ch.group] == nil { order.append(ch.group) }
+            map[ch.group, default: []].append(ch)
+        }
+        return order.map { ($0, map[$0] ?? []) }
+    }
+
     // NavigationStack'sız — çağıran (Canlı sekmesi) push eder.
     var body: some View {
         ScrollView {
-            LazyVStack(spacing: 0) {
+            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
                 if channels.isEmpty {
                     Text("Kanal bulunamadı").font(.subheadline)
                         .foregroundStyle(Color.sgDim).padding(.top, 40)
                 } else {
-                    ForEach(channels) { ch in
-                        GuideRow(channel: ch, onPlay: { selected = ch }, onPrograms: { programsFor = ch })
-                        Divider().overlay(Color.sgLineSoft)
+                    ForEach(sections, id: \.name) { section in
+                        Section {
+                            ForEach(section.channels) { ch in
+                                GuideRow(channel: ch, onPlay: { selected = ch }, onPrograms: { programsFor = ch })
+                                Divider().overlay(Color.sgLineSoft)
+                            }
+                        } header: {
+                            HStack {
+                                Text(section.name).font(.system(size: 13, weight: .heavy))
+                                    .foregroundStyle(Color.sgAccent2)
+                                Spacer()
+                                Text("\(section.channels.count)").font(.caption).foregroundStyle(Color.sgMute)
+                            }
+                            .padding(.horizontal, SGMetric.gutter).padding(.vertical, 7)
+                            .background(Color.sgGround)
+                        }
                     }
                 }
             }
