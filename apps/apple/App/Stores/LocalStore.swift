@@ -1,5 +1,6 @@
 import Foundation
 import Core
+import CryptoKit
 
 /// Basit Codable kalıcılık (favoriler, son izlenenler, ilerleme, playlist meta).
 /// Kimlik bilgisi HARİÇ her şey burada; kimlik bilgisi Keychain'de (bkz. KeychainStore).
@@ -86,6 +87,18 @@ enum AppSettings {
     static var subtitleBackground: Bool {     // yarı saydam arka plan kutusu
         get { LocalStore.load(Bool.self, key: "cheesino.subBg") ?? false }
         set { LocalStore.save(newValue, key: "cheesino.subBg") }
+    }
+
+    // Ebeveyn kilidi — PIN SHA256 olarak saklanır (düz metin değil)
+    private static var parentalPINHash: String {
+        get { LocalStore.load(String.self, key: "cheesino.pin") ?? "" }
+        set { LocalStore.save(newValue, key: "cheesino.pin") }
+    }
+    static var parentalEnabled: Bool { !parentalPINHash.isEmpty }
+    static func setPIN(_ pin: String) { parentalPINHash = pin.isEmpty ? "" : sha(pin) }
+    static func verifyPIN(_ pin: String) -> Bool { parentalEnabled && sha(pin) == parentalPINHash }
+    private static func sha(_ s: String) -> String {
+        SHA256.hash(data: Data(s.utf8)).map { String(format: "%02x", $0) }.joined()
     }
 }
 

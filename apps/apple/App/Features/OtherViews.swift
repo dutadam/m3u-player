@@ -257,7 +257,7 @@ struct SeriesTabView: View {
 
     private func rebuild() {
         var d: [String: [SeriesRef]] = [:]
-        for s in library.series where !library.isCategoryHidden(s.group) { d[s.group, default: []].append(s) }
+        for s in library.visibleSeries where !library.isCategoryHidden(s.group) { d[s.group, default: []].append(s) }
         cats = d.keys.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
         byCat = d
     }
@@ -290,7 +290,7 @@ struct SearchView: View {
     }
     private var seriesResults: [SeriesRef] {
         guard scope == .all || scope == .series, !trimmed.isEmpty else { return [] }
-        return library.series.filter {
+        return library.visibleSeries.filter {
             !library.isCategoryHidden($0.group) && $0.name.localizedCaseInsensitiveContains(trimmed)
         }
     }

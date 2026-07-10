@@ -71,6 +71,10 @@ struct SettingsView: View {
     @State private var showSignOut = false
     @State private var cacheCleared = false
     @State private var autoRefresh = AppSettings.autoRefresh
+    @State private var showSetPIN = false
+    @State private var showUnlock = false
+    @State private var showRemovePIN = false
+    @State private var pinInput = ""
 
     private var appVersion: String {
         let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0"
@@ -126,6 +130,19 @@ struct SettingsView: View {
                 }
             }
 
+            Section {
+                if AppSettings.parentalEnabled {
+                    Button(library.adultUnlocked ? "Yetişkin içeriği gizle" : "Yetişkin içeriği göster") {
+                        if library.adultUnlocked { library.adultUnlocked = false } else { pinInput = ""; showUnlock = true }
+                    }
+                    Button(role: .destructive) { pinInput = ""; showRemovePIN = true } label: { Text("PIN'i Kaldır") }
+                } else {
+                    Button("Ebeveyn Kilidi PIN'i Oluştur") { pinInput = ""; showSetPIN = true }
+                }
+            } header: { Text("Ebeveyn Kilidi") } footer: {
+                Text("+18 / XXX kategorileri PIN arkasına gizlenir. Uygulama her açıldığında yeniden kilitlenir.")
+            }
+
             if !library.reminders.isEmpty {
                 Section("Hatırlatıcılar (\(library.reminders.count))") {
                     ForEach(library.reminders.values.sorted { $0.start < $1.start }) { r in
@@ -159,6 +176,21 @@ struct SettingsView: View {
         .confirmationDialog("Tüm kaynaklar ve kimlik bilgileri silinsin mi?",
                             isPresented: $showSignOut, titleVisibility: .visible) {
             Button("Tümünü Sıfırla", role: .destructive) { library.signOut() }
+            Button("Vazgeç", role: .cancel) {}
+        }
+        .alert("PIN Oluştur", isPresented: $showSetPIN) {
+            SecureField("4+ haneli PIN", text: $pinInput)
+            Button("Kaydet") { if pinInput.count >= 4 { AppSettings.setPIN(pinInput); library.adultUnlocked = false } }
+            Button("Vazgeç", role: .cancel) {}
+        } message: { Text("Yetişkin içeriği bu PIN ile açılır.") }
+        .alert("PIN Gir", isPresented: $showUnlock) {
+            SecureField("PIN", text: $pinInput)
+            Button("Aç") { library.adultUnlocked = AppSettings.verifyPIN(pinInput) }
+            Button("Vazgeç", role: .cancel) {}
+        }
+        .alert("PIN'i Kaldır", isPresented: $showRemovePIN) {
+            SecureField("PIN", text: $pinInput)
+            Button("Kaldır", role: .destructive) { if AppSettings.verifyPIN(pinInput) { AppSettings.setPIN(""); library.adultUnlocked = true } }
             Button("Vazgeç", role: .cancel) {}
         }
     }

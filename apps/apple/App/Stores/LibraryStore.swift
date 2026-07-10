@@ -122,8 +122,20 @@ final class LibraryStore: ObservableObject {
 
     // MARK: - Kategori gizleme (Xtream'den gelenler dahil)
     var allCategories: [String] { Set(channels.map(\.group) + series.map(\.group)).sorted() }
-    var visibleLive: [Channel] { live.filter { !hiddenCategories.contains($0.group) } }
-    var visibleMovies: [Channel] { movies.filter { !hiddenCategories.contains($0.group) } }
+    var visibleLive: [Channel] { live.filter { !hiddenCategories.contains($0.group) && adultAllowed($0.group) } }
+    var visibleMovies: [Channel] { movies.filter { !hiddenCategories.contains($0.group) && adultAllowed($0.group) } }
+    /// Yetişkin kilidi hariç görünür diziler.
+    var visibleSeries: [SeriesRef] { series.filter { adultAllowed($0.group) } }
+
+    // MARK: - Ebeveyn kilidi (yetişkin içerik)
+    @Published var adultUnlocked = false
+    func isAdultGroup(_ g: String) -> Bool {
+        let l = g.lowercased()
+        return ["xxx", "adult", "+18", "18+", "erotik", "erotic", "porn", "yetişkin", "yetiskin"].contains { l.contains($0) }
+    }
+    private func adultAllowed(_ g: String) -> Bool {
+        !AppSettings.parentalEnabled || adultUnlocked || !isAdultGroup(g)
+    }
 
     // MARK: - Ana sayfa listeleri — görselsizleri gizle + isim tekrarını (farklı kategoriler) ele
     /// Ana sayfada gösterilecek film listesi: yalnız görselli, isme göre tekilleştirilmiş.
@@ -137,7 +149,7 @@ final class LibraryStore: ObservableObject {
     /// Ana sayfa dizileri — görselli + isim tekilleştirmeli (yeni bölüm eklense bile tek poster).
     var homeSeries: [SeriesRef] {
         var seen = Set<String>(); var out: [SeriesRef] = []
-        for s in series where s.cover != nil {
+        for s in visibleSeries where s.cover != nil {
             if seen.insert(s.name.lowercased()).inserted { out.append(s) }
         }
         return out
