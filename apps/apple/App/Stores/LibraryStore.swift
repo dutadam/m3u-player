@@ -52,10 +52,10 @@ final class LibraryStore: ObservableObject {
         playlists = LocalStore.load([PlaylistMeta].self, key: LocalStore.Key.playlists) ?? []
         activePlaylistId = LocalStore.load(String.self, key: LocalStore.Key.activePlaylist)
         migrateLegacyIfNeeded()
-        // Aktif kaynak varsa açılışta onboarding yerine yükleme ekranı göster (flaşı önle).
-        if activePlaylist != nil { isLoading = true }
-        // iCloud: başka cihazdan gelen durumu birleştir + değişiklikleri dinle.
+        // iCloud: başka cihazdan gelen durumu (playlist listesi dahil) birleştir + dinle.
         mergeFromCloud()
+        // Aktif kaynak varsa (yerel veya iCloud'dan gelen) açılışta yükleme ekranı göster (flaşı önle).
+        if activePlaylist != nil { isLoading = true }
         cloudObserver = CloudStore.startObserving { [weak self] in
             Task { @MainActor in self?.mergeFromCloud() }
         }
@@ -88,6 +88,19 @@ final class LibraryStore: ObservableObject {
         LocalStore.save(dislikes, key: LocalStore.Key.dislikes)
         CloudStore.save(likes, key: LocalStore.Key.likes)
         CloudStore.save(dislikes, key: LocalStore.Key.dislikes)
+
+        // Playlist listesi (id ile birleşim; şifreler senkronlanmaz — Keychain cihazda kalır).
+        if let cpl = CloudStore.load([PlaylistMeta].self, key: LocalStore.Key.playlists) {
+            var byId = Dictionary(playlists.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+            for p in cpl where byId[p.id] == nil { byId[p.id] = p }
+            playlists = byId.values.sorted { $0.createdAt < $1.createdAt }
+        }
+        if activePlaylistId == nil,
+           let ca = CloudStore.load(String.self, key: LocalStore.Key.activePlaylist), !ca.isEmpty,
+           playlists.contains(where: { $0.id == ca }) {
+            activePlaylistId = ca
+        }
+        persistPlaylists()
         // Birleşmiş sonucu geri yaz (yerel + bulut).
         LocalStore.save(favorites, key: LocalStore.Key.favorites)
         LocalStore.save(recents, key: LocalStore.Key.recents)
@@ -173,11 +186,32 @@ final class LibraryStore: ObservableObject {
     // MARK: - Playlist yönetimi
     private func persistPlaylists() {
         LocalStore.save(playlists, key: LocalStore.Key.playlists)
-        if let a = activePlaylistId { LocalStore.save(a, key: LocalStore.Key.activePlaylist) }
+        CloudStore.save(playlists, key: LocalStore.Key.playlists)   // liste cihazlar arası (şifresiz)
+        if let a = activePlaylistId {
+            LocalStore.save(a, key: LocalStore.Key.activePlaylist)
+            CloudStore.save(a, key: LocalStore.Key.activePlaylist)
+        }
     }
     private func setActive(_ id: String?) {
         activePlaylistId = id
-        if let id { LocalStore.save(id, key: LocalStore.Key.activePlaylist) }
+        if let id {
+            LocalStore.save(id, key: LocalStore.Key.activePlaylist)
+            CloudStore.save(id, key: LocalStore.Key.activePlaylist)
+        }
+    }
+
+    /// Bu kaynak için cihazda kimlik bilgisi yok mu (başka cihazdan senkronlanmış Xtream)?
+    func needsAuth(_ pl: PlaylistMeta) -> Bool {
+        pl.kind == .xtream && KeychainStore.load(id: pl.id) == nil
+    }
+
+    /// Senkronlanmış Xtream kaynağı için yalnız şifre girip yeniden yetkilendir.
+    func reauth(_ id: String, password: String) async {
+        guard let pl = playlists.first(where: { $0.id == id }), pl.kind == .xtream,
+              let server = pl.server.flatMap({ URL(string: $0) }), let user = pl.username else { return }
+        let creds = XtreamCredentials(server: server, username: user, password: password)
+        KeychainStore.save(creds, id: id)
+        if activePlaylistId == id { await loadXtream(creds, id: id, background: false) }
     }
 
     /// Yeni Xtream kaynağı ekle ve aktif yap.
@@ -222,6 +256,7 @@ final class LibraryStore: ObservableObject {
         KeychainStore.clear(id: id)
         ContentCache.clear(id: id)
         LocalStore.save(playlists, key: LocalStore.Key.playlists)
+        CloudStore.save(playlists, key: LocalStore.Key.playlists)
         if activePlaylistId == id {
             if let next = playlists.first?.id { await switchTo(next) }
             else { setActive(nil); LocalStore.save("", key: LocalStore.Key.activePlaylist)
@@ -437,6 +472,8 @@ final class LibraryStore: ObservableObject {
         playlists = []; setActive(nil)
         LocalStore.save([PlaylistMeta](), key: LocalStore.Key.playlists)
         LocalStore.save("", key: LocalStore.Key.activePlaylist)
+        CloudStore.save([PlaylistMeta](), key: LocalStore.Key.playlists)
+        CloudStore.save("", key: LocalStore.Key.activePlaylist)
         channels = []; series = []; epg = nil; xtreamClient = nil; lastUpdated = nil
     }
 

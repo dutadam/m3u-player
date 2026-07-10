@@ -170,6 +170,8 @@ struct PlaylistsView: View {
     @State private var showAdd = false
     @State private var renaming: PlaylistMeta?
     @State private var newName = ""
+    @State private var authFor: PlaylistMeta?
+    @State private var authPass = ""
 
     var body: some View {
         List {
@@ -178,16 +180,22 @@ struct PlaylistsView: View {
                     Text("Kayıtlı kaynak yok").foregroundStyle(Color.sgMute)
                 }
                 ForEach(library.playlists) { pl in
-                    Button { Task { await library.switchTo(pl.id) } } label: {
+                    let needsAuth = library.needsAuth(pl)
+                    Button {
+                        if needsAuth { authFor = pl; authPass = "" } else { Task { await library.switchTo(pl.id) } }
+                    } label: {
                         HStack(spacing: 12) {
                             Image(systemName: pl.kind == .xtream ? "server.rack" : "list.bullet.rectangle")
                                 .foregroundStyle(Color.sgAccent2).frame(width: 24)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(pl.name).foregroundStyle(Color.sgText).lineLimit(1)
-                                Text(pl.subtitle).font(.caption).foregroundStyle(Color.sgMute).lineLimit(1)
+                                Text(needsAuth ? "Giriş gerekli" : pl.subtitle)
+                                    .font(.caption).foregroundStyle(needsAuth ? Color.sgWarn : Color.sgMute).lineLimit(1)
                             }
                             Spacer()
-                            if pl.id == library.activePlaylistId {
+                            if needsAuth {
+                                Image(systemName: "lock.fill").foregroundStyle(Color.sgWarn)
+                            } else if pl.id == library.activePlaylistId {
                                 Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.sgAccent)
                             }
                         }
@@ -199,6 +207,8 @@ struct PlaylistsView: View {
                         Button { renaming = pl; newName = pl.name } label: { Label("Ad", systemImage: "pencil") }.tint(.gray)
                     }
                 }
+            } footer: {
+                Text("Kaynak listen iCloud ile cihazlarında eşitlenir. Güvenlik için şifreler eşitlenmez — başka cihazda bir kez giriş yapman gerekir.")
             }
             Section {
                 Button { showAdd = true } label: { Label("Kaynak Ekle", systemImage: "plus.circle.fill") }
@@ -216,6 +226,13 @@ struct PlaylistsView: View {
             TextField("Ad", text: $newName)
             Button("Kaydet") { if let r = renaming { library.renamePlaylist(r.id, name: newName) }; renaming = nil }
             Button("Vazgeç", role: .cancel) { renaming = nil }
+        }
+        .alert("Giriş — \(authFor?.name ?? "")", isPresented: Binding(get: { authFor != nil }, set: { if !$0 { authFor = nil } })) {
+            SecureField("Şifre", text: $authPass)
+            Button("Bağlan") { if let a = authFor { Task { await library.reauth(a.id, password: authPass) } }; authFor = nil }
+            Button("Vazgeç", role: .cancel) { authFor = nil }
+        } message: {
+            Text(authFor.map { "\($0.username ?? "") · \(URL(string: $0.server ?? "")?.host ?? "")" } ?? "")
         }
     }
 }
