@@ -213,8 +213,9 @@ struct MoviesView: View {
     private func rebuild() {
         var d: [String: [Channel]] = [:]
         for m in library.visibleMovies { d[m.group, default: []].append(m) }
-        for k in d.keys { d[k]?.sort { ($0.added ?? .distantPast) > ($1.added ?? .distantPast) } }
-        cats = d.keys.sorted { (d[$0]?.first?.added ?? .distantPast) > (d[$1]?.first?.added ?? .distantPast) }
+        // Her kategori: beğeni + tür afinitesi + yenilik karışık sıralama
+        for k in d.keys { d[k] = library.feedSorted(d[k] ?? []) }
+        cats = d.keys.sorted { (d[$0]?.count ?? 0) > (d[$1]?.count ?? 0) }
         byCat = d
     }
 }

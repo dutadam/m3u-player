@@ -379,6 +379,8 @@ final class LibraryStore: ObservableObject {
     }
 
     private var genreMemo: [String: Set<String>] = [:]   // url → türler (performans)
+    /// Süreç-bağımsız stabil hash (String.hashValue her açılışta değişir; günlük serpme için).
+    private func stableHash(_ s: String) -> Int { s.unicodeScalars.reduce(5381) { ($0 &* 33) &+ Int($1.value) } }
 
     /// Bir içeriğin türleri — gerçek genre (varsa) → yoksa kategori/isim çıkarımı. Memoize'li.
     func genres(for ch: Channel) -> Set<String> {
@@ -440,18 +442,41 @@ final class LibraryStore: ObservableObject {
             .sorted { ($0.added ?? .distantPast) > ($1.added ?? .distantPast) }).prefix(limit).map { $0 }
     }
 
+    /// Feed sıralaması — beğeni + tür afinitesi + yenilik karışımı ("son eklenen + beğeniler").
+    private func recencyScore(_ ch: Channel) -> Double {
+        guard let d = ch.added else { return 0 }
+        let days = max(0, -d.timeIntervalSinceNow / 86_400)
+        return max(0, 10 - days / 9)     // son ~90 günde 0..10, en yeni en yüksek
+    }
+    func feedSorted(_ movies: [Channel]) -> [Channel] {
+        let aff = genreAffinity()
+        func score(_ ch: Channel) -> Double {
+            var s = recencyScore(ch)
+            if isLiked(ch.url.absoluteString) { s += 15 }
+            if isDisliked(ch.url.absoluteString) { s -= 20 }
+            let g = genres(for: ch)
+            if !g.isEmpty { s += (g.reduce(0.0) { $0 + max(0, aff[$1] ?? 0) } / Double(g.count)) * 3 }
+            return s
+        }
+        return movies.sorted { score($0) > score($1) }
+    }
+
     /// "Sana Özel" — ağırlıklı tür skoru + çeşitlilik serpiştirme; izlenmiş/beğenilmeyen hariç.
     var recommendedMovies: [Channel] {
         let aff = genreAffinity()
         guard aff.contains(where: { $0.value > 0 }) else { return [] }
 
+        let day = Calendar.current.ordinality(of: .day, in: .era, for: Date()) ?? 0
         struct Scored { let ch: Channel; let score: Double; let genres: Set<String>; let primary: String }
         var scored: [Scored] = visibleMovies
             .filter { !isDisliked($0.url.absoluteString) && !isWatched($0.url.absoluteString) }
             .compactMap { ch in
                 let gs = genres(for: ch)
-                let s = gs.reduce(0.0) { $0 + max(0, aff[$1] ?? 0) }
-                guard s > 0 else { return nil }
+                let base = gs.reduce(0.0) { $0 + max(0, aff[$1] ?? 0) }
+                guard base > 0 else { return nil }
+                // yenilik + günlük stabil serpme (her gün biraz farklı öne çıksın)
+                let jitter = Double((stableHash(ch.id) &+ day) % 7) * 0.15
+                let s = base + recencyScore(ch) * 0.3 + jitter
                 let primary = gs.max { (aff[$0] ?? 0) < (aff[$1] ?? 0) } ?? ""
                 return Scored(ch: ch, score: s, genres: gs, primary: primary)
             }
