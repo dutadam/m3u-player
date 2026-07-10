@@ -1,6 +1,7 @@
 import SwiftUI
 import AVKit
 import AVFoundation
+import CoreMedia
 import MediaPlayer
 import Core
 import Design
@@ -44,6 +45,9 @@ struct PlayerView: View {
     @State private var userPaused = false
     @State private var subDelay: Double = 0        // altyazı senkron (ms)
     @State private var audioDelay: Double = 0       // ses senkron (ms)
+    @State private var subSizeSel = AppSettings.subtitleSize
+    @State private var subColorSel = AppSettings.subtitleColor
+    @State private var subBgSel = AppSettings.subtitleBackground
     // Jestler
     @State private var seekFlash = 0               // -1 sol, +1 sağ, 0 yok
     @State private var hud: GestureHUD?
@@ -422,6 +426,7 @@ struct PlayerView: View {
         }
         let item = AVPlayerItem(asset: asset)
         player.replaceCurrentItem(with: item)
+        applyAVSubtitleStyle()
         attemptStart = Date()
         player.play(); isPlaying = true
         showControls()
@@ -593,6 +598,8 @@ struct PlayerView: View {
                     if subs.isEmpty { Text("Altyazı yok").foregroundStyle(Color.sgMute) }
                     ForEach(subs) { trackRow($0) }
                 }
+                // Altyazı stili (her iki motor)
+                Section("Altyazı Stili") { subtitleStyleControls }
                 // Senkron gecikmeleri — yalnız VLC motorunda (AVPlayer desteklemez)
                 if activeEngine == .vlcKit {
                     Section("Senkron") {
@@ -604,6 +611,37 @@ struct PlayerView: View {
             .navigationTitle("Ses & Altyazı")
             .toolbar { Button("Bitti") { showTracks = false } }
         }
+    }
+
+    @ViewBuilder private var subtitleStyleControls: some View {
+        Picker("Boyut", selection: $subSizeSel) {
+            Text("Küçük").tag(0); Text("Orta").tag(1); Text("Büyük").tag(2); Text("Çok Büyük").tag(3)
+        }.onChange(of: subSizeSel) { AppSettings.subtitleSize = $0; applySubtitleStyleLive() }
+        Picker("Renk", selection: $subColorSel) {
+            Text("Beyaz").tag(0xFFFFFF); Text("Sarı").tag(0xFFD200)
+            Text("Yeşil").tag(0x00E676); Text("Camgöbeği").tag(0x00E5FF)
+        }.onChange(of: subColorSel) { AppSettings.subtitleColor = $0; applySubtitleStyleLive() }
+        Toggle("Arka plan kutusu", isOn: $subBgSel)
+            .onChange(of: subBgSel) { AppSettings.subtitleBackground = $0; applySubtitleStyleLive() }
+    }
+
+    /// AVPlayer altyazı stili (boyut/renk/arka plan) — AppSettings'ten.
+    private func applyAVSubtitleStyle() {
+        guard let item = player.currentItem else { return }
+        var attrs: [String: Any] = [:]
+        let relFont = [70, 100, 135, 175][min(3, max(0, AppSettings.subtitleSize))]
+        attrs[kCMTextMarkupAttribute_RelativeFontSize as String] = relFont
+        let c = AppSettings.subtitleColor
+        let r = Double((c >> 16) & 0xFF) / 255, g = Double((c >> 8) & 0xFF) / 255, b = Double(c & 0xFF) / 255
+        attrs[kCMTextMarkupAttribute_ForegroundColorARGB as String] = [1.0, r, g, b]
+        if AppSettings.subtitleBackground {
+            attrs[kCMTextMarkupAttribute_BackgroundColorARGB as String] = [0.65, 0.0, 0.0, 0.0]
+        }
+        if let rule = AVTextStyleRule(textMarkupAttributes: attrs) { item.textStyleRules = [rule] }
+    }
+
+    private func applySubtitleStyleLive() {
+        if activeEngine == .vlcKit { vlc.applySubtitleStyle() } else { applyAVSubtitleStyle() }
     }
 
     /// Senkron gecikme satırı — ±5 sn, 50 ms adım, sıfırlama.

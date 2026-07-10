@@ -73,6 +73,20 @@ enum AppSettings {
         get { LocalStore.load(Bool.self, key: "cheesino.autoRefresh") ?? true }
         set { LocalStore.save(newValue, key: "cheesino.autoRefresh") }
     }
+
+    // Altyazı stili
+    static var subtitleSize: Int {            // 0 Küçük · 1 Orta · 2 Büyük · 3 Çok Büyük
+        get { LocalStore.load(Int.self, key: "cheesino.subSize") ?? 1 }
+        set { LocalStore.save(newValue, key: "cheesino.subSize") }
+    }
+    static var subtitleColor: Int {           // 0xRRGGBB
+        get { LocalStore.load(Int.self, key: "cheesino.subColor") ?? 0xFFFFFF }
+        set { LocalStore.save(newValue, key: "cheesino.subColor") }
+    }
+    static var subtitleBackground: Bool {     // yarı saydam arka plan kutusu
+        get { LocalStore.load(Bool.self, key: "cheesino.subBg") ?? false }
+        set { LocalStore.save(newValue, key: "cheesino.subBg") }
+    }
 }
 
 /// İçerik önbelleği — kanal/dizi anlık görüntüsü (dosya tabanlı; UserDefaults için fazla büyük).

@@ -35,11 +35,22 @@ final class VLCController: ObservableObject {
         player.play()
     }
 
-    /// Özel User-Agent varsa VLCMedia'ya http-user-agent option'ı ekle.
+    /// Özel User-Agent + altyazı stil option'larını VLCMedia'ya ekle.
     private static func makeMedia(_ url: URL) -> VLCMedia {
         let media = VLCMedia(url: url)
         let ua = AppSettings.userAgent.trimmingCharacters(in: .whitespaces)
         if !ua.isEmpty { media.addOption(":http-user-agent=\(ua)") }
+        // Altyazı stili (freetype). rel-fontsize küçüldükçe yazı büyür.
+        let relSize = [24, 18, 14, 10][min(3, max(0, AppSettings.subtitleSize))]
+        media.addOption(":freetype-rel-fontsize=\(relSize)")
+        media.addOption(":freetype-color=\(AppSettings.subtitleColor)")
+        media.addOption(":freetype-outline-thickness=4")
+        if AppSettings.subtitleBackground {
+            media.addOption(":freetype-background-opacity=160")
+            media.addOption(":freetype-background-color=0")
+        } else {
+            media.addOption(":freetype-background-opacity=0")
+        }
         return media
     }
     var isPlaying: Bool { player.isPlaying }
@@ -60,6 +71,19 @@ final class VLCController: ObservableObject {
     // Senkron gecikmeleri (VLC µs cinsinden tutar; UI ms kullanır)
     func setSubtitleDelay(ms: Double) { player.currentVideoSubTitleDelay = Int(ms * 1000) }
     func setAudioDelay(ms: Double) { player.currentAudioPlaybackDelay = Int(ms * 1000) }
+
+    /// Altyazı stili değişince: aynı medyayı yeni option'larla konumdan yeniden yükle.
+    func applySubtitleStyle() {
+        guard let url = player.media?.url else { return }
+        let t = player.time
+        let sub = player.currentVideoSubTitleIndex
+        player.media = Self.makeMedia(url)
+        player.play()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+            self?.player.time = t
+            self?.player.currentVideoSubTitleIndex = sub
+        }
+    }
 
     // Seek / süre (VOD)
     var position: Double { Double(player.position) }                     // 0..1
@@ -112,6 +136,7 @@ final class VLCController: ObservableObject {
     func setSubtitle(_ id: Int) {}
     func setSubtitleDelay(ms: Double) {}
     func setAudioDelay(ms: Double) {}
+    func applySubtitleStyle() {}
     var position: Double { 0 }
     var lengthSeconds: Double { 0 }
     var timeSeconds: Double { 0 }
