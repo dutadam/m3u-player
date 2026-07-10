@@ -10,6 +10,8 @@ final class LibraryStore: ObservableObject {
     @Published var series: [SeriesRef] = []
     @Published var epg: EPGIndex?
     @Published var isLoading = false
+    @Published var isRefreshing = false          // arka plan yenileme (bloklamaz)
+    @Published private(set) var lastUpdated: Date?
     @Published var errorMessage: String?
 
     // Kullanıcı durumu (kalıcı)
@@ -38,6 +40,8 @@ final class LibraryStore: ObservableObject {
         seriesResume = LocalStore.load([String: SeriesResume].self, key: LocalStore.Key.seriesResume) ?? [:]
         reminders = LocalStore.load([String: Reminder].self, key: LocalStore.Key.reminders) ?? [:]
         hiddenCategories = LocalStore.load(Set<String>.self, key: "cheesino.hiddenCats") ?? []
+        // Kayıtlı kaynak varsa açılışta onboarding yerine yükleme ekranı göster (flaşı önle).
+        if KeychainStore.load() != nil { isLoading = true }
         // iCloud: başka cihazdan gelen durumu birleştir + değişiklikleri dinle.
         mergeFromCloud()
         cloudObserver = CloudStore.startObserving { [weak self] in
@@ -114,9 +118,26 @@ final class LibraryStore: ObservableObject {
         Dictionary(grouping: channels, by: \.group)
     }
 
-    /// Açılışta kayıtlı Xtream kimlik bilgisiyle otomatik geri yükleme.
+    /// Açılışta: önce diske cache'lenmiş içeriği anında göster, sonra (ayar açıksa) arka planda yenile.
+    /// Cache yoksa bloklayan tam yükleme yapılır.
     func restoreLastSession() async {
-        if let creds = KeychainStore.load() { await loadXtream(creds) }
+        guard let creds = KeychainStore.load() else { isLoading = false; return }
+        // Cache'i arka thread'de çöz (binlerce kanalın decode'u ana thread'i kilitlemesin).
+        let snap = await Task.detached(priority: .userInitiated) { ContentCache.load() }.value
+        if let snap, !snap.channels.isEmpty {
+            channels = snap.channels
+            series = snap.series
+            lastUpdated = snap.savedAt
+            isLoading = false
+            if AppSettings.autoRefresh { await loadXtream(creds, background: true) }
+        } else {
+            await loadXtream(creds)
+        }
+    }
+
+    /// Manuel yenileme (pull-to-refresh / buton).
+    func refresh() async {
+        if let creds = KeychainStore.load() { await loadXtream(creds, background: true) }
     }
 
     // MARK: - Favoriler / son izlenenler / ilerleme
@@ -213,9 +234,11 @@ final class LibraryStore: ObservableObject {
     // MARK: - Xtream
     private(set) var xtreamClient: XtreamClient?
 
-    func loadXtream(_ creds: XtreamCredentials) async {
-        isLoading = true; errorMessage = nil
-        defer { isLoading = false }
+    /// background=true → mevcut içerik ekranda kalır, yalnız isRefreshing yanar; başarıda değiştirilir.
+    func loadXtream(_ creds: XtreamCredentials, background: Bool = false) async {
+        if background { isRefreshing = true } else { isLoading = true }
+        errorMessage = nil
+        defer { if background { isRefreshing = false } else { isLoading = false } }
         let client = XtreamClient(creds: creds, session: session)
         xtreamClient = client
         do {
@@ -233,15 +256,19 @@ final class LibraryStore: ObservableObject {
             KeychainStore.save(creds)            // başarılı giriş → kimlik bilgisini şifreli sakla
 
             // Dizi listesi (bölümler lazy — detayda get_series_info ile çekilir).
+            var refs: [SeriesRef] = []
             if let sList = try? await client.seriesList() {
                 let cats = (try? await client.seriesCategories()) ?? []
                 let catMap = Dictionary(cats.map { ($0.categoryId, $0.categoryName) }, uniquingKeysWith: { a, _ in a })
-                series = sList.map {
+                refs = sList.map {
                     SeriesRef(id: $0.seriesId.value, name: $0.name,
                               cover: $0.cover.flatMap { URL(string: $0) },
                               genre: $0.genre, group: catMap[$0.categoryId ?? ""] ?? "Diziler")
                 }
+                series = refs
             }
+            lastUpdated = Date()
+            ContentCache.save(channels: all, series: refs)   // sonraki açılış için anlık görüntü
             await loadEPG(from: client.xmltvURL)
         } catch {
             errorMessage = "Xtream girişi başarısız — sunucu/kullanıcı/şifreyi kontrol edin."
@@ -251,7 +278,8 @@ final class LibraryStore: ObservableObject {
     /// Kaydedilmiş kaynağı ve kimlik bilgisini temizle (çıkış).
     func signOut() {
         KeychainStore.clear()
-        channels = []; series = []; epg = nil; xtreamClient = nil
+        ContentCache.clear()
+        channels = []; series = []; epg = nil; xtreamClient = nil; lastUpdated = nil
     }
 
     // MARK: - Ayarlar: User-Agent + önbellek
@@ -264,9 +292,10 @@ final class LibraryStore: ObservableObject {
         if let creds = KeychainStore.load() { await loadXtream(creds) }
     }
 
-    /// Görsel/HTTP önbelleğini temizler.
+    /// Görsel/HTTP önbelleğini + içerik anlık görüntüsünü temizler.
     func clearCache() {
         URLCache.shared.removeAllCachedResponses()
+        ContentCache.clear()
     }
 
     // MARK: - Program hatırlatıcıları (yerel bildirim)

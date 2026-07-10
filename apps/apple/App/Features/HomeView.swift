@@ -13,6 +13,13 @@ struct HomeView: View {
         NavigationStack {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 22) {
+                    if library.isRefreshing {
+                        HStack(spacing: 8) {
+                            ProgressView().scaleEffect(0.8)
+                            Text("İçerik yenileniyor…").font(.caption).foregroundStyle(Color.sgDim)
+                        }
+                        .frame(maxWidth: .infinity).padding(.vertical, 4)
+                    }
                     if !heroItems.isEmpty {
                         HeroCarousel(items: heroItems) { selected = $0 }
                     }
@@ -50,7 +57,13 @@ struct HomeView: View {
             }
             .background(Color.sgGround)
             .navigationBarTitleDisplayMode(.inline)
+            .refreshable { await library.refresh() }
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { Task { await library.refresh() } } label: {
+                        Image(systemName: "arrow.clockwise").font(.system(size: 15, weight: .semibold))
+                    }.disabled(library.isRefreshing)
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showLibrary = true } label: {
                         Image(systemName: "line.3.horizontal").font(.system(size: 16, weight: .semibold))

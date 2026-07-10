@@ -44,6 +44,38 @@ enum AppSettings {
         let ua = userAgent.trimmingCharacters(in: .whitespaces)
         return ua.isEmpty ? nil : ["User-Agent": ua]
     }
+    /// Açılışta içeriği otomatik yenile (varsayılan açık).
+    static var autoRefresh: Bool {
+        get { LocalStore.load(Bool.self, key: "cheesino.autoRefresh") ?? true }
+        set { LocalStore.save(newValue, key: "cheesino.autoRefresh") }
+    }
+}
+
+/// İçerik önbelleği — kanal/dizi anlık görüntüsü (dosya tabanlı; UserDefaults için fazla büyük).
+/// Açılışta anında göster, arka planda yenile.
+enum ContentCache {
+    struct Snapshot: Codable { var channels: [Channel]; var series: [SeriesRef]; var savedAt: Date }
+
+    private static var fileURL: URL {
+        let dir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+        return dir.appendingPathComponent("cheesino-content.json")
+    }
+
+    /// Arka planda kaydet (binlerce kanalın encode'u ana thread'i kilitlemesin).
+    static func save(channels: [Channel], series: [SeriesRef]) {
+        let snap = Snapshot(channels: channels, series: series, savedAt: Date())
+        let url = fileURL
+        Task.detached(priority: .utility) {
+            if let data = try? JSONEncoder().encode(snap) { try? data.write(to: url, options: .atomic) }
+        }
+    }
+
+    static func load() -> Snapshot? {
+        guard let data = try? Data(contentsOf: fileURL) else { return nil }
+        return try? JSONDecoder().decode(Snapshot.self, from: data)
+    }
+
+    static func clear() { try? FileManager.default.removeItem(at: fileURL) }
 }
 
 /// Dizi "kaldığın yerden devam" — dizi başına son izlenen bölüm.

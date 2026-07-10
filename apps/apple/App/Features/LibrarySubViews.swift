@@ -70,6 +70,7 @@ struct SettingsView: View {
     @State private var userAgent = ""
     @State private var showSignOut = false
     @State private var cacheCleared = false
+    @State private var autoRefresh = AppSettings.autoRefresh
 
     private var appVersion: String {
         let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0"
@@ -79,6 +80,23 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            Section {
+                Toggle("Açılışta otomatik yenile", isOn: $autoRefresh)
+                    .onChange(of: autoRefresh) { AppSettings.autoRefresh = $0 }
+                Button {
+                    Task { await library.refresh() }
+                } label: {
+                    HStack {
+                        Label("İçeriği Şimdi Yenile", systemImage: "arrow.clockwise")
+                        if library.isRefreshing { Spacer(); ProgressView() }
+                    }
+                }.disabled(library.isRefreshing)
+            } header: { Text("İçerik") } footer: {
+                if let d = library.lastUpdated {
+                    Text("Son güncelleme: \(d.formatted(date: .abbreviated, time: .shortened))")
+                }
+            }
+
             Section("EPG (TV Rehberi)") {
                 TextField("XMLTV URL (opsiyonel)", text: $epgURL)
                     #if !os(tvOS)

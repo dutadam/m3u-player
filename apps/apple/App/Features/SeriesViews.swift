@@ -3,7 +3,7 @@ import Core
 import Design
 
 /// Xtream dizi referansı (liste öğesi). Bölümler detayda get_series_info ile lazy çekilir.
-struct SeriesRef: Identifiable, Hashable {
+struct SeriesRef: Identifiable, Hashable, Codable {
     let id: Int
     let name: String
     let cover: URL?
