@@ -28,7 +28,10 @@ struct OnboardingView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text(Brand.name).font(.system(size: 15, weight: .heavy)).foregroundStyle(Color.sgAccent2)
+                HStack(spacing: 10) {
+                    BrandMark(size: 44)
+                    Text(Brand.name).font(.system(size: 22, weight: .heavy)).foregroundStyle(Color.sgText)
+                }
                 Text("Kaynağını ekle,\nizlemeye başla")
                     .font(.system(size: 28, weight: .heavy)).foregroundStyle(Color.sgText)
                 Text("Xtream Codes, M3U bağlantısı veya dosya. Hiçbir kanal uygulamada gömülü değil — kendi aboneliğini getirirsin.")

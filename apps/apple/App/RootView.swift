@@ -32,19 +32,73 @@ struct RootView: View {
 
 /// Markalı yükleme ekranı (açılışta kaynak geri yüklenirken).
 struct LoadingView: View {
+    var caption: String = "cheesino yükleniyor…"
+    var body: some View {
+        BrandLoader(size: 108, caption: caption)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.sgGround.ignoresSafeArea())
+    }
+}
+
+// MARK: - Marka bileşenleri
+
+/// cheesino logo işareti (asset: BrandMark, template render → istenen renk + glow).
+struct BrandMark: View {
+    var size: CGFloat = 72
+    var color: Color = .sgAccent
+    var glow: Bool = true
+    var body: some View {
+        Image("BrandMark")
+            .renderingMode(.template)
+            .resizable().scaledToFit()
+            .foregroundStyle(color)
+            .frame(width: size, height: size)
+            .shadow(color: glow ? color.opacity(0.5) : .clear, radius: glow ? size * 0.18 : 0)
+    }
+}
+
+/// Markalı yükleme animasyonu — logo alttan üste marka gradyanıyla "dolar" + glow nabzı.
+/// Dizi/film/kanal yüklenirken kullanılır. Tek giriş noktası: ileride Lottie/Rive eklenirse
+/// (MobileVLCKit gibi SPM ile) `#if canImport(Lottie)` dalında buraya LottieView takılabilir;
+/// aşağıdaki native animasyon güvenli fallback olarak kalır.
+struct BrandLoader: View {
+    var size: CGFloat = 96
+    var caption: String? = nil
+    @State private var fill: CGFloat = 0
+    @State private var glow = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         VStack(spacing: 16) {
-            RoundedRectangle(cornerRadius: 18)
-                .fill(LinearGradient(colors: [Color(hex: 0x1E2A42), Color.sgSurface],
-                                     startPoint: .topLeading, endPoint: .bottomTrailing))
-                .frame(width: 72, height: 72)
-                .overlay(Image(systemName: "play.rectangle.fill").font(.system(size: 30)).foregroundStyle(Color.sgAccent))
-                .shadow(color: Color.sgAccent.opacity(0.35), radius: 20)
-            ProgressView().tint(Color.sgAccent)
-            Text("cheesino yükleniyor…").font(.caption).foregroundStyle(Color.sgDim)
+            ZStack {
+                // Sönük taban (logo silüeti)
+                Image("BrandMark").renderingMode(.template).resizable().scaledToFit()
+                    .foregroundStyle(.white.opacity(0.10))
+                // Dolan marka gradyanı — alttan üste maske
+                Image("BrandMark").renderingMode(.template).resizable().scaledToFit()
+                    .foregroundStyle(LinearGradient(colors: [Color.sgGold, Color.sgAccent],
+                                                    startPoint: .bottom, endPoint: .top))
+                    .mask(alignment: .bottom) {
+                        GeometryReader { g in
+                            Rectangle()
+                                .frame(height: g.size.height * fill)
+                                .frame(maxHeight: .infinity, alignment: .bottom)
+                        }
+                    }
+            }
+            .frame(width: size, height: size)
+            .shadow(color: Color.sgAccent.opacity(glow ? 0.55 : 0.18), radius: glow ? size * 0.28 : size * 0.12)
+            if let caption {
+                Text(caption).font(.caption).foregroundStyle(Color.sgDim)
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.sgGround.ignoresSafeArea())
+        .onAppear(perform: animate)
+    }
+
+    private func animate() {
+        if reduceMotion { fill = 1; return }
+        withAnimation(.easeInOut(duration: 1.15).repeatForever(autoreverses: true)) { fill = 1 }
+        withAnimation(.easeInOut(duration: 1.15).repeatForever(autoreverses: true)) { glow = true }
     }
 }
 

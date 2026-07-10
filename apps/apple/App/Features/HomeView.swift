@@ -64,6 +64,9 @@ struct HomeView: View {
                         Image(systemName: "arrow.clockwise").font(.system(size: 15, weight: .semibold))
                     }.disabled(library.isRefreshing)
                 }
+                ToolbarItem(placement: .principal) {
+                    BrandMark(size: 26, glow: false)
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showLibrary = true } label: {
                         Image(systemName: "line.3.horizontal").font(.system(size: 16, weight: .semibold))

@@ -24,7 +24,7 @@ struct MovieDetailView: View {
                     playButton
                     metaChips
                     if loading {
-                        ProgressView().frame(maxWidth: .infinity).padding(.top, 8)
+                        BrandLoader(size: 56).frame(maxWidth: .infinity).padding(.top, 8)
                     }
                     if let plot = detail?.plot {
                         Text(plot).font(.callout).foregroundStyle(Color.sgText).lineSpacing(3)
