@@ -34,6 +34,7 @@ struct LiveView: View {
                 switch dest {
                 case .guide: GuideView()
                 case .multi: MultiView()
+                case .sports: SportsView()
                 case .category(let c): CategoryBrowseView(title: c, channels: library.live.filter { $0.group == c })
                 }
             }
@@ -45,12 +46,15 @@ struct LiveView: View {
     }
 
     private var actionRow: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
             NavigationLink(value: LiveDest.guide) {
-                LiveActionCard(title: "Rehber", subtitle: "TV yayın akışı", icon: "rectangle.grid.1x2.fill")
+                LiveActionCard(title: "Rehber", subtitle: "Yayın akışı", icon: "rectangle.grid.1x2.fill")
+            }.buttonStyle(PressableStyle())
+            NavigationLink(value: LiveDest.sports) {
+                LiveActionCard(title: "Spor", subtitle: "Maç merkezi", icon: "sportscourt.fill")
             }.buttonStyle(PressableStyle())
             NavigationLink(value: LiveDest.multi) {
-                LiveActionCard(title: "Çoklu Ekran", subtitle: "6 yayına kadar", icon: "square.grid.2x2.fill")
+                LiveActionCard(title: "Çoklu", subtitle: "6 ekran", icon: "square.grid.2x2.fill")
             }.buttonStyle(PressableStyle())
         }
         .padding(.horizontal, SGMetric.gutter)
@@ -88,7 +92,143 @@ struct LiveView: View {
 }
 
 /// Canlı ekranı navigasyon hedefleri.
-enum LiveDest: Hashable { case guide, multi, category(String) }
+enum LiveDest: Hashable { case guide, multi, sports, category(String) }
+
+/// Spor merkezi (MVP) — spor kanalları + EPG'den bugünün maç/programları; tür filtresi.
+struct SportsView: View {
+    @EnvironmentObject private var library: LibraryStore
+    @State private var type: String?          // nil = Tümü
+    @State private var selected: Channel?
+
+    struct Fixture: Identifiable { let id = UUID(); let channel: Channel; let entry: EpgEntry }
+
+    // Spor tür anahtarları (kanal adı/kategoriden çıkarım)
+    private static let types: [(name: String, keys: [String])] = [
+        ("Futbol", ["futbol", "football", "soccer", "bein sports", "s sport", "tivibu spor", "premier", "la liga", "süper lig"]),
+        ("Basketbol", ["basket", "nba", "euroleague"]),
+        ("Tenis", ["tenis", "tennis"]),
+        ("Voleybol", ["voleybol", "volley"]),
+        ("Motor", ["motor", "formula", "f1", "moto", "nascar", "race"]),
+        ("Dövüş", ["boks", "boxing", "ufc", "mma", "güreş", "wrestling", "dövüş"])
+    ]
+    private func typeOf(_ ch: Channel) -> String? {
+        let t = (ch.name + " " + ch.group).lowercased()
+        return Self.types.first { $0.keys.contains(where: t.contains) }?.name
+    }
+
+    private var sportChannels: [Channel] {
+        library.visibleLive.filter { $0.group.localizedCaseInsensitiveContains("spor")
+            || $0.group.localizedCaseInsensitiveContains("sport") }
+    }
+    private var typeChips: [String] {
+        Array(Set(sportChannels.compactMap(typeOf))).sorted()
+    }
+    private var filteredChannels: [Channel] {
+        guard let type else { return sportChannels }
+        return sportChannels.filter { typeOf($0) == type }
+    }
+    private var fixtures: [Fixture] {
+        guard let epg = library.epg else { return [] }
+        let cal = Calendar.current; let now = Date()
+        var out: [Fixture] = []
+        for ch in filteredChannels {
+            for e in epg.entries(for: ch)
+            where cal.isDateInToday(e.start) && e.stop > now.addingTimeInterval(-1800) {
+                out.append(Fixture(channel: ch, entry: e))
+            }
+        }
+        return out.sorted { $0.entry.start < $1.entry.start }
+    }
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 14) {
+                if !typeChips.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            chip("Tümü", on: type == nil) { type = nil }
+                            ForEach(typeChips, id: \.self) { t in chip(t, on: type == t) { type = t } }
+                        }.padding(.horizontal, SGMetric.gutter)
+                    }
+                }
+
+                if fixtures.isEmpty {
+                    // EPG yoksa: sadece spor kanalları rayı
+                    if filteredChannels.isEmpty {
+                        empty("Spor kanalı bulunamadı")
+                    } else {
+                        Text("Spor Kanalları").font(.headline).foregroundStyle(Color.sgText)
+                            .padding(.horizontal, SGMetric.gutter)
+                        channelRail(filteredChannels)
+                        Text("Program bilgisi (EPG) yoksa maç akışı görünmez.").font(.caption)
+                            .foregroundStyle(Color.sgDim).padding(.horizontal, SGMetric.gutter)
+                    }
+                } else {
+                    let live = fixtures.filter { $0.entry.isLiveNow }
+                    if !live.isEmpty {
+                        Text("Şimdi Canlı").font(.headline).foregroundStyle(Color.sgText)
+                            .padding(.horizontal, SGMetric.gutter)
+                        ForEach(live) { fixtureRow($0) }
+                    }
+                    Text("Bugün").font(.headline).foregroundStyle(Color.sgText)
+                        .padding(.horizontal, SGMetric.gutter).padding(.top, 4)
+                    ForEach(fixtures.filter { !$0.entry.isLiveNow }) { fixtureRow($0) }
+                }
+            }
+            .padding(.vertical, 10)
+        }
+        .background(Color.sgGround)
+        .navigationTitle("Spor")
+        .fullScreenCover(item: $selected) { PlayerView(channel: $0) }
+    }
+
+    private func fixtureRow(_ f: Fixture) -> some View {
+        Button { selected = f.channel } label: {
+            HStack(spacing: 12) {
+                VStack(spacing: 2) {
+                    Text(Self.hm.string(from: f.entry.start)).font(.system(size: 13, weight: .heavy)).monospacedDigit()
+                    if f.entry.isLiveNow { Text("CANLI").font(.system(size: 8, weight: .heavy)).foregroundStyle(Color.sgLive) }
+                }.frame(width: 46)
+                Rectangle().fill(f.entry.isLiveNow ? Color.sgLive : Color.sgLineSoft).frame(width: 2, height: 34)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(f.entry.title).font(.system(size: 14, weight: .semibold)).foregroundStyle(Color.sgText).lineLimit(1)
+                    Text(f.channel.name).font(.caption).foregroundStyle(Color.sgMute).lineLimit(1)
+                }
+                Spacer()
+                Image(systemName: "play.circle.fill").font(.system(size: 22)).foregroundStyle(Color.sgAccent)
+            }
+            .padding(.horizontal, SGMetric.gutter).padding(.vertical, 7)
+        }.buttonStyle(PressableStyle())
+    }
+
+    private func channelRail(_ chans: [Channel]) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 11) {
+                ForEach(chans) { ch in
+                    Button { selected = ch } label: { ChannelCard(channel: ch) }.buttonStyle(PressableStyle())
+                }
+            }.padding(.horizontal, SGMetric.gutter)
+        }
+    }
+
+    private func chip(_ label: String, on: Bool, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label).font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(on ? Color.white : Color.sgDim)
+                .padding(.horizontal, 14).padding(.vertical, 8)
+                .background(on ? Color.sgAccent : Color.sgSurface, in: Capsule())
+        }.buttonStyle(.plain)
+    }
+    private func empty(_ t: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: "sportscourt").font(.largeTitle).foregroundStyle(Color.sgMute)
+            Text(t).font(.subheadline).foregroundStyle(Color.sgDim)
+        }.frame(maxWidth: .infinity).padding(.top, 50)
+    }
+    private static let hm: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "HH:mm"; f.locale = Locale(identifier: "tr_TR"); return f
+    }()
+}
 
 /// Benzer kanal grubu (aynı base ad, farklı kalite varyantları).
 struct ChannelGroup: Identifiable, Hashable {
