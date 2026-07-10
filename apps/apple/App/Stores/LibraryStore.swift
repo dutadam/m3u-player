@@ -6,7 +6,7 @@ import UserNotifications
 /// Faz 1 iskelet: yükleme + EPG indeksleme + türe göre bölütleme.
 @MainActor
 final class LibraryStore: ObservableObject {
-    @Published var channels: [Channel] = []
+    @Published var channels: [Channel] = [] { didSet { genreMemo.removeAll() } }
     @Published var series: [SeriesRef] = []
     @Published var epg: EPGIndex?
     @Published var isLoading = false
@@ -23,6 +23,7 @@ final class LibraryStore: ObservableObject {
     @Published private(set) var reminders: [String: Reminder] = [:]
     @Published private(set) var likes: Set<String> = []
     @Published private(set) var dislikes: Set<String> = []
+    @Published private(set) var movieGenres: [String: String] = [:]   // url → gerçek genre (detaydan)
 
     // Çoklu kaynak (playlist)
     @Published private(set) var playlists: [PlaylistMeta] = []
@@ -48,6 +49,7 @@ final class LibraryStore: ObservableObject {
         reminders = LocalStore.load([String: Reminder].self, key: LocalStore.Key.reminders) ?? [:]
         likes = LocalStore.load(Set<String>.self, key: LocalStore.Key.likes) ?? []
         dislikes = LocalStore.load(Set<String>.self, key: LocalStore.Key.dislikes) ?? []
+        movieGenres = LocalStore.load([String: String].self, key: "cheesino.movieGenres") ?? [:]
         hiddenCategories = LocalStore.load(Set<String>.self, key: "cheesino.hiddenCats") ?? []
         playlists = LocalStore.load([PlaylistMeta].self, key: LocalStore.Key.playlists) ?? []
         activePlaylistId = LocalStore.load(String.self, key: LocalStore.Key.activePlaylist)
@@ -240,6 +242,7 @@ final class LibraryStore: ObservableObject {
         guard id != activePlaylistId, playlists.contains(where: { $0.id == id }) else { return }
         setActive(id); persistPlaylists()
         channels = []; series = []; epg = nil; lastUpdated = nil; errorMessage = nil
+        genreMemo.removeAll()
         isLoading = true
         await restoreLastSession()
     }
@@ -349,31 +352,109 @@ final class LibraryStore: ObservableObject {
         CloudStore.save(dislikes, key: LocalStore.Key.dislikes)
     }
 
-    /// Kategori/tür afinitesi — izleme geçmişi + beğeniler (öneri sinyali).
-    func categoryAffinity() -> [String: Double] {
-        var score: [String: Double] = [:]
-        for r in recents { if let ch = channel(forURL: r.url) { score[ch.group, default: 0] += 1 } }
-        for (url, p) in progress where p.fraction > 0.1 {
-            if let ch = channel(forURL: url) { score[ch.group, default: 0] += min(1.5, p.fraction * 1.5) }
+    /// Film detayından gelen gerçek genre'yi cache'le (öneri motorunu zenginleştirir).
+    func noteMovieGenre(key: String, genre: String?) {
+        guard let g = genre?.trimmingCharacters(in: .whitespaces), !g.isEmpty, movieGenres[key] != g else { return }
+        movieGenres[key] = g
+        genreMemo[key] = nil        // gerçek genre geldi → yeniden hesapla
+        LocalStore.save(movieGenres, key: "cheesino.movieGenres")
+    }
+
+    private var genreMemo: [String: Set<String>] = [:]   // url → türler (performans)
+
+    /// Bir içeriğin türleri — gerçek genre (varsa) → yoksa kategori/isim çıkarımı. Memoize'li.
+    func genres(for ch: Channel) -> Set<String> {
+        let key = ch.url.absoluteString
+        if let m = genreMemo[key] { return m }
+        let result: Set<String>
+        if ch.kind == .vod, let real = movieGenres[key], !GenreTagger.tags(real).isEmpty {
+            result = GenreTagger.tags(real)
+        } else {
+            result = GenreTagger.tags(fields: [ch.group, ch.name])
         }
-        for key in likes { if let ch = channel(forURL: key) { score[ch.group, default: 0] += 3 } }
-        for key in dislikes { if let ch = channel(forURL: key) { score[ch.group, default: 0] -= 3 } }
-        for key in likes where key.hasPrefix("series_") {
-            if let id = Int(key.replacingOccurrences(of: "series_", with: "")),
-               let s = series.first(where: { $0.id == id }) { score[s.group, default: 0] += 3 }
+        genreMemo[key] = result
+        return result
+    }
+    private func genres(forSeries s: SeriesRef) -> Set<String> {
+        GenreTagger.tags(fields: [s.genre, s.group, s.name])
+    }
+
+    /// Zaman çürümesi — 21 günde yarıya iner (yeni izlenen daha ağırlıklı).
+    private func decayWeight(_ date: Date, halflifeDays: Double = 21) -> Double {
+        let days = max(0, -date.timeIntervalSinceNow / 86_400)
+        return pow(0.5, days / halflifeDays)
+    }
+
+    /// Ağırlıklı tür afinitesi — zaman çürümeli geçmiş + tamamlanma + beğeniler.
+    func genreAffinity() -> [String: Double] {
+        var score: [String: Double] = [:]
+        func add(_ gs: Set<String>, _ w: Double) {
+            guard !gs.isEmpty, w != 0 else { return }
+            let per = w / Double(gs.count)               // çok-türlü içerik tek türü domine etmesin
+            for g in gs { score[g, default: 0] += per }
+        }
+        for r in recents { if let ch = channel(forURL: r.url) { add(genres(for: ch), decayWeight(r.watchedAt)) } }
+        for (url, p) in progress where p.fraction > 0.1 {
+            if let ch = channel(forURL: url) { add(genres(for: ch), (0.5 + p.fraction) * decayWeight(p.updatedAt)) }
+        }
+        for key in likes {
+            if let ch = channel(forURL: key) { add(genres(for: ch), 3) }
+            else if key.hasPrefix("series_"), let id = Int(key.dropFirst(7)),
+                    let s = series.first(where: { $0.id == id }) { add(genres(forSeries: s), 3) }
+        }
+        for key in dislikes {
+            if let ch = channel(forURL: key) { add(genres(for: ch), -4) }
+            else if key.hasPrefix("series_"), let id = Int(key.dropFirst(7)),
+                    let s = series.first(where: { $0.id == id }) { add(genres(forSeries: s), -4) }
         }
         return score
     }
 
-    /// "Sana Özel" film önerileri — kategori afinitesine göre; izlenmiş/beğenilmeyen hariç.
+    /// Kullanıcının en sevdiği türler (pozitif afinite).
+    var topGenres: [String] {
+        genreAffinity().filter { $0.value > 0 }.sorted { $0.value > $1.value }.map { $0.key }
+    }
+
+    /// Bir türdeki filmler (en yeni önce) — "Çünkü X seversin" rayı için.
+    func moviesInGenre(_ genre: String, limit: Int = 30) -> [Channel] {
+        visibleMovies
+            .filter { !isDisliked($0.url.absoluteString) && genres(for: $0).contains(genre) }
+            .sorted { ($0.added ?? .distantPast) > ($1.added ?? .distantPast) }
+            .prefix(limit).map { $0 }
+    }
+
+    /// "Sana Özel" — ağırlıklı tür skoru + çeşitlilik serpiştirme; izlenmiş/beğenilmeyen hariç.
     var recommendedMovies: [Channel] {
-        let aff = categoryAffinity()
-        guard aff.values.contains(where: { $0 > 0 }) else { return [] }
-        return visibleMovies
+        let aff = genreAffinity()
+        guard aff.contains(where: { $0.value > 0 }) else { return [] }
+
+        struct Scored { let ch: Channel; let score: Double; let genres: Set<String>; let primary: String }
+        var scored: [Scored] = visibleMovies
             .filter { !isDisliked($0.url.absoluteString) && !isWatched($0.url.absoluteString) }
-            .compactMap { ch -> (Channel, Double)? in let s = aff[ch.group] ?? 0; return s > 0 ? (ch, s) : nil }
-            .sorted { $0.1 > $1.1 }
-            .prefix(30).map { $0.0 }
+            .compactMap { ch in
+                let gs = genres(for: ch)
+                let s = gs.reduce(0.0) { $0 + max(0, aff[$1] ?? 0) }
+                guard s > 0 else { return nil }
+                let primary = gs.max { (aff[$0] ?? 0) < (aff[$1] ?? 0) } ?? ""
+                return Scored(ch: ch, score: s, genres: gs, primary: primary)
+            }
+        scored.sort { $0.score > $1.score }
+
+        // Çeşitlilik: tür başına kota + aynı türü art arda sınırlama.
+        var result: [Channel] = []
+        var used: [String: Int] = [:]
+        var deferred: [Scored] = []
+        let maxPerGenre = 6
+        for item in scored {
+            if (used[item.primary] ?? 0) >= maxPerGenre { deferred.append(item); continue }
+            if result.count >= 2, result.suffix(2).allSatisfy({ genres(for: $0).contains(item.primary) }) {
+                deferred.append(item); continue      // art arda 3. aynı tür → ertele
+            }
+            result.append(item.ch); used[item.primary, default: 0] += 1
+            if result.count >= 30 { break }
+        }
+        if result.count < 30 { result += deferred.prefix(30 - result.count).map { $0.ch } }
+        return result
     }
 
     // MARK: - Dizi devam etme (seriesId → son bölüm)
@@ -444,6 +525,7 @@ final class LibraryStore: ObservableObject {
 
             guard !all.isEmpty else { errorMessage = "Sunucuda kanal bulunamadı."; return }
             channels = all
+            genreMemo.removeAll()
 
             // Dizi listesi (bölümler lazy — detayda get_series_info ile çekilir).
             var refs: [SeriesRef] = []

@@ -33,6 +33,13 @@ struct HomeView: View {
                     if !library.recommendedMovies.isEmpty {
                         MovieRail(title: "Sana Özel", movies: library.recommendedMovies)
                     }
+                    // Tür bazlı öneri rayları — "Çünkü Aksiyon seversin"
+                    ForEach(Array(library.topGenres.prefix(2)), id: \.self) { g in
+                        let items = library.moviesInGenre(g)
+                        if items.count >= 4 {
+                            MovieRail(title: "Çünkü \(g) seversin", movies: items)
+                        }
+                    }
 
                     // Net içerik ayrımı (gizli kategoriler hariç)
                     let sports = library.visibleLive.filter { $0.group.localizedCaseInsensitiveContains("spor") }

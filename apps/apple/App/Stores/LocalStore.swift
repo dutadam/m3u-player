@@ -109,6 +109,43 @@ enum ContentCache {
     }
 }
 
+/// Tür etiketleyici — kategori/isim/genre metninden kanonik tür(ler) çıkarır (TR + EN eş anlamlı).
+/// Öneri motoru için: gerçek genre yoksa kategori/isimden çıkarım yapılır.
+enum GenreTagger {
+    static let map: [String: [String]] = [
+        "Aksiyon": ["aksiyon", "action", "dövüş", "dovus"],
+        "Komedi": ["komedi", "comedy"],
+        "Dram": ["dram", "drama"],
+        "Korku": ["korku", "horror"],
+        "Bilim Kurgu": ["bilim kurgu", "bilimkurgu", "sci-fi", "scifi", "science fiction"],
+        "Gerilim": ["gerilim", "thriller"],
+        "Romantik": ["romantik", "romance", "romantic", "aşk", "ask "],
+        "Animasyon": ["animasyon", "animation", "anime", "çizgi", "cizgi", "cartoon"],
+        "Belgesel": ["belgesel", "documentary", "docu"],
+        "Macera": ["macera", "adventure"],
+        "Fantastik": ["fantastik", "fantezi", "fantasy"],
+        "Suç": ["suç", "suc ", "crime", "mafya", "gangster"],
+        "Aile": ["aile", "family", "çocuk", "cocuk", "kids"],
+        "Savaş": ["savaş", "savas", " war "],
+        "Western": ["western", "kovboy"],
+        "Tarih": ["tarih", "history", "historical"],
+        "Gizem": ["gizem", "mystery"],
+        "Müzik": ["müzik", "muzik", "musical"],
+        "Spor": ["spor", "sport"]
+    ]
+    static func tags(_ text: String) -> Set<String> {
+        let t = " " + text.lowercased() + " "
+        var out = Set<String>()
+        for (canon, keys) in map where keys.contains(where: { t.contains($0) }) { out.insert(canon) }
+        return out
+    }
+    static func tags(fields: [String?]) -> Set<String> {
+        var out = Set<String>()
+        for f in fields.compactMap({ $0 }) { out.formUnion(tags(f)) }
+        return out
+    }
+}
+
 /// Dizi "kaldığın yerden devam" — dizi başına son izlenen bölüm.
 struct SeriesResume: Codable, Hashable {
     var seriesId: String

@@ -42,6 +42,7 @@ struct MovieDetailView: View {
         .navigationTitle(channel.name).navigationBarTitleDisplayModeInlineIfAvailable()
         .task {
             if let id = vodId { detail = await library.loadMovieDetail(vodId: id) }
+            library.noteMovieGenre(key: channel.url.absoluteString, genre: detail?.genre)
             loading = false
         }
         .fullScreenCover(isPresented: $playing) { PlayerView(channel: channel) }
