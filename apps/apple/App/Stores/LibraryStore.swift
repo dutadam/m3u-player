@@ -125,21 +125,39 @@ final class LibraryStore: ObservableObject {
     var visibleLive: [Channel] { live.filter { !hiddenCategories.contains($0.group) } }
     var visibleMovies: [Channel] { movies.filter { !hiddenCategories.contains($0.group) } }
 
+    // MARK: - Ana sayfa listeleri — görselsizleri gizle + isim tekrarını (farklı kategoriler) ele
+    /// Ana sayfada gösterilecek film listesi: yalnız görselli, isme göre tekilleştirilmiş.
+    func homeList(_ movies: [Channel]) -> [Channel] {
+        var seen = Set<String>(); var out: [Channel] = []
+        for c in movies where c.logo != nil {
+            if seen.insert(c.name.lowercased()).inserted { out.append(c) }
+        }
+        return out
+    }
+    /// Ana sayfa dizileri — görselli + isim tekilleştirmeli (yeni bölüm eklense bile tek poster).
+    var homeSeries: [SeriesRef] {
+        var seen = Set<String>(); var out: [SeriesRef] = []
+        for s in series where s.cover != nil {
+            if seen.insert(s.name.lowercased()).inserted { out.append(s) }
+        }
+        return out
+    }
+
     // MARK: - Akıllı kategoriler (metadata'dan üretilen sistem kategorileri)
     /// Son Eklenenler — eklenme tarihine göre (metadata `added`).
     var recentlyAddedMovies: [Channel] {
-        visibleMovies.filter { $0.added != nil }.sorted { ($0.added ?? .distantPast) > ($1.added ?? .distantPast) }
+        homeList(visibleMovies.filter { $0.added != nil }.sorted { ($0.added ?? .distantPast) > ($1.added ?? .distantPast) })
     }
     /// IMDb/Yüksek Puanlı — 7.5+ puan, puana göre.
     var topRatedMovies: [Channel] {
-        visibleMovies.filter { ($0.rating ?? 0) >= 7.5 }.sorted { ($0.rating ?? 0) > ($1.rating ?? 0) }
+        homeList(visibleMovies.filter { ($0.rating ?? 0) >= 7.5 }.sorted { ($0.rating ?? 0) > ($1.rating ?? 0) })
     }
     /// Kült & Klasik — kategori adında "kült/klasik/classic" geçenler.
     var cultClassicMovies: [Channel] {
-        visibleMovies.filter { c in
+        homeList(visibleMovies.filter { c in
             let g = c.group.lowercased()
             return g.contains("kült") || g.contains("kult") || g.contains("klasik") || g.contains("classic")
-        }
+        })
     }
     func isCategoryHidden(_ g: String) -> Bool { hiddenCategories.contains(g) }
     func toggleCategoryHidden(_ g: String) {
@@ -417,10 +435,9 @@ final class LibraryStore: ObservableObject {
 
     /// Bir türdeki filmler (en yeni önce) — "Çünkü X seversin" rayı için.
     func moviesInGenre(_ genre: String, limit: Int = 30) -> [Channel] {
-        visibleMovies
+        homeList(visibleMovies
             .filter { !isDisliked($0.url.absoluteString) && genres(for: $0).contains(genre) }
-            .sorted { ($0.added ?? .distantPast) > ($1.added ?? .distantPast) }
-            .prefix(limit).map { $0 }
+            .sorted { ($0.added ?? .distantPast) > ($1.added ?? .distantPast) }).prefix(limit).map { $0 }
     }
 
     /// "Sana Özel" — ağırlıklı tür skoru + çeşitlilik serpiştirme; izlenmiş/beğenilmeyen hariç.
@@ -454,7 +471,7 @@ final class LibraryStore: ObservableObject {
             if result.count >= 30 { break }
         }
         if result.count < 30 { result += deferred.prefix(30 - result.count).map { $0.ch } }
-        return result
+        return homeList(result)
     }
 
     // MARK: - Dizi devam etme (seriesId → son bölüm)

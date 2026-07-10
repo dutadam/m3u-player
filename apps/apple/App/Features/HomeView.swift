@@ -41,14 +41,7 @@ struct HomeView: View {
                         }
                     }
 
-                    // Net içerik ayrımı (gizli kategoriler hariç)
-                    let sports = library.visibleLive.filter { $0.group.localizedCaseInsensitiveContains("spor") }
-                    if !sports.isEmpty { ChannelRail(title: "Canlı · Spor", channels: sports) { selected = $0 } }
-                    if !library.visibleLive.isEmpty {
-                        ChannelRail(title: "Canlı TV", channels: Array(library.visibleLive.prefix(20))) { selected = $0 }
-                    }
-
-                    // Akıllı film kategorileri (metadata'dan üretilen)
+                    // Akıllı film kategorileri (Canlı TV rayları menüde/Canlı sekmesinde)
                     if !library.recentlyAddedMovies.isEmpty {
                         MovieRail(title: "Son Eklenenler", movies: library.recentlyAddedMovies)
                     }
@@ -58,10 +51,11 @@ struct HomeView: View {
                     if !library.cultClassicMovies.isEmpty {
                         MovieRail(title: "Kült & Klasik", movies: library.cultClassicMovies)
                     }
-                    if !library.visibleMovies.isEmpty {
-                        MovieRail(title: "Filmler", movies: library.visibleMovies)
+                    let allMovies = library.homeList(library.visibleMovies)
+                    if !allMovies.isEmpty {
+                        MovieRail(title: "Filmler", movies: allMovies)
                     }
-                    if !library.series.isEmpty { SeriesRailHome(series: library.series) }
+                    if !library.homeSeries.isEmpty { SeriesRailHome(series: library.homeSeries) }
                 }
                 .padding(.vertical, 8)
             }
@@ -182,7 +176,7 @@ struct HeroSlide: View {
     }
 }
 
-/// Büyük poster play-rayı — Devam Et / Favoriler (dokun → oynat, resume sorar).
+/// Devam Et / Favoriler rayı — kanallar logo kartı, film/dizi poster kartı (dokun → oynat).
 struct PosterPlayRail: View {
     @EnvironmentObject private var library: LibraryStore
     let title: String
@@ -193,13 +187,17 @@ struct PosterPlayRail: View {
             Text(title).font(.headline).foregroundStyle(Color.sgText)
                 .padding(.horizontal, SGMetric.gutter)
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 11) {
+                HStack(alignment: .top, spacing: 11) {
                     ForEach(channels.prefix(30)) { ch in
                         Button { onTap(ch) } label: {
-                            PosterCard(title: ch.name, poster: ch.logo,
-                                       watched: library.isWatched(ch.url.absoluteString),
-                                       progress: library.watchFraction(for: ch.url.absoluteString),
-                                       width: 120)
+                            if ch.kind == .live {
+                                ChannelCard(channel: ch)
+                            } else {
+                                PosterCard(title: ch.name, poster: ch.logo,
+                                           watched: library.isWatched(ch.url.absoluteString),
+                                           progress: library.watchFraction(for: ch.url.absoluteString),
+                                           width: 120)
+                            }
                         }.buttonStyle(PressableStyle())
                     }
                 }
