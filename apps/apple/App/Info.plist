@@ -46,9 +46,16 @@
     <string>audio</string>
   </array>
 
-  <!-- Yerel ağdaki portallar için (opsiyonel, iOS 14+ local network izni). -->
+  <!-- Yerel ağdaki portallar + Chromecast keşfi için (iOS 14+ local network izni). -->
   <key>NSLocalNetworkUsageDescription</key>
-  <string>Yerel ağdaki IPTV sunucularına bağlanmak için.</string>
+  <string>Yerel ağdaki IPTV sunucularına ve Chromecast cihazlarına bağlanmak için.</string>
+
+  <!-- Chromecast (Google Cast) cihaz keşfi. Varsayılan medya alıcısı: CC1AD845. -->
+  <key>NSBonjourServices</key>
+  <array>
+    <string>_googlecast._tcp</string>
+    <string>_CC1AD845._googlecast._tcp</string>
+  </array>
 
   <key>UILaunchScreen</key>
   <dict/>

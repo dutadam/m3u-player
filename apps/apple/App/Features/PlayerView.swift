@@ -5,6 +5,9 @@ import CoreMedia
 import MediaPlayer
 import Core
 import Design
+#if canImport(GoogleCast)
+import GoogleCast
+#endif
 
 /// Oynatıcı — kontrolsüz video katmanı + özel overlay. AVPlayer (HLS/MP4) + VLCKit fallback.
 /// Canlıda kanal ↑/↓, EPG "şimdi", AirPlay; VOD/dizide resume + ilerleme kaydı.
@@ -248,6 +251,14 @@ struct PlayerView: View {
                         }
                     }
                     #if os(iOS)
+                    if CastSupport.available {
+                        CastButton().frame(width: 40, height: 40)
+                        iconButton("tv.badge.wifi") {
+                            CastSupport.loadMedia(url: activeEngine == .vlcKit ? (vlcURL ?? current.url) : current.url,
+                                                  title: current.name)
+                            showControls()
+                        }
+                    }
                     AirPlayButton().frame(width: 40, height: 40)
                     #endif
                 }
@@ -738,4 +749,45 @@ final class SystemVolume {
         DispatchQueue.main.async { s?.value = max(0, min(1, v)) }
     }
 }
+
+// MARK: - Chromecast (Google Cast) — opsiyonel; SDK eklenince aktifleşir (VLCKit deseni).
+// Kurulum: Xcode → Add Package "https://github.com/…/GoogleCast" (veya CocoaPods) + Info.plist
+// (NSLocalNetworkUsageDescription + NSBonjourServices) + CheesinoApp'te CastSupport.start().
+#if canImport(GoogleCast)
+enum CastSupport {
+    static var available: Bool { true }
+    static func start() {
+        let criteria = GCKDiscoveryCriteria(applicationID: kGCKDefaultMediaReceiverApplicationID)
+        let options = GCKCastOptions(discoveryCriteria: criteria)
+        GCKCastContext.setSharedInstanceWith(options)
+    }
+    static var isConnected: Bool { GCKCastContext.sharedInstance().sessionManager.hasConnectedCastSession() }
+    static func loadMedia(url: URL, title: String) {
+        guard let client = GCKCastContext.sharedInstance().sessionManager.currentCastSession?.remoteMediaClient else { return }
+        let meta = GCKMediaMetadata()
+        meta.setString(title, forKey: kGCKMetadataKeyTitle)
+        let builder = GCKMediaInformationBuilder(contentURL: url)
+        builder.streamType = .buffered
+        builder.contentType = url.pathExtension.lowercased() == "m3u8" ? "application/x-mpegurl" : "video/mp4"
+        builder.metadata = meta
+        client.loadMedia(builder.build())
+    }
+}
+struct CastButton: UIViewRepresentable {
+    func makeUIView(context: Context) -> GCKUICastButton {
+        let b = GCKUICastButton(frame: CGRect(x: 0, y: 0, width: 40, height: 40))
+        b.tintColor = .white
+        return b
+    }
+    func updateUIView(_ uiView: GCKUICastButton, context: Context) {}
+}
+#else
+enum CastSupport {
+    static var available: Bool { false }
+    static func start() {}
+    static var isConnected: Bool { false }
+    static func loadMedia(url: URL, title: String) {}
+}
+struct CastButton: View { var body: some View { EmptyView() } }
+#endif
 #endif

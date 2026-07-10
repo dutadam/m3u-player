@@ -7,6 +7,9 @@ struct CheesinoApp: App {
 
     init() {
         DiagnosticsMonitor.shared.start()   // cihazda crash/hang teşhisi (telemetri yok)
+        #if os(iOS)
+        CastSupport.start()                 // Chromecast (SDK yoksa no-op)
+        #endif
     }
 
     var body: some Scene {

@@ -67,6 +67,20 @@ Uygulama VLCKit olmadan da derlenir/çalışır (AVPlayer ile HLS/MP4), ama Xtre
 > hatası veriyor. Xcode UI'dan eklemek en güvenli yol.
 > tvOS için TVVLCKit ayrıdır; şu an hedef **iOS-only**.
 
+## 6b. Chromecast (Google Cast — opsiyonel)
+Uygulama Cast SDK olmadan da derlenir (`#if canImport(GoogleCast)` seam; buton gizli).
+Eklemek istersen:
+1. Xcode → **File → Add Package Dependencies…** → `https://github.com/mozilla/GoogleCast-SPM`
+   (veya CocoaPods: `pod 'google-cast-sdk'`). Ürünü **Cheesino** hedefine ekle.
+2. Kod hazır: `CastSupport.start()` (CheesinoApp init'te) ve oynatıcıda **Cast butonu** otomatik görünür.
+3. `Info.plist` zaten hazır: `NSLocalNetworkUsageDescription` + `NSBonjourServices`
+   (`_googlecast._tcp`, `_CC1AD845._googlecast._tcp` — varsayılan medya alıcısı).
+4. Özel bir receiver app ID kullanacaksan `CastSupport.start()` içindeki `kGCKDefaultMediaReceiverApplicationID`
+   yerine kendi ID'ni yaz + Bonjour servisini güncelle.
+
+> Not: Cast, HLS/MP4 (AVPlayer içeriği) için sorunsuz; MKV/TS (VLC içeriği) Chromecast'te native oynamaz
+> (alıcı transcoding gerekir) — bu yüzden Cast en iyi HLS canlı/VOD ile çalışır.
+
 ## 7. Core birim testleri
 - Xcode: şema **Core** → **Cmd+U**. Veya terminal:
 ```bash
