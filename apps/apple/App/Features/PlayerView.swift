@@ -111,7 +111,12 @@ struct PlayerView: View {
             if let hud { gestureHUD(hud).allowsHitTesting(false) }
 
             if isBuffering && !showError && !reconnecting {
-                ProgressView().tint(.white).scaleEffect(1.4)
+                // Film/dizi başlamadan önce marka animasyonu (canlı hariç)
+                if !isLive && !didPlay {
+                    BrandLoader(size: 96)
+                } else {
+                    ProgressView().tint(.white).scaleEffect(1.4)
+                }
             }
 
             if reconnecting && !showError {
@@ -405,7 +410,7 @@ struct PlayerView: View {
         let c = candidates[index]
         activeEngine = VLCPlayerView.isAvailable ? c.engine : .avPlayer
         if activeEngine == .vlcKit {
-            vlcURL = c.url; isBuffering = false; isPlaying = true
+            vlcURL = c.url; attemptStart = Date(); isBuffering = true; isPlaying = false
             return
         }
         // Özel User-Agent varsa AVURLAsset başlığıyla ver.
@@ -524,7 +529,11 @@ struct PlayerView: View {
             isBuffering = reconnecting || (!vlc.isPlaying && !didPlay)
             isPlaying = vlc.isPlaying
             if vlc.audioTracks.isEmpty && vlc.isPlaying { vlc.refreshTracks() }   // track'ler oynama başlayınca gelir
+            if vlc.isPlaying, !isLive { saveProgress() }
             if isLive && frozen { reconnect() }
+            else if !didPlay && Date().timeIntervalSince(attemptStart) > 20 {
+                showError = true; isBuffering = false          // hiç başlamadı (ör. geçersiz catchup) → hata
+            }
             return
         }
         // Akış oynadıktan sonra kopan/donan canlı yayında yeniden bağlan; ilk bağlantıda aday-geçişi yap.
@@ -559,11 +568,12 @@ struct PlayerView: View {
         }
     }
     private func saveProgress() {
-        guard !isLive, let item = player.currentItem, item.duration.isNumeric else { return }
-        let pos = player.currentTime().seconds, dur = item.duration.seconds
-        if pos.isFinite, dur.isFinite {
-            library.saveProgress(url: current.url.absoluteString, position: pos, duration: dur)
-        }
+        guard !isLive else { return }
+        let pos: Double, dur: Double
+        if activeEngine == .vlcKit { pos = vlc.timeSeconds; dur = vlc.lengthSeconds }
+        else { pos = player.currentTime().seconds; dur = player.currentItem?.duration.seconds ?? 0 }
+        guard pos.isFinite, dur.isFinite, dur > 30, pos > 0 else { return }
+        library.saveProgress(url: current.url.absoluteString, position: pos, duration: dur)
     }
 
     // MARK: - Ses & Altyazı seçimi
