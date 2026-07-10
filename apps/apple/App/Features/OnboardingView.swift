@@ -27,87 +27,128 @@ struct OnboardingView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(spacing: 10) {
-                    BrandMark(size: 44)
-                    Text(Brand.name).font(.system(size: 22, weight: .heavy)).foregroundStyle(Color.sgText)
-                }
-                Text("Kaynağını ekle,\nizlemeye başla")
-                    .font(.system(size: 28, weight: .heavy)).foregroundStyle(Color.sgText)
-                Text("Xtream Codes, M3U bağlantısı veya dosya. Hiçbir kanal uygulamada gömülü değil — kendi aboneliğini getirirsin.")
-                    .font(.subheadline).foregroundStyle(Color.sgDim)
-
-                Picker("", selection: $tab) {
-                    ForEach(Tab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                }.segmentedOnIOS()
-
-                if tab != .discover { field("AD (opsiyonel)", text: $name) }
-
-                switch tab {
-                case .m3u:
-                    field("M3U URL", text: $m3uURL)
-                    connectButton("Yükle") {
-                        if let u = URL(string: m3uURL) { await library.addM3U(name: name, url: u) }
-                    }
-                case .xtream:
-                    field("SUNUCU", text: $server)
-                    field("KULLANICI ADI", text: $user)
-                    field("ŞİFRE", text: $pass, secure: true)
-                    connectButton("Bağlan") {
-                        if let s = XtreamCredentials.normalize(server) {
-                            await library.addXtream(name: name, creds: .init(server: s, username: user, password: pass))
-                        }
-                    }
-                case .file:
-                    #if os(iOS)
-                    Button { showFilePicker = true } label: {
-                        Label("M3U dosyası seç", systemImage: "doc.badge.plus")
-                            .font(.system(size: 14, weight: .semibold)).frame(maxWidth: .infinity)
-                            .padding(13)
-                            .background(Color.sgSurface, in: RoundedRectangle(cornerRadius: 12))
-                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.sgLine))
-                            .foregroundStyle(Color.sgText)
-                    }
-                    .sheet(isPresented: $showFilePicker) {
-                        DocumentPicker { text in library.addM3UFile(name: name, text: text); showFilePicker = false }
-                    }
-                    #else
-                    Text("Dosya seçimi iOS/iPadOS'ta desteklenir.").foregroundStyle(Color.sgDim)
-                    #endif
-                case .discover:
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("iptv-org — ücretsiz, yasal, topluluk kanalları. Kendi kaynağın olmadan hemen dene.")
-                            .font(.caption).foregroundStyle(Color.sgDim)
-                        ForEach(Self.discoverSources, id: \.code) { src in
-                            Button {
-                                if let u = URL(string: Self.iptvOrgURL(src.code)) { Task { await library.addM3U(name: "iptv-org · \(src.name)", url: u) } }
-                            } label: {
-                                HStack {
-                                    Text(src.flag).font(.title3)
-                                    Text(src.name).font(.system(size: 14, weight: .semibold)).foregroundStyle(Color.sgText)
-                                    Spacer()
-                                    Image(systemName: "arrow.down.circle").foregroundStyle(Color.sgAccent2)
-                                }
-                                .padding(12)
-                                .background(Color.sgSurface, in: RoundedRectangle(cornerRadius: 11))
-                                .overlay(RoundedRectangle(cornerRadius: 11).stroke(Color.sgLine))
-                            }.buttonStyle(.plain)
-                        }
-                    }
-                }
-
-                if let err = library.errorMessage {
-                    Text(err).font(.footnote).foregroundStyle(Color.sgLive)
-                }
-
-                Label("Kimlik bilgilerin cihazında Keychain ile şifreli saklanır. Sunucu yok, telemetri yok, üçüncü-parti proxy yok.",
-                      systemImage: "checkmark.shield.fill")
-                    .font(.caption).foregroundStyle(Color.sgDim)
-                    .padding(.top, 8)
+            VStack(spacing: 22) {
+                header
+                formCard
+                trustFooter
             }
-            .padding()
+            .padding(20)
+            .frame(maxWidth: 540)
+            .frame(maxWidth: .infinity)
         }
-        .background(Color.sgGround.ignoresSafeArea())
+        .background(backdrop)
+    }
+
+    // MARK: - Bölümler
+    private var backdrop: some View {
+        ZStack {
+            Color.sgGround
+            RadialGradient(colors: [Color.sgAccent.opacity(0.16), .clear],
+                           center: .top, startRadius: 8, endRadius: 360)
+        }.ignoresSafeArea()
+    }
+
+    private var header: some View {
+        VStack(spacing: 12) {
+            BrandMark(size: 84, glow: true)
+            Text(Brand.name).font(.system(size: 30, weight: .heavy)).foregroundStyle(Color.sgText)
+            Text("iOS'ta premium, çökmeyen yayın deneyimi")
+                .font(.subheadline).foregroundStyle(Color.sgAccent2).multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity).padding(.top, 24)
+    }
+
+    private var formCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Kaynağını ekle").font(.system(size: 17, weight: .bold)).foregroundStyle(Color.sgText)
+
+            Picker("", selection: $tab) {
+                ForEach(Tab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            }.segmentedOnIOS()
+
+            if tab != .discover { field("AD (opsiyonel)", text: $name) }
+
+            switch tab {
+            case .m3u:
+                field("M3U URL", text: $m3uURL)
+                connectButton("Yükle") {
+                    if let u = URL(string: m3uURL) { await library.addM3U(name: name, url: u) }
+                }
+            case .xtream:
+                field("SUNUCU", text: $server)
+                field("KULLANICI ADI", text: $user)
+                field("ŞİFRE", text: $pass, secure: true)
+                connectButton("Bağlan") {
+                    if let s = XtreamCredentials.normalize(server) {
+                        await library.addXtream(name: name, creds: .init(server: s, username: user, password: pass))
+                    }
+                }
+            case .file:
+                #if os(iOS)
+                Button { showFilePicker = true } label: {
+                    Label("M3U dosyası seç", systemImage: "doc.badge.plus")
+                        .font(.system(size: 14, weight: .semibold)).frame(maxWidth: .infinity)
+                        .padding(13)
+                        .background(Color.sgSurface, in: RoundedRectangle(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.sgLine))
+                        .foregroundStyle(Color.sgText)
+                }
+                .sheet(isPresented: $showFilePicker) {
+                    DocumentPicker { text in library.addM3UFile(name: name, text: text); showFilePicker = false }
+                }
+                #else
+                Text("Dosya seçimi iOS/iPadOS'ta desteklenir.").foregroundStyle(Color.sgDim)
+                #endif
+            case .discover:
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("iptv-org — ücretsiz, yasal, topluluk kanalları. Kendi kaynağın olmadan hemen dene.")
+                        .font(.caption).foregroundStyle(Color.sgDim)
+                    ForEach(Self.discoverSources, id: \.code) { src in
+                        Button {
+                            if let u = URL(string: Self.iptvOrgURL(src.code)) { Task { await library.addM3U(name: "iptv-org · \(src.name)", url: u) } }
+                        } label: {
+                            HStack {
+                                Text(src.flag).font(.title3)
+                                Text(src.name).font(.system(size: 14, weight: .semibold)).foregroundStyle(Color.sgText)
+                                Spacer()
+                                Image(systemName: "arrow.down.circle").foregroundStyle(Color.sgAccent2)
+                            }
+                            .padding(12)
+                            .background(Color.sgSurface, in: RoundedRectangle(cornerRadius: 11))
+                            .overlay(RoundedRectangle(cornerRadius: 11).stroke(Color.sgLine))
+                        }.buttonStyle(PressableStyle())
+                    }
+                }
+            }
+
+            if let err = library.errorMessage {
+                Label(err, systemImage: "exclamationmark.triangle.fill")
+                    .font(.footnote).foregroundStyle(Color.sgLive)
+            }
+        }
+        .padding(16)
+        .background(Color.white.opacity(0.03), in: RoundedRectangle(cornerRadius: 20))
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.sgLine))
+    }
+
+    private var trustFooter: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 18) {
+                trustBadge("lock.shield.fill", "Şifreli")
+                trustBadge("eye.slash.fill", "Telemetri yok")
+                trustBadge("bolt.slash.fill", "Proxy yok")
+            }
+            Text("Kimlik bilgilerin cihazda Keychain ile saklanır. Hiçbir kanal gömülü değil — kendi aboneliğini getirirsin.")
+                .font(.caption2).foregroundStyle(Color.sgDim).multilineTextAlignment(.center)
+        }
+        .padding(.top, 4)
+    }
+
+    private func trustBadge(_ icon: String, _ text: String) -> some View {
+        VStack(spacing: 4) {
+            Image(systemName: icon).font(.system(size: 15)).foregroundStyle(Color.sgAccent2)
+            Text(text).font(.system(size: 10, weight: .semibold)).foregroundStyle(Color.sgDim)
+        }
     }
 
     private func field(_ label: String, text: Binding<String>, secure: Bool = false) -> some View {
@@ -131,15 +172,19 @@ struct OnboardingView: View {
         Button {
             Task { await action() }
         } label: {
-            if library.isLoading {
-                ProgressView().frame(maxWidth: .infinity)
-            } else {
-                Text(title).font(.system(size: 14, weight: .bold)).frame(maxWidth: .infinity)
+            Group {
+                if library.isLoading { ProgressView().tint(.white) }
+                else { Text(title).font(.system(size: 15, weight: .bold)) }
             }
+            .frame(maxWidth: .infinity).padding(14)
+            .background(LinearGradient(colors: [Color.sgAccent, Color.sgGold],
+                                       startPoint: .leading, endPoint: .trailing),
+                        in: RoundedRectangle(cornerRadius: 13))
+            .foregroundStyle(.white)
+            .shadow(color: Color.sgAccent.opacity(0.4), radius: 12, y: 4)
         }
-        .padding(13)
-        .background(Color.sgAccent, in: RoundedRectangle(cornerRadius: 12))
-        .foregroundStyle(.white)
+        .buttonStyle(PressableStyle())
+        .disabled(library.isLoading)
     }
 }
 

@@ -81,8 +81,7 @@ struct SeriesDetailView: View {
             VStack(alignment: .leading, spacing: 16) {
                 header
                 if loading {
-                    BrandLoader(size: 64, caption: "Bölümler yükleniyor…")
-                        .frame(maxWidth: .infinity).padding(.top, 40)
+                    ProgressView().tint(Color.sgAccent).frame(maxWidth: .infinity).padding(.top, 40)
                 } else if let s = series, !s.seasons.isEmpty {
                     continueBar
                     seasonPicker(s)
