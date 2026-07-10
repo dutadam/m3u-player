@@ -232,11 +232,18 @@ struct PlaylistsView: View {
                             }
                         }
                     }
+                    #if !os(tvOS)
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) { Task { await library.removePlaylist(pl.id) } } label: {
                             Label("Sil", systemImage: "trash")
                         }
                         Button { renaming = pl; newName = pl.name } label: { Label("Ad", systemImage: "pencil") }.tint(.gray)
+                    }
+                    #endif
+                    .contextMenu {
+                        Button { Task { await library.switchTo(pl.id) } } label: { Label("Seç", systemImage: "checkmark") }
+                        Button { renaming = pl; newName = pl.name } label: { Label("Yeniden Adlandır", systemImage: "pencil") }
+                        Button(role: .destructive) { Task { await library.removePlaylist(pl.id) } } label: { Label("Sil", systemImage: "trash") }
                     }
                 }
             } footer: {

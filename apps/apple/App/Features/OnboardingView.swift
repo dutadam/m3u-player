@@ -188,8 +188,8 @@ struct OnboardingView: View {
     }
 }
 
-private extension View {
-    /// Segmented picker stili yalnız iOS'ta var; tvOS'ta varsayılan stile düşer.
+extension View {
+    /// Segmented picker stili yalnız iOS/Catalyst'te var; tvOS'ta varsayılan stile düşer. (Modül geneli)
     @ViewBuilder func segmentedOnIOS() -> some View {
         #if os(iOS)
         self.pickerStyle(.segmented)

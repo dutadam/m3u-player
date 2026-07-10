@@ -46,7 +46,9 @@ struct MultiView: View {
         }
         .background(Color.sgGround)
         .navigationTitle("Çoklu Ekran")
+        #if !os(tvOS)
         .toolbar(fullscreenSlot == nil ? .automatic : .hidden, for: .navigationBar)
+        #endif
         .toolbar {
             if fullscreenSlot == nil {
                 ToolbarItem(placement: .principal) { layoutPicker }
@@ -64,7 +66,7 @@ struct MultiView: View {
         Picker("Düzen", selection: Binding(get: { layout }, set: { changeLayout($0) })) {
             ForEach(Layout.allCases) { l in Text(l.rawValue).tag(l) }
         }
-        .pickerStyle(.segmented)
+        .segmentedOnIOS()
         .frame(maxWidth: 240)
     }
 

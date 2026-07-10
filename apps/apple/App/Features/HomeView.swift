@@ -60,8 +60,8 @@ struct HomeView: View {
                 .padding(.vertical, 8)
             }
             .background(Color.sgGround)
-            .navigationBarTitleDisplayMode(.inline)
-            .refreshable { await library.refresh() }
+            .navigationBarTitleDisplayModeInlineIfAvailable()
+            .refreshableIfAvailable { await library.refresh() }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button { Task { await library.refresh() } } label: {
@@ -92,6 +92,24 @@ struct HomeView: View {
         pool += library.visibleMovies.filter { $0.logo != nil }.map { .movie($0) }
         pool += library.series.filter { $0.cover != nil }.map { .series($0) }
         heroItems = Array(pool.shuffled().prefix(8))
+    }
+}
+
+// Platform-güvenli modifier'lar (tvOS'ta navigationBarTitleDisplayMode/refreshable yok).
+fileprivate extension View {
+    @ViewBuilder func navigationBarTitleDisplayModeInlineIfAvailable() -> some View {
+        #if os(tvOS)
+        self
+        #else
+        self.navigationBarTitleDisplayMode(.inline)
+        #endif
+    }
+    @ViewBuilder func refreshableIfAvailable(_ action: @escaping () async -> Void) -> some View {
+        #if os(tvOS)
+        self
+        #else
+        self.refreshable { await action() }
+        #endif
     }
 }
 
