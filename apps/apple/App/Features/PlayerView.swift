@@ -1,6 +1,7 @@
 import SwiftUI
 import AVKit
 import AVFoundation
+import MediaPlayer
 import Core
 import Design
 
@@ -43,6 +44,13 @@ struct PlayerView: View {
     @State private var userPaused = false
     @State private var subDelay: Double = 0        // altyazı senkron (ms)
     @State private var audioDelay: Double = 0       // ses senkron (ms)
+    // Jestler
+    @State private var seekFlash = 0               // -1 sol, +1 sağ, 0 yok
+    @State private var hud: GestureHUD?
+    @State private var brightnessStart: CGFloat?
+    @State private var volumeStart: Float?
+
+    enum GestureHUD: Equatable { case brightness(Double), volume(Double) }
     @StateObject private var pip = PiPController()
 
     // Dizi bölüm kuyruğu (otomatik sonraki bölüm için)
@@ -77,12 +85,30 @@ struct PlayerView: View {
             }
             .ignoresSafeArea()
 
-            // Şeffaf dokunma katmanı — VLC'nin UIView'ı dokunmayı yuttuğu için oynatıcının
-            // üstünde her zaman aktif bir katman; overlay'i açıp kapatır.
-            Color.black.opacity(controlsVisible ? 0.25 : 0.001)
-                .ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture { toggleControls() }
+            // Karartma (kontroller açıkken)
+            Color.black.opacity(controlsVisible ? 0.25 : 0.001).ignoresSafeArea()
+
+            // Jest katmanı — sol/sağ yarı: çift dokunuş ±10, dikey kaydır parlaklık/ses.
+            GeometryReader { geo in
+                HStack(spacing: 0) {
+                    gestureZone(side: -1, height: geo.size.height)
+                    gestureZone(side: 1, height: geo.size.height)
+                }
+            }
+            .ignoresSafeArea()
+
+            // Çift-dokunuş ±10 flash
+            if seekFlash != 0 {
+                HStack {
+                    if seekFlash < 0 { seekFlashBadge("gobackward.10", "-10"); Spacer() }
+                    else { Spacer(); seekFlashBadge("goforward.10", "+10") }
+                }
+                .padding(.horizontal, 50)
+                .allowsHitTesting(false)
+            }
+
+            // HUD (parlaklık/ses)
+            if let hud { gestureHUD(hud).allowsHitTesting(false) }
 
             if isBuffering && !showError && !reconnecting {
                 ProgressView().tint(.white).scaleEffect(1.4)
@@ -261,6 +287,75 @@ struct PlayerView: View {
             Image(systemName: name).font(.system(size: 16, weight: .semibold)).foregroundStyle(tint)
                 .frame(width: 40, height: 40).background(.black.opacity(0.4), in: Circle())
         }.buttonStyle(.plain)
+    }
+
+    // MARK: - Jestler
+    private func gestureZone(side: Int, height: CGFloat) -> some View {
+        Color.white.opacity(0.001)
+            .contentShape(Rectangle())
+            .onTapGesture(count: 2) {
+                guard !isLive else { toggleControls(); return }
+                skip(side < 0 ? -10 : 10)
+                withAnimation(.easeOut(duration: 0.15)) { seekFlash = side }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    withAnimation { if seekFlash == side { seekFlash = 0 } }
+                }
+            }
+            .onTapGesture { toggleControls() }
+            .gesture(
+                DragGesture(minimumDistance: 14)
+                    .onChanged { v in verticalDrag(side: side, translation: v.translation, height: height) }
+                    .onEnded { _ in endDrag() }
+            )
+    }
+
+    private func verticalDrag(side: Int, translation t: CGSize, height: CGFloat) {
+        guard abs(t.height) > abs(t.width) else { return }   // yalnız dikey
+        #if os(iOS)
+        let span = max(200, height * 0.6)
+        if side < 0 {
+            if brightnessStart == nil { brightnessStart = UIScreen.main.brightness }
+            let nb = max(0, min(1, brightnessStart! + (-t.height / span)))
+            UIScreen.main.brightness = nb
+            hud = .brightness(Double(nb))
+        } else {
+            if volumeStart == nil { volumeStart = SystemVolume.shared.level }
+            let nv = max(0, min(1, volumeStart! + Float(-t.height / span)))
+            SystemVolume.shared.set(nv)
+            hud = .volume(Double(nv))
+        }
+        #endif
+    }
+
+    private func endDrag() {
+        brightnessStart = nil; volumeStart = nil
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { withAnimation { hud = nil } }
+    }
+
+    private func seekFlashBadge(_ icon: String, _ label: String) -> some View {
+        VStack(spacing: 4) {
+            Image(systemName: icon).font(.system(size: 26, weight: .bold))
+            Text(label).font(.system(size: 13, weight: .heavy)).monospacedDigit()
+        }
+        .foregroundStyle(.white).padding(20)
+        .background(.black.opacity(0.4), in: Circle())
+        .transition(.opacity)
+    }
+
+    private func gestureHUD(_ h: GestureHUD) -> some View {
+        let icon: String, value: Double
+        switch h {
+        case .brightness(let v): icon = "sun.max.fill"; value = v
+        case .volume(let v): icon = v > 0.001 ? "speaker.wave.2.fill" : "speaker.slash.fill"; value = v
+        }
+        return VStack(spacing: 10) {
+            Image(systemName: icon).font(.system(size: 20)).foregroundStyle(.white)
+            ZStack(alignment: .bottom) {
+                Capsule().fill(.white.opacity(0.2)).frame(width: 5, height: 90)
+                Capsule().fill(.white).frame(width: 5, height: max(2, 90 * value))
+            }
+        }
+        .padding(16).background(.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 14))
     }
 
     // MARK: - Oynatma
@@ -572,5 +667,26 @@ struct AirPlayButton: UIViewRepresentable {
         return v
     }
     func updateUIView(_ uiView: AVRoutePickerView, context: Context) {}
+}
+
+/// Sistem ses seviyesi denetimi — gizli MPVolumeView slider'ı üzerinden (kaydırma jesti için).
+/// Not: simülatörde ses değişmez; gerçek cihazda çalışır.
+final class SystemVolume {
+    static let shared = SystemVolume()
+    private let mpv = MPVolumeView(frame: CGRect(x: -2000, y: -2000, width: 1, height: 1))
+    private init() {
+        DispatchQueue.main.async {
+            if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let window = scene.windows.first {
+                window.addSubview(self.mpv)
+            }
+        }
+    }
+    private var slider: UISlider? { mpv.subviews.compactMap { $0 as? UISlider }.first }
+    var level: Float { AVAudioSession.sharedInstance().outputVolume }
+    func set(_ v: Float) {
+        let s = slider
+        DispatchQueue.main.async { s?.value = max(0, min(1, v)) }
+    }
 }
 #endif
