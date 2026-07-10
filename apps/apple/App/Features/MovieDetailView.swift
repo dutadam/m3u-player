@@ -21,7 +21,10 @@ struct MovieDetailView: View {
             VStack(alignment: .leading, spacing: 18) {
                 hero
                 VStack(alignment: .leading, spacing: 16) {
-                    playButton
+                    HStack(spacing: 12) {
+                        playButton
+                        LikeDislikeButtons(key: channel.url.absoluteString)
+                    }
                     metaChips
                     if loading {
                         ProgressView().tint(Color.sgAccent).frame(maxWidth: .infinity).padding(.top, 8)

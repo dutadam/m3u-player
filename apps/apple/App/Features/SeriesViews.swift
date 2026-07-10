@@ -119,6 +119,7 @@ struct SeriesDetailView: View {
                 Text(ref.name).font(.system(size: 18, weight: .bold)).foregroundStyle(Color.sgText)
                 if let g = series?.genre ?? ref.genre { Text(g).font(.caption).foregroundStyle(Color.sgAccent2) }
                 if let plot = series?.plot { Text(plot).font(.caption).foregroundStyle(Color.sgDim).lineLimit(6) }
+                LikeDislikeButtons(key: "series_\(ref.id)").padding(.top, 2)
             }
         }
     }

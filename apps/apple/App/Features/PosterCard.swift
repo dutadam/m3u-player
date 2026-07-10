@@ -2,6 +2,32 @@ import SwiftUI
 import Core
 import Design
 
+/// Beğen / beğenme kontrolü — öneri algoritmasını besler (içerik anahtarı: url veya series_<id>).
+struct LikeDislikeButtons: View {
+    @EnvironmentObject private var library: LibraryStore
+    let key: String
+    var compact: Bool = false
+
+    var body: some View {
+        HStack(spacing: compact ? 6 : 10) {
+            btn(library.isLiked(key) ? "hand.thumbsup.fill" : "hand.thumbsup",
+                on: library.isLiked(key), color: Color.sgAccent) { library.toggleLike(key) }
+            btn(library.isDisliked(key) ? "hand.thumbsdown.fill" : "hand.thumbsdown",
+                on: library.isDisliked(key), color: Color.sgWarn) { library.toggleDislike(key) }
+        }
+    }
+
+    private func btn(_ system: String, on: Bool, color: Color, _ action: @escaping () -> Void) -> some View {
+        let s: CGFloat = compact ? 36 : 40
+        return Button(action: action) {
+            Image(systemName: system).font(.system(size: compact ? 14 : 16, weight: .semibold))
+                .foregroundStyle(on ? color : Color.sgDim)
+                .frame(width: s, height: s)
+                .background(compact ? Color.black.opacity(0.4) : Color.sgSurface, in: Circle())
+        }.buttonStyle(.plain)
+    }
+}
+
 /// Basma hissi güçlü buton stili — dokununca hafifçe küçülür + koyulaşır.
 struct PressableStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {

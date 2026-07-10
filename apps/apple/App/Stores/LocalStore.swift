@@ -23,6 +23,8 @@ enum LocalStore {
         static let userAgent = "cheesino.userAgent"     // String (özel User-Agent)
         static let playlists = "cheesino.playlists"     // [PlaylistMeta]
         static let activePlaylist = "cheesino.activePlaylist" // String (aktif playlist id)
+        static let likes = "cheesino.likes"             // Set<String> (içerik anahtarı)
+        static let dislikes = "cheesino.dislikes"       // Set<String>
     }
 }
 

@@ -30,6 +30,9 @@ struct HomeView: View {
                     if !library.favoriteChannels.isEmpty {
                         PosterPlayRail(title: "Favoriler", channels: library.favoriteChannels) { selected = $0 }
                     }
+                    if !library.recommendedMovies.isEmpty {
+                        MovieRail(title: "Sana Özel", movies: library.recommendedMovies)
+                    }
 
                     // Net içerik ayrımı (gizli kategoriler hariç)
                     let sports = library.visibleLive.filter { $0.group.localizedCaseInsensitiveContains("spor") }

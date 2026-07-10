@@ -21,6 +21,8 @@ final class LibraryStore: ObservableObject {
     @Published private(set) var hiddenCategories: Set<String> = []
     @Published private(set) var seriesResume: [String: SeriesResume] = [:]
     @Published private(set) var reminders: [String: Reminder] = [:]
+    @Published private(set) var likes: Set<String> = []
+    @Published private(set) var dislikes: Set<String> = []
 
     // Çoklu kaynak (playlist)
     @Published private(set) var playlists: [PlaylistMeta] = []
@@ -44,6 +46,8 @@ final class LibraryStore: ObservableObject {
         progress = LocalStore.load([String: WatchProgress].self, key: LocalStore.Key.progress) ?? [:]
         seriesResume = LocalStore.load([String: SeriesResume].self, key: LocalStore.Key.seriesResume) ?? [:]
         reminders = LocalStore.load([String: Reminder].self, key: LocalStore.Key.reminders) ?? [:]
+        likes = LocalStore.load(Set<String>.self, key: LocalStore.Key.likes) ?? []
+        dislikes = LocalStore.load(Set<String>.self, key: LocalStore.Key.dislikes) ?? []
         hiddenCategories = LocalStore.load(Set<String>.self, key: "cheesino.hiddenCats") ?? []
         playlists = LocalStore.load([PlaylistMeta].self, key: LocalStore.Key.playlists) ?? []
         activePlaylistId = LocalStore.load(String.self, key: LocalStore.Key.activePlaylist)
@@ -77,6 +81,13 @@ final class LibraryStore: ObservableObject {
                 else { progress[url] = p }
             }
         }
+        if let cl = CloudStore.load(Set<String>.self, key: LocalStore.Key.likes) { likes.formUnion(cl) }
+        if let cd = CloudStore.load(Set<String>.self, key: LocalStore.Key.dislikes) { dislikes.formUnion(cd) }
+        likes.subtract(dislikes)   // beğenmeme önceliği
+        LocalStore.save(likes, key: LocalStore.Key.likes)
+        LocalStore.save(dislikes, key: LocalStore.Key.dislikes)
+        CloudStore.save(likes, key: LocalStore.Key.likes)
+        CloudStore.save(dislikes, key: LocalStore.Key.dislikes)
         // Birleşmiş sonucu geri yaz (yerel + bulut).
         LocalStore.save(favorites, key: LocalStore.Key.favorites)
         LocalStore.save(recents, key: LocalStore.Key.recents)
@@ -284,6 +295,51 @@ final class LibraryStore: ObservableObject {
     func isWatched(_ url: String) -> Bool { (progress[url]?.fraction ?? 0) >= 0.92 }
     /// Devam edilebilir (başlamış ama bitmemiş).
     func inProgress(_ url: String) -> Bool { let f = progress[url]?.fraction ?? 0; return f > 0.02 && f < 0.92 }
+
+    // MARK: - Beğeni / öneri (izleme geçmişi + tür/kategori afinitesi)
+    func isLiked(_ key: String) -> Bool { likes.contains(key) }
+    func isDisliked(_ key: String) -> Bool { dislikes.contains(key) }
+    func toggleLike(_ key: String) {
+        if likes.contains(key) { likes.remove(key) } else { likes.insert(key); dislikes.remove(key) }
+        persistPrefs()
+    }
+    func toggleDislike(_ key: String) {
+        if dislikes.contains(key) { dislikes.remove(key) } else { dislikes.insert(key); likes.remove(key) }
+        persistPrefs()
+    }
+    private func persistPrefs() {
+        LocalStore.save(likes, key: LocalStore.Key.likes)
+        LocalStore.save(dislikes, key: LocalStore.Key.dislikes)
+        CloudStore.save(likes, key: LocalStore.Key.likes)
+        CloudStore.save(dislikes, key: LocalStore.Key.dislikes)
+    }
+
+    /// Kategori/tür afinitesi — izleme geçmişi + beğeniler (öneri sinyali).
+    func categoryAffinity() -> [String: Double] {
+        var score: [String: Double] = [:]
+        for r in recents { if let ch = channel(forURL: r.url) { score[ch.group, default: 0] += 1 } }
+        for (url, p) in progress where p.fraction > 0.1 {
+            if let ch = channel(forURL: url) { score[ch.group, default: 0] += min(1.5, p.fraction * 1.5) }
+        }
+        for key in likes { if let ch = channel(forURL: key) { score[ch.group, default: 0] += 3 } }
+        for key in dislikes { if let ch = channel(forURL: key) { score[ch.group, default: 0] -= 3 } }
+        for key in likes where key.hasPrefix("series_") {
+            if let id = Int(key.replacingOccurrences(of: "series_", with: "")),
+               let s = series.first(where: { $0.id == id }) { score[s.group, default: 0] += 3 }
+        }
+        return score
+    }
+
+    /// "Sana Özel" film önerileri — kategori afinitesine göre; izlenmiş/beğenilmeyen hariç.
+    var recommendedMovies: [Channel] {
+        let aff = categoryAffinity()
+        guard aff.values.contains(where: { $0 > 0 }) else { return [] }
+        return visibleMovies
+            .filter { !isDisliked($0.url.absoluteString) && !isWatched($0.url.absoluteString) }
+            .compactMap { ch -> (Channel, Double)? in let s = aff[ch.group] ?? 0; return s > 0 ? (ch, s) : nil }
+            .sorted { $0.1 > $1.1 }
+            .prefix(30).map { $0.0 }
+    }
 
     // MARK: - Dizi devam etme (seriesId → son bölüm)
     func markSeries(_ r: SeriesResume) {

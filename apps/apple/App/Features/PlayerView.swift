@@ -165,6 +165,7 @@ struct PlayerView: View {
                     Text(nowTitle ?? current.group).font(.caption).foregroundStyle(Color.sgDim).lineLimit(1)
                 }
                 Spacer()
+                LikeDislikeButtons(key: current.url.absoluteString, compact: true)
                 iconButton(library.isFavorite(current) ? "heart.fill" : "heart",
                            tint: library.isFavorite(current) ? Color.sgLive : .white) {
                     library.toggleFavorite(current); showControls()
