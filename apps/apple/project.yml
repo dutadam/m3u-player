@@ -19,7 +19,7 @@ packages:
 targets:
   Cheesino:
     type: application
-    supportedDestinations: [iOS]            # iOS öncelik; tvOS 10-foot UI + TVVLCKit sonra
+    supportedDestinations: [iOS, macCatalyst]   # iOS + Mac (Catalyst). Native tvOS: 10-foot UI + TVVLCKit ayrı iş.
     sources:
       - path: App
         excludes:
