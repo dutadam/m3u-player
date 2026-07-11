@@ -30,6 +30,50 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     /** Xtream oturumu — dizi detayı/bölüm çekmek için canlı tutulur (M3U kaynağında null). */
     private var client: XtreamClient? = null
 
+    // ---- Kullanıcı verisi (favori/beğeni/ilerleme/geçmiş) ----
+    private val userStore = UserDataStore(app)
+    private val _user = MutableStateFlow(userStore.load())
+    val user: StateFlow<UserData> = _user.asStateFlow()
+
+    private fun mutateUser(block: (UserData) -> UserData) {
+        val next = block(_user.value)
+        _user.value = next
+        userStore.save(next)
+    }
+
+    fun isFavorite(id: String) = id in _user.value.favorites
+    fun toggleFavorite(id: String) = mutateUser { u ->
+        u.copy(favorites = if (id in u.favorites) u.favorites - id else u.favorites + id)
+    }
+
+    /** Beğeni durumu: +1 beğen, -1 beğenme, 0 nötr. */
+    fun setRating(id: String, value: Int) = mutateUser { u ->
+        when (value) {
+            1 -> u.copy(likes = u.likes + id, dislikes = u.dislikes - id)
+            -1 -> u.copy(dislikes = u.dislikes + id, likes = u.likes - id)
+            else -> u.copy(likes = u.likes - id, dislikes = u.dislikes - id)
+        }
+    }
+    fun ratingOf(id: String): Int = when {
+        id in _user.value.likes -> 1
+        id in _user.value.dislikes -> -1
+        else -> 0
+    }
+
+    /** İzleme başladığında tür afinitesi için olay kaydı (canlı hariç). */
+    fun recordPlay(id: String, name: String, group: String) = mutateUser { u ->
+        val genres = GenreTagger.tags(name, group).toList()
+        val ev = PlayEvent(id, genres, System.currentTimeMillis())
+        u.copy(history = (u.history + ev).takeLast(400))
+    }
+
+    fun saveProgress(mark: ResumeMark) = mutateUser { u ->
+        if (mark.finished) u.copy(resume = u.resume - mark.id)
+        else u.copy(resume = u.resume + (mark.id to mark))
+    }
+    fun clearResume(id: String) = mutateUser { u -> u.copy(resume = u.resume - id) }
+    fun resumeOf(id: String): ResumeMark? = _user.value.resume[id]
+
     fun restore() {
         creds.load()?.let { loadXtream(it) }
     }

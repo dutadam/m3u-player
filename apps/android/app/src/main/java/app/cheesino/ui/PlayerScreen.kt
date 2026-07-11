@@ -21,12 +21,23 @@ import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import app.cheesino.core.Channel
+import app.cheesino.core.MediaKind
 import app.cheesino.core.StreamResolver
 
 /** Oynatılacak öğe — kanal, film ya da dizi bölümü fark etmez. */
-data class PlayItem(val title: String, val url: String)
+data class PlayItem(
+    val id: String,
+    val title: String,
+    val url: String,
+    val poster: String? = null,
+    val isLive: Boolean = false,
+    val isSeries: Boolean = false
+)
 
-fun Channel.toPlayItem() = PlayItem(name, url)
+fun Channel.toPlayItem() = PlayItem(
+    id = id, title = name, url = url, poster = logo,
+    isLive = kind == MediaKind.LIVE, isSeries = false
+)
 
 @Composable
 fun PlayerScreen(item: PlayItem, onClose: () -> Unit) {

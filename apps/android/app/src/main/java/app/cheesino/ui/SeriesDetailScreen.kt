@@ -78,7 +78,16 @@ private fun SeriesContent(
             item { SeasonPicker(s.seasons, selectedSeason, onSelectSeason) }
         }
         items(season.episodes) { ep ->
-            EpisodeRow(ep) { onPlay(PlayItem("${s.name} — ${ep.title}", ep.url)) }
+            EpisodeRow(ep) {
+                onPlay(PlayItem(
+                    id = "ep_${ep.id}",
+                    title = "${s.name} — ${ep.title}",
+                    url = ep.url,
+                    poster = s.cover,
+                    isLive = false,
+                    isSeries = true
+                ))
+            }
         }
     }
 }

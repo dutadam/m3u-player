@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cheesino.core.Channel
 import app.cheesino.core.SeriesRef
+import app.cheesino.data.ResumeMark
 import app.cheesino.ui.theme.*
 import coil.compose.AsyncImage
 
@@ -74,6 +75,37 @@ fun ChannelCard(ch: Channel, onTap: () -> Unit) {
             modifier = Modifier.padding(top = 6.dp))
     }
 }
+
+@Composable
+fun ResumeRail(title: String, items: List<ResumeMark>, onTap: (ResumeMark) -> Unit) {
+    if (items.isEmpty()) return
+    Rail(title) {
+        LazyRow(contentPadding = PaddingValues(horizontal = 16.dp)) {
+            items(items.take(30)) { m -> ResumeCard(m) { onTap(m) } }
+        }
+    }
+}
+
+@Composable
+fun ResumeCard(mark: ResumeMark, onTap: () -> Unit) {
+    Column(Modifier.padding(end = 11.dp).width(150.dp).clickable(onClick = onTap)) {
+        Box(
+            Modifier.size(150.dp, 90.dp).clip(RoundedCornerShape(11.dp)).background(Elevated),
+            contentAlignment = Alignment.BottomStart
+        ) {
+            if (mark.poster != null)
+                AsyncImage(mark.poster, mark.title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            // ilerleme çubuğu
+            Box(Modifier.fillMaxWidth().height(4.dp).background(Color_LineSoft)) {
+                Box(Modifier.fillMaxWidth(mark.fraction).height(4.dp).background(Accent))
+            }
+        }
+        Text(mark.title, color = TextHi, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 6.dp))
+    }
+}
+
+private val Color_LineSoft = LineSoft.copy(alpha = 0.6f)
 
 @Composable
 fun PosterCard(name: String, poster: String?, onTap: () -> Unit) {

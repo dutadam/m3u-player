@@ -26,6 +26,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.cheesino.core.Channel
 import app.cheesino.core.SeriesRef
 import app.cheesino.data.LibraryViewModel
+import app.cheesino.data.ResumeMark
 import app.cheesino.ui.theme.Accent
 import app.cheesino.ui.theme.Ground
 import app.cheesino.ui.theme.Surface
@@ -42,6 +43,7 @@ private enum class Tab(val label: String, val icon: ImageVector) {
 @Composable
 fun RootScreen(vm: LibraryViewModel) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val user by vm.user.collectAsStateWithLifecycle()
     var tab by remember { mutableStateOf(Tab.HOME) }
     var playing by remember { mutableStateOf<PlayItem?>(null) }
     var detail by remember { mutableStateOf<SeriesRef?>(null) }
@@ -60,6 +62,9 @@ fun RootScreen(vm: LibraryViewModel) {
 
     val playChannel: (Channel) -> Unit = { playing = it.toPlayItem() }
     val openSeries: (SeriesRef) -> Unit = { detail = it }
+    val resumePlay: (ResumeMark) -> Unit = { m ->
+        playing = PlayItem(m.id, m.title, m.url, m.poster, isLive = false, isSeries = m.isSeries)
+    }
 
     Scaffold(
         containerColor = Ground,
@@ -85,7 +90,7 @@ fun RootScreen(vm: LibraryViewModel) {
     ) { pad ->
         Box(Modifier.fillMaxSize().padding(pad)) {
             when (tab) {
-                Tab.HOME -> HomeScreen(state, playChannel, openSeries)
+                Tab.HOME -> HomeScreen(state, user, playChannel, openSeries, resumePlay)
                 Tab.LIVE -> LiveScreen(state, playChannel)
                 Tab.MOVIES -> MoviesScreen(state, playChannel)
                 Tab.SERIES -> SeriesScreen(state, openSeries)
