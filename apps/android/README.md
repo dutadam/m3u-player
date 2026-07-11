@@ -57,14 +57,20 @@ app.cheesino
     └── PlayerScreen  ExoPlayer + PlayerView
 ```
 
-## Bu MVP'de olanlar
+## Olanlar (iOS çekirdek paritesi)
 
-- Xtream Codes ve M3U (URL/metin) ile giriş; kimlik bilgisi cihazda şifreli.
-- Canlı / Film / Dizi ayrımı, kategori rayları, poster & kanal kartları.
-- Media3 ile HLS/MP4/TS oynatma, sistem kontrolleri.
+- **Giriş**: Xtream Codes + M3U (URL/metin); kimlik bilgisi cihazda şifreli.
+- **Kütüphane**: Canlı / Film / Dizi ayrımı, kategori rayları, poster & kanal kartları, arama.
+- **Dizi**: detay ekranı — sezon seçici + thumbnail'li bölüm listesi (`get_series_info`).
+- **Kişiselleştirme**: favoriler, beğeni/beğenme, kaldığın yerden devam, izleme geçmişi;
+  tür çıkarımı + ağırlıklı skor + çeşitlilik ile "Sana Özel" ve "Devam Et" rayları.
+- **Oynatıcı**: Media3 (HLS/MP4/TS); resume diyalogu, ilerleme kaydı, yan jest bölgeleri
+  (çift dokunuş ±10 sn, dikey kaydır = parlaklık/ses HUD), buffer göstergesi, otomatik
+  yeniden bağlanma, favori/beğeni üst barı.
+- **Rehber (EPG)**: xmltv.php / url-tvg → şimdi/sıradaki; canlı catchup/timeshift.
+- **Ayarlar**: User-Agent, ebeveyn PIN (yetişkin kategori kilidi), kaynak çıkışı.
 
-## Sırada (iOS paritesi)
+## Sırada (gelişmiş farklılaştırıcılar)
 
-Dizi detay + bölüm akışı (`get_series_info`), arama, EPG rehberi, catchup/timeshift,
-çoklu ekran, öneri motoru, favoriler & kaldığın yerden devam, Android TV 10-foot
-odak arayüzü. iOS tarafındaki özellikler Compose'a taşınacak.
+Çoklu ekran (2x1/2x2/2x3), spor/maç merkezi, Android TV 10-foot odak arayüzü
+(tv-material), Chromecast, çoklu playlist yönetimi.
