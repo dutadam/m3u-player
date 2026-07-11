@@ -61,7 +61,7 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** İzleme başladığında tür afinitesi için olay kaydı (canlı hariç). */
-    fun recordPlay(id: String, name: String, group: String) = mutateUser { u ->
+    fun recordPlay(id: String, name: String, group: String?) = mutateUser { u ->
         val genres = GenreTagger.tags(name, group).toList()
         val ev = PlayEvent(id, genres, System.currentTimeMillis())
         u.copy(history = (u.history + ev).takeLast(400))

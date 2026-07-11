@@ -84,6 +84,7 @@ private fun SeriesContent(
                     title = "${s.name} — ${ep.title}",
                     url = ep.url,
                     poster = s.cover,
+                    group = s.genre,
                     isLive = false,
                     isSeries = true
                 ))

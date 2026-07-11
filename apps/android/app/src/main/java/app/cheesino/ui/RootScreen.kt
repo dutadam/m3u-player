@@ -111,6 +111,6 @@ fun RootScreen(vm: LibraryViewModel) {
 
     // Oynatıcı — en üstte.
     playing?.let { item ->
-        PlayerScreen(item) { playing = null }
+        PlayerScreen(item, vm) { playing = null }
     }
 }
