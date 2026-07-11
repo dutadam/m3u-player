@@ -5,7 +5,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
@@ -120,5 +122,42 @@ class XtreamClient(val creds: XtreamCredentials) {
             SeriesRef(id = s.seriesId.asInt(), name = s.name ?: "Dizi", cover = s.cover?.ifBlank { null },
                 genre = s.genre, group = cats[s.cat ?: ""] ?: "Diziler")
         }
+    }
+
+    /** get_series_info → sezon/bölüm ağacı. iOS'taki clunky "JSON indir-seç" akışının yerine. */
+    suspend fun seriesInfo(ref: SeriesRef): Series {
+        val empty = Series(ref.id.toString(), ref.name, ref.cover, null, ref.genre, emptyList())
+        val root = try {
+            json.parseToJsonElement(get(api("get_series_info", mapOf("series_id" to ref.id.toString())))) as? JsonObject
+        } catch (e: Exception) { null } ?: return empty
+
+        val info = root["info"] as? JsonObject
+        val plot = info?.get("plot").asStr()?.ifBlank { null }
+        val genre = info?.get("genre").asStr()?.ifBlank { null } ?: ref.genre
+        val cover = info?.get("cover").asStr()?.ifBlank { null } ?: ref.cover
+
+        val seasons = ArrayList<Season>()
+        (root["episodes"] as? JsonObject)?.forEach { (seasonKey, arr) ->
+            val list = arr as? JsonArray ?: return@forEach
+            val episodes = list.mapNotNull { e ->
+                val o = e as? JsonObject ?: return@mapNotNull null
+                val epId = o["id"].asStr() ?: return@mapNotNull null
+                val ext = o["container_extension"].asStr()?.ifBlank { null } ?: "mp4"
+                val epInfo = o["info"] as? JsonObject
+                val num = o["episode_num"].asInt()
+                Episode(
+                    id = epId, seriesId = ref.id.toString(),
+                    season = seasonKey.toIntOrNull() ?: o["season"].asInt(),
+                    episodeNum = num,
+                    title = o["title"].asStr()?.ifBlank { null } ?: "Bölüm $num",
+                    ext = ext,
+                    thumb = epInfo?.get("movie_image").asStr()?.ifBlank { null },
+                    url = seriesUrl(epId, ext)
+                )
+            }.sortedBy { it.episodeNum }
+            if (episodes.isNotEmpty()) seasons.add(Season(seasonKey.toIntOrNull() ?: 0, episodes))
+        }
+        seasons.sortBy { it.number }
+        return Series(ref.id.toString(), ref.name, cover, plot, genre, seasons)
     }
 }

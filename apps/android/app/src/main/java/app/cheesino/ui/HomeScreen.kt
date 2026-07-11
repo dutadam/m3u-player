@@ -9,11 +9,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cheesino.core.Channel
+import app.cheesino.core.SeriesRef
 import app.cheesino.data.LibraryState
 import app.cheesino.ui.theme.TextHi
 
 @Composable
-fun HomeScreen(state: LibraryState, onPlay: (Channel) -> Unit) {
+fun HomeScreen(state: LibraryState, onPlay: (Channel) -> Unit, onSeries: (SeriesRef) -> Unit) {
     // Görselsiz + isim tekrarını ele (iOS homeList mantığı)
     fun clean(list: List<Channel>): List<Channel> {
         val seen = HashSet<String>()
@@ -27,7 +28,7 @@ fun HomeScreen(state: LibraryState, onPlay: (Channel) -> Unit) {
         item { PosterRail("Filmler", clean(state.movies), onPlay) }
         item {
             if (state.series.isNotEmpty())
-                SeriesRail("Diziler", state.series.filter { it.cover != null }) { /* detay ileride */ }
+                SeriesRail("Diziler", state.series.filter { it.cover != null }, onSeries)
         }
         item { ChannelRail("Canlı TV", state.live.take(20), onPlay) }
     }

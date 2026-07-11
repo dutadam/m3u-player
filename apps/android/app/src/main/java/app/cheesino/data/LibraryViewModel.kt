@@ -27,6 +27,9 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     private val _state = MutableStateFlow(LibraryState(hasSource = creds.load() != null))
     val state: StateFlow<LibraryState> = _state.asStateFlow()
 
+    /** Xtream oturumu — dizi detayı/bölüm çekmek için canlı tutulur (M3U kaynağında null). */
+    private var client: XtreamClient? = null
+
     fun restore() {
         creds.load()?.let { loadXtream(it) }
     }
@@ -35,18 +38,19 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
         _state.value = _state.value.copy(loading = true, error = null)
         viewModelScope.launch {
             try {
-                val client = XtreamClient(c)
-                if (!client.authenticateActive()) {
+                val cl = XtreamClient(c)
+                if (!cl.authenticateActive()) {
                     _state.value = _state.value.copy(loading = false, error = "Abonelik aktif değil.")
                     return@launch
                 }
-                val live = client.allLive()
-                val vod = runCatching { client.allVod() }.getOrDefault(emptyList())
-                val series = runCatching { client.allSeries() }.getOrDefault(emptyList())
+                val live = cl.allLive()
+                val vod = runCatching { cl.allVod() }.getOrDefault(emptyList())
+                val series = runCatching { cl.allSeries() }.getOrDefault(emptyList())
                 if (live.isEmpty() && vod.isEmpty()) {
                     _state.value = _state.value.copy(loading = false, error = "Sunucuda kanal bulunamadı.")
                     return@launch
                 }
+                client = cl
                 creds.save(c)
                 _state.value = LibraryState(channels = live + vod, series = series, loading = false, hasSource = true)
             } catch (e: Exception) {
@@ -54,6 +58,9 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
     }
+
+    /** Dizi detayını (sezon/bölüm) tembel çeker. M3U kaynağında Xtream yoksa null döner. */
+    suspend fun seriesDetail(ref: SeriesRef): Series? = client?.seriesInfo(ref)
 
     fun loadM3U(text: String) {
         val result = M3UParser.parse(text)
@@ -75,5 +82,5 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun signOut() { creds.clear(); _state.value = LibraryState(hasSource = false) }
+    fun signOut() { client = null; creds.clear(); _state.value = LibraryState(hasSource = false) }
 }

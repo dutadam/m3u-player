@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cheesino.core.Channel
+import app.cheesino.core.SeriesRef
 import app.cheesino.data.LibraryState
 import app.cheesino.ui.theme.TextHi
 
@@ -43,9 +44,9 @@ fun MoviesScreen(state: LibraryState, onPlay: (Channel) -> Unit) {
     }
 }
 
-/** Diziler — poster grid. Detay/bölüm akışı ileride (get_series_info). */
+/** Diziler — poster grid → detay (get_series_info) ekranına gider. */
 @Composable
-fun SeriesScreen(state: LibraryState) {
+fun SeriesScreen(state: LibraryState, onSeries: (SeriesRef) -> Unit) {
     val withCover = remember(state.series) { state.series.filter { it.cover != null } }
     LazyVerticalGrid(
         columns = GridCells.Adaptive(112.dp),
@@ -53,7 +54,7 @@ fun SeriesScreen(state: LibraryState) {
         contentPadding = PaddingValues(16.dp)
     ) {
         items(withCover) { s ->
-            PosterCard(s.name, s.cover) { /* dizi detayı ileride */ }
+            PosterCard(s.name, s.cover) { onSeries(s) }
         }
     }
 }

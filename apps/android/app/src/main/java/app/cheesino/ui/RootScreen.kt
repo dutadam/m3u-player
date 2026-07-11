@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LiveTv
 import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -23,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.cheesino.core.Channel
+import app.cheesino.core.SeriesRef
 import app.cheesino.data.LibraryViewModel
 import app.cheesino.ui.theme.Accent
 import app.cheesino.ui.theme.Ground
@@ -33,14 +35,16 @@ private enum class Tab(val label: String, val icon: ImageVector) {
     HOME("Ana Sayfa", Icons.Default.Home),
     LIVE("Canlı", Icons.Default.LiveTv),
     MOVIES("Filmler", Icons.Default.Movie),
-    SERIES("Diziler", Icons.Default.Tv)
+    SERIES("Diziler", Icons.Default.Tv),
+    SEARCH("Ara", Icons.Default.Search)
 }
 
 @Composable
 fun RootScreen(vm: LibraryViewModel) {
     val state by vm.state.collectAsStateWithLifecycle()
     var tab by remember { mutableStateOf(Tab.HOME) }
-    var playing by remember { mutableStateOf<Channel?>(null) }
+    var playing by remember { mutableStateOf<PlayItem?>(null) }
+    var detail by remember { mutableStateOf<SeriesRef?>(null) }
 
     // Kaynak yoksa onboarding tam ekran.
     if (!state.hasSource) {
@@ -53,6 +57,9 @@ fun RootScreen(vm: LibraryViewModel) {
         )
         return
     }
+
+    val playChannel: (Channel) -> Unit = { playing = it.toPlayItem() }
+    val openSeries: (SeriesRef) -> Unit = { detail = it }
 
     Scaffold(
         containerColor = Ground,
@@ -78,15 +85,27 @@ fun RootScreen(vm: LibraryViewModel) {
     ) { pad ->
         Box(Modifier.fillMaxSize().padding(pad)) {
             when (tab) {
-                Tab.HOME -> HomeScreen(state) { playing = it }
-                Tab.LIVE -> LiveScreen(state) { playing = it }
-                Tab.MOVIES -> MoviesScreen(state) { playing = it }
-                Tab.SERIES -> SeriesScreen(state)
+                Tab.HOME -> HomeScreen(state, playChannel, openSeries)
+                Tab.LIVE -> LiveScreen(state, playChannel)
+                Tab.MOVIES -> MoviesScreen(state, playChannel)
+                Tab.SERIES -> SeriesScreen(state, openSeries)
+                Tab.SEARCH -> SearchScreen(state, playChannel, openSeries)
             }
         }
     }
 
-    playing?.let { ch ->
-        PlayerScreen(ch) { playing = null }
+    // Dizi detayı — tam ekran overlay.
+    detail?.let { ref ->
+        SeriesDetailScreen(
+            ref = ref,
+            load = { vm.seriesDetail(it) },
+            onPlay = { playing = it },
+            onBack = { detail = null }
+        )
+    }
+
+    // Oynatıcı — en üstte.
+    playing?.let { item ->
+        PlayerScreen(item) { playing = null }
     }
 }
