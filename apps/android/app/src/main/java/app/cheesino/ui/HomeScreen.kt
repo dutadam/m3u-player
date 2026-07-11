@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -30,7 +31,8 @@ fun HomeScreen(
     onPlay: (Channel) -> Unit,
     onSeries: (SeriesRef) -> Unit,
     onResume: (ResumeMark) -> Unit,
-    onSettings: () -> Unit
+    onSettings: () -> Unit,
+    onSports: () -> Unit
 ) {
     // Görselsiz + isim tekrarını ele (iOS homeList mantığı)
     fun clean(list: List<Channel>): List<Channel> {
@@ -48,6 +50,7 @@ fun HomeScreen(
                 verticalAlignment = Alignment.CenterVertically) {
                 Text("cheesino", color = TextHi, fontWeight = FontWeight.Black, fontSize = 22.sp,
                     modifier = Modifier.weight(1f))
+                IconButton(onClick = onSports) { Icon(Icons.Default.SportsSoccer, "Spor", tint = TextMute) }
                 IconButton(onClick = onSettings) { Icon(Icons.Default.Settings, "Ayarlar", tint = TextMute) }
             }
         }
