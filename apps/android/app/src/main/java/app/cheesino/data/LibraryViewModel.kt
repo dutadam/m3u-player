@@ -192,5 +192,10 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // ---- Çoklu ekran ----
+    private val mvStore = MultiViewStore(app)
+    fun loadMultiView(): MultiViewConfig = mvStore.load()
+    fun saveMultiView(c: MultiViewConfig) = mvStore.save(c)
+
     fun signOut() { client = null; creds.clear(); _state.value = LibraryState(hasSource = false) }
 }

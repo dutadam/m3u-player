@@ -49,6 +49,7 @@ fun RootScreen(vm: LibraryViewModel) {
     var detail by remember { mutableStateOf<SeriesRef?>(null) }
     var showSettings by remember { mutableStateOf(false) }
     var showGuide by remember { mutableStateOf(false) }
+    var showMulti by remember { mutableStateOf(false) }
     val epg by vm.epg.collectAsStateWithLifecycle()
 
     // Kaynak yoksa onboarding tam ekran.
@@ -94,7 +95,9 @@ fun RootScreen(vm: LibraryViewModel) {
         Box(Modifier.fillMaxSize().padding(pad)) {
             when (tab) {
                 Tab.HOME -> HomeScreen(state, user, playChannel, openSeries, resumePlay, onSettings = { showSettings = true })
-                Tab.LIVE -> LiveScreen(state, playChannel, onGuide = { vm.loadEpg(); showGuide = true })
+                Tab.LIVE -> LiveScreen(state, playChannel,
+                    onGuide = { vm.loadEpg(); showGuide = true },
+                    onMulti = { showMulti = true })
                 Tab.MOVIES -> MoviesScreen(state, playChannel)
                 Tab.SERIES -> SeriesScreen(state, openSeries)
                 Tab.SEARCH -> SearchScreen(state, playChannel, openSeries)
@@ -125,6 +128,16 @@ fun RootScreen(vm: LibraryViewModel) {
                 }
             },
             onClose = { showGuide = false }
+        )
+    }
+
+    // Çoklu ekran — overlay.
+    if (showMulti) {
+        MultiViewScreen(
+            channels = state.live,
+            initial = remember { vm.loadMultiView() },
+            onSave = { vm.saveMultiView(it) },
+            onClose = { showMulti = false }
         )
     }
 
