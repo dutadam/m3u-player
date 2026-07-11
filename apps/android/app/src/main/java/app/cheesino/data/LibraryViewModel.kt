@@ -14,10 +14,17 @@ data class LibraryState(
     val series: List<SeriesRef> = emptyList(),
     val loading: Boolean = false,
     val error: String? = null,
-    val hasSource: Boolean = false
+    val hasSource: Boolean = false,
+    val parentalOn: Boolean = false,
+    val adultUnlocked: Boolean = false
 ) {
-    val live get() = channels.filter { it.kind == MediaKind.LIVE }
-    val movies get() = channels.filter { it.kind == MediaKind.VOD }
+    private fun <T> gate(list: List<T>, adult: (T) -> Boolean): List<T> =
+        if (parentalOn && !adultUnlocked) list.filter { !adult(it) } else list
+
+    val visibleChannels get() = gate(channels) { AdultFilter.isAdult(it.name, it.group) }
+    val live get() = visibleChannels.filter { it.kind == MediaKind.LIVE }
+    val movies get() = visibleChannels.filter { it.kind == MediaKind.VOD }
+    val visibleSeries get() = gate(series) { AdultFilter.isAdult(it.name, it.group) }
     val recentlyAdded get() = movies.filter { it.added != null }.sortedByDescending { it.added }
     val topRated get() = movies.filter { (it.rating ?: 0.0) >= 7.5 }.sortedByDescending { it.rating }
 }
@@ -29,6 +36,28 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Xtream oturumu — dizi detayı/bölüm çekmek için canlı tutulur (M3U kaynağında null). */
     private var client: XtreamClient? = null
+
+    // ---- Uygulama ayarları (User-Agent + parental PIN) ----
+    private val settings = AppSettings(app)
+    val userAgent: String get() = settings.userAgent
+    val parentalEnabled: Boolean get() = settings.parentalEnabled
+    val hasPin: Boolean get() = settings.hasPin
+
+    fun setUserAgent(v: String) { settings.userAgent = v }
+    fun setPin(pin: String) { settings.setPin(pin); _state.value = _state.value.copy(parentalOn = true, adultUnlocked = false) }
+    fun disableParental(pin: String): Boolean {
+        if (!settings.verifyPin(pin)) return false
+        settings.clearPin()
+        _state.value = _state.value.copy(parentalOn = false, adultUnlocked = true)
+        return true
+    }
+    /** Yetişkin içeriği bu oturumda aç. Doğru PIN gerekir. */
+    fun unlockAdult(pin: String): Boolean {
+        if (!settings.verifyPin(pin)) return false
+        _state.value = _state.value.copy(adultUnlocked = true)
+        return true
+    }
+    fun lockAdult() { _state.value = _state.value.copy(adultUnlocked = false) }
 
     // ---- Kullanıcı verisi (favori/beğeni/ilerleme/geçmiş) ----
     private val userStore = UserDataStore(app)
@@ -96,7 +125,8 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 client = cl
                 creds.save(c)
-                _state.value = LibraryState(channels = live + vod, series = series, loading = false, hasSource = true)
+                _state.value = LibraryState(channels = live + vod, series = series, loading = false,
+                    hasSource = true, parentalOn = settings.parentalEnabled)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(loading = false, error = "Giriş başarısız — sunucu/kullanıcı/şifreyi kontrol edin.")
             }
@@ -109,7 +139,8 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     fun loadM3U(text: String) {
         val result = M3UParser.parse(text)
         if (result.channels.isEmpty()) { _state.value = _state.value.copy(error = "M3U içinde kanal bulunamadı."); return }
-        _state.value = LibraryState(channels = result.channels, loading = false, hasSource = true)
+        _state.value = LibraryState(channels = result.channels, loading = false,
+            hasSource = true, parentalOn = settings.parentalEnabled)
     }
 
     fun loadM3UUrl(url: String) {

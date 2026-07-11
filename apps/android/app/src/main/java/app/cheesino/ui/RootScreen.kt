@@ -47,6 +47,7 @@ fun RootScreen(vm: LibraryViewModel) {
     var tab by remember { mutableStateOf(Tab.HOME) }
     var playing by remember { mutableStateOf<PlayItem?>(null) }
     var detail by remember { mutableStateOf<SeriesRef?>(null) }
+    var showSettings by remember { mutableStateOf(false) }
 
     // Kaynak yoksa onboarding tam ekran.
     if (!state.hasSource) {
@@ -90,7 +91,7 @@ fun RootScreen(vm: LibraryViewModel) {
     ) { pad ->
         Box(Modifier.fillMaxSize().padding(pad)) {
             when (tab) {
-                Tab.HOME -> HomeScreen(state, user, playChannel, openSeries, resumePlay)
+                Tab.HOME -> HomeScreen(state, user, playChannel, openSeries, resumePlay, onSettings = { showSettings = true })
                 Tab.LIVE -> LiveScreen(state, playChannel)
                 Tab.MOVIES -> MoviesScreen(state, playChannel)
                 Tab.SERIES -> SeriesScreen(state, openSeries)
@@ -107,6 +108,11 @@ fun RootScreen(vm: LibraryViewModel) {
             onPlay = { playing = it },
             onBack = { detail = null }
         )
+    }
+
+    // Ayarlar — overlay.
+    if (showSettings) {
+        SettingsScreen(vm, onClose = { showSettings = false }, onSignedOut = { showSettings = false })
     }
 
     // Oynatıcı — en üstte.

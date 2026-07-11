@@ -47,7 +47,7 @@ fun MoviesScreen(state: LibraryState, onPlay: (Channel) -> Unit) {
 /** Diziler — poster grid → detay (get_series_info) ekranına gider. */
 @Composable
 fun SeriesScreen(state: LibraryState, onSeries: (SeriesRef) -> Unit) {
-    val withCover = remember(state.series) { state.series.filter { it.cover != null } }
+    val withCover = remember(state.visibleSeries) { state.visibleSeries.filter { it.cover != null } }
     LazyVerticalGrid(
         columns = GridCells.Adaptive(112.dp),
         modifier = Modifier.fillMaxSize(),

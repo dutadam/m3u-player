@@ -31,11 +31,11 @@ fun SearchScreen(
     var query by remember { mutableStateOf("") }
     val q = query.trim().lowercase()
 
-    val channelHits = remember(q, state.channels) {
-        if (q.length < 2) emptyList() else state.channels.filter { it.name.lowercase().contains(q) }.take(60)
+    val channelHits = remember(q, state.visibleChannels) {
+        if (q.length < 2) emptyList() else state.visibleChannels.filter { it.name.lowercase().contains(q) }.take(60)
     }
-    val seriesHits = remember(q, state.series) {
-        if (q.length < 2) emptyList() else state.series.filter { it.name.lowercase().contains(q) }.take(30)
+    val seriesHits = remember(q, state.visibleSeries) {
+        if (q.length < 2) emptyList() else state.visibleSeries.filter { it.name.lowercase().contains(q) }.take(30)
     }
 
     Column(Modifier.fillMaxSize()) {
