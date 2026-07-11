@@ -37,6 +37,38 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     /** Xtream oturumu — dizi detayı/bölüm çekmek için canlı tutulur (M3U kaynağında null). */
     private var client: XtreamClient? = null
 
+    // ---- EPG (rehber) ----
+    private var epgSourceUrl: String? = null   // M3U url-tvg (Xtream'de xmltv.php kullanılır)
+    private val _epg = MutableStateFlow<Map<String, List<EpgEntry>>>(emptyMap())
+    val epg: StateFlow<Map<String, List<EpgEntry>>> = _epg.asStateFlow()
+
+    /** XMLTV'yi bir kez çeker/ayrıştırır. Rehber ilk açıldığında çağrılır. */
+    fun loadEpg() {
+        if (_epg.value.isNotEmpty()) return
+        val url = client?.xmltvUrl() ?: epgSourceUrl ?: return
+        viewModelScope.launch {
+            try {
+                val xml = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    java.net.URL(url).readText()
+                }
+                _epg.value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                    XmltvParser.parse(xml)
+                }
+            } catch (e: Exception) { /* rehber opsiyonel */ }
+        }
+    }
+
+    /** Canlı kanalın geçmiş programını baştan izleme (timeshift) URL'i — yalnız Xtream + arşiv. */
+    fun catchupUrl(channel: Channel, entry: EpgEntry): String? {
+        val cl = client ?: return null
+        if (!channel.supportsCatchup) return null
+        val sid = channel.id.removePrefix("live_").toIntOrNull() ?: return null
+        val durMin = ((entry.stop - entry.start) / 60).toInt().coerceIn(1, 24 * 60)
+        val start = java.text.SimpleDateFormat("yyyy-MM-dd:HH-mm", java.util.Locale.US)
+            .format(java.util.Date(entry.start * 1000))
+        return cl.timeshiftUrl(sid, durMin, start)
+    }
+
     // ---- Uygulama ayarları (User-Agent + parental PIN) ----
     private val settings = AppSettings(app)
     val userAgent: String get() = settings.userAgent
@@ -125,6 +157,7 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 client = cl
                 creds.save(c)
+                _epg.value = emptyMap()
                 _state.value = LibraryState(channels = live + vod, series = series, loading = false,
                     hasSource = true, parentalOn = settings.parentalEnabled)
             } catch (e: Exception) {
@@ -139,6 +172,8 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     fun loadM3U(text: String) {
         val result = M3UParser.parse(text)
         if (result.channels.isEmpty()) { _state.value = _state.value.copy(error = "M3U içinde kanal bulunamadı."); return }
+        epgSourceUrl = result.epgUrl
+        _epg.value = emptyMap()
         _state.value = LibraryState(channels = result.channels, loading = false,
             hasSource = true, parentalOn = settings.parentalEnabled)
     }

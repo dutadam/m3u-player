@@ -48,6 +48,8 @@ fun RootScreen(vm: LibraryViewModel) {
     var playing by remember { mutableStateOf<PlayItem?>(null) }
     var detail by remember { mutableStateOf<SeriesRef?>(null) }
     var showSettings by remember { mutableStateOf(false) }
+    var showGuide by remember { mutableStateOf(false) }
+    val epg by vm.epg.collectAsStateWithLifecycle()
 
     // Kaynak yoksa onboarding tam ekran.
     if (!state.hasSource) {
@@ -92,7 +94,7 @@ fun RootScreen(vm: LibraryViewModel) {
         Box(Modifier.fillMaxSize().padding(pad)) {
             when (tab) {
                 Tab.HOME -> HomeScreen(state, user, playChannel, openSeries, resumePlay, onSettings = { showSettings = true })
-                Tab.LIVE -> LiveScreen(state, playChannel)
+                Tab.LIVE -> LiveScreen(state, playChannel, onGuide = { vm.loadEpg(); showGuide = true })
                 Tab.MOVIES -> MoviesScreen(state, playChannel)
                 Tab.SERIES -> SeriesScreen(state, openSeries)
                 Tab.SEARCH -> SearchScreen(state, playChannel, openSeries)
@@ -107,6 +109,22 @@ fun RootScreen(vm: LibraryViewModel) {
             load = { vm.seriesDetail(it) },
             onPlay = { playing = it },
             onBack = { detail = null }
+        )
+    }
+
+    // Rehber — overlay.
+    if (showGuide) {
+        GuideScreen(
+            channels = state.live,
+            epg = epg,
+            onPlay = { showGuide = false; playChannel(it) },
+            onCatchup = { ch, entry ->
+                vm.catchupUrl(ch, entry)?.let { url ->
+                    showGuide = false
+                    playing = PlayItem("${ch.id}_ts", "${ch.name} · baştan", url, ch.logo, isLive = false)
+                }
+            },
+            onClose = { showGuide = false }
         )
     }
 
