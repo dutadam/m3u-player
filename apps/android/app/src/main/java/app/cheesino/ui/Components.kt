@@ -63,7 +63,7 @@ fun SeriesRail(title: String, items: List<SeriesRef>, onTap: (SeriesRef) -> Unit
 
 @Composable
 fun ChannelCard(ch: Channel, onTap: () -> Unit) {
-    Column(Modifier.padding(end = 11.dp).width(118.dp).clickable(onClick = onTap)) {
+    Column(Modifier.focusHighlight(11).padding(end = 11.dp).width(118.dp).clickable(onClick = onTap)) {
         Box(
             Modifier.size(118.dp, 70.dp).clip(RoundedCornerShape(11.dp)).background(Elevated),
             contentAlignment = Alignment.Center
@@ -88,7 +88,7 @@ fun ResumeRail(title: String, items: List<ResumeMark>, onTap: (ResumeMark) -> Un
 
 @Composable
 fun ResumeCard(mark: ResumeMark, onTap: () -> Unit) {
-    Column(Modifier.padding(end = 11.dp).width(150.dp).clickable(onClick = onTap)) {
+    Column(Modifier.focusHighlight(11).padding(end = 11.dp).width(150.dp).clickable(onClick = onTap)) {
         Box(
             Modifier.size(150.dp, 90.dp).clip(RoundedCornerShape(11.dp)).background(Elevated),
             contentAlignment = Alignment.BottomStart
@@ -109,7 +109,7 @@ private val Color_LineSoft = LineSoft.copy(alpha = 0.6f)
 
 @Composable
 fun PosterCard(name: String, poster: String?, onTap: () -> Unit) {
-    Column(Modifier.padding(end = 11.dp).width(120.dp).clickable(onClick = onTap)) {
+    Column(Modifier.focusHighlight().padding(end = 11.dp).width(120.dp).clickable(onClick = onTap)) {
         Box(
             Modifier.size(120.dp, 180.dp).clip(RoundedCornerShape(12.dp)).background(Elevated),
             contentAlignment = Alignment.Center
