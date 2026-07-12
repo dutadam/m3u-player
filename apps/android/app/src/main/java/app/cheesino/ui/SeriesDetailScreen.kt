@@ -10,7 +10,11 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.ThumbDown
+import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,6 +42,10 @@ fun SeriesDetailScreen(
     load: suspend (SeriesRef) -> Series?,
     resumeFor: (String) -> ResumeMark?,
     watchedIds: Set<String>,
+    favorite: Boolean,
+    rating: Int,
+    onFavorite: () -> Unit,
+    onRate: (Int) -> Unit,
     onPlayQueue: (List<PlayItem>, Int) -> Unit,
     onBack: () -> Unit
 ) {
@@ -52,7 +60,7 @@ fun SeriesDetailScreen(
         loading = false
     }
 
-    Box(Modifier.fillMaxSize().background(Ground).statusBarsPadding()) {
+    Box(Modifier.fillMaxSize().background(Ground)) {
         val s = series
         when {
             loading -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = Accent)
@@ -60,9 +68,10 @@ fun SeriesDetailScreen(
                 "Bölüm bilgisi alınamadı.", color = TextDim,
                 modifier = Modifier.align(Alignment.Center)
             )
-            else -> SeriesContent(s, selectedSeason, { selectedSeason = it }, resumeFor, watchedIds, onPlayQueue)
+            else -> SeriesContent(s, selectedSeason, { selectedSeason = it }, resumeFor, watchedIds,
+                favorite, rating, onFavorite, onRate, onPlayQueue)
         }
-        IconButton(onClick = onBack, modifier = Modifier.padding(8.dp).align(Alignment.TopStart)) {
+        IconButton(onClick = onBack, modifier = Modifier.padding(4.dp).align(Alignment.TopStart)) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi)
         }
     }
@@ -75,20 +84,36 @@ private fun SeriesContent(
     onSelectSeason: (Int) -> Unit,
     resumeFor: (String) -> ResumeMark?,
     watchedIds: Set<String>,
+    favorite: Boolean,
+    rating: Int,
+    onFavorite: () -> Unit,
+    onRate: (Int) -> Unit,
     onPlayQueue: (List<PlayItem>, Int) -> Unit
 ) {
     val season = s.seasons.firstOrNull { it.number == selectedSeason } ?: s.seasons.first()
-    // Sezonun bölümleri sıralı kuyruk → otomatik sonraki bölüm.
     val queue = remember(season, s.name) {
         season.episodes.map { ep ->
-            PlayItem("ep_${ep.id}", "${s.name} — ${ep.title}", ep.url, s.cover, s.genre, false, true)
+            PlayItem("ep_${ep.id}", "${s.name} — ${ep.title}", ep.url, s.cover, s.genre,
+                false, true, s.id.toIntOrNull(), s.name)
         }
     }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
-        item { Header(s) }
-        if (s.seasons.size > 1) {
-            item { SeasonPicker(s.seasons, selectedSeason, onSelectSeason) }
+    // Devam edilecek bölüm: yarım kalan ya da son izlenenin bir sonrası.
+    val resumeIndex = run {
+        val ip = season.episodes.indexOfFirst { resumeFor("ep_${it.id}") != null }
+        if (ip >= 0) ip else {
+            val lw = season.episodes.indexOfLast { "ep_${it.id}" in watchedIds }
+            if (lw in 0 until season.episodes.lastIndex) lw + 1 else -1
         }
+    }
+
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
+        item {
+            Header(s, favorite, rating, onFavorite, onRate,
+                resumeEp = season.episodes.getOrNull(resumeIndex.coerceAtLeast(0)),
+                isResume = resumeIndex >= 0,
+                onPlay = { onPlayQueue(queue, resumeIndex.coerceAtLeast(0)) })
+        }
+        if (s.seasons.size > 1) item { SeasonPicker(s.seasons, selectedSeason, onSelectSeason) }
         itemsIndexed(season.episodes) { i, ep ->
             val key = "ep_${ep.id}"
             EpisodeRow(ep, resumeFor(key), key in watchedIds) { onPlayQueue(queue, i) }
@@ -97,21 +122,56 @@ private fun SeriesContent(
 }
 
 @Composable
-private fun Header(s: Series) {
-    Row(Modifier.padding(start = 56.dp, top = 12.dp, end = 16.dp)) {
-        Box(
-            Modifier.size(96.dp, 144.dp).clip(RoundedCornerShape(10.dp)).background(Elevated),
-            contentAlignment = Alignment.Center
-        ) {
-            if (s.cover != null) AsyncImage(s.cover, s.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+private fun Header(
+    s: Series,
+    favorite: Boolean,
+    rating: Int,
+    onFavorite: () -> Unit,
+    onRate: (Int) -> Unit,
+    resumeEp: Episode?,
+    isResume: Boolean,
+    onPlay: () -> Unit
+) {
+    Column(Modifier.padding(top = 44.dp)) {
+        Row(Modifier.padding(horizontal = 16.dp)) {
+            Box(
+                Modifier.size(104.dp, 156.dp).clip(RoundedCornerShape(12.dp)).background(Elevated),
+                contentAlignment = Alignment.Center
+            ) {
+                if (s.cover != null) AsyncImage(s.cover, s.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            }
+            Column(Modifier.padding(start = 14.dp)) {
+                Text(s.name, color = TextHi, fontWeight = FontWeight.Black, fontSize = 20.sp, maxLines = 2,
+                    overflow = TextOverflow.Ellipsis)
+                s.genre?.let { Text(it, color = Accent2, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp)) }
+                s.plot?.let {
+                    Text(it, color = TextDim, fontSize = 13.sp, maxLines = 5,
+                        overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
+                }
+            }
         }
-        Column(Modifier.padding(start = 14.dp)) {
-            Text(s.name, color = TextHi, fontWeight = FontWeight.Black, fontSize = 20.sp, maxLines = 2)
-            s.genre?.let { Text(it, color = Accent2, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp)) }
-            // Not: LazyColumn item'ı içinde verticalScroll ölçüm çöker; maxLines yeterli.
-            s.plot?.let {
-                Text(it, color = TextDim, fontSize = 13.sp, maxLines = 6,
-                    overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
+        // Aksiyon satırı.
+        Row(Modifier.padding(start = 16.dp, top = 14.dp, end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                Modifier.clip(RoundedCornerShape(12.dp)).background(Accent)
+                    .clickable(onClick = onPlay).padding(horizontal = 22.dp, vertical = 11.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.PlayArrow, null, tint = Ground)
+                Text(
+                    if (isResume && resumeEp != null) "Devam Et · B${resumeEp.episodeNum}" else "Oynat",
+                    color = Ground, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 6.dp)
+                )
+            }
+            IconButton(onClick = onFavorite, modifier = Modifier.padding(start = 6.dp)) {
+                Icon(if (favorite) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                    "Daha sonra izle", tint = if (favorite) Accent else TextDim)
+            }
+            IconButton(onClick = { onRate(if (rating == 1) 0 else 1) }) {
+                Icon(Icons.Default.ThumbUp, "Beğen", tint = if (rating == 1) Accent else TextDim)
+            }
+            IconButton(onClick = { onRate(if (rating == -1) 0 else -1) }) {
+                Icon(Icons.Default.ThumbDown, "Beğenme", tint = if (rating == -1) Live else TextDim)
             }
         }
     }
@@ -126,11 +186,8 @@ private fun SeasonPicker(seasons: List<Season>, selected: Int, onSelect: (Int) -
         items(seasons) { season ->
             val active = season.number == selected
             Box(
-                Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(if (active) Accent else Elevated)
-                    .clickable { onSelect(season.number) }
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                Modifier.clip(RoundedCornerShape(20.dp)).background(if (active) Accent else Elevated)
+                    .clickable { onSelect(season.number) }.padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
                 Text("Sezon ${season.number}", color = if (active) Ground else TextHi,
                     fontWeight = FontWeight.Bold, fontSize = 13.sp)
@@ -151,7 +208,6 @@ private fun EpisodeRow(ep: Episode, resume: ResumeMark?, watched: Boolean, onPla
         ) {
             if (ep.thumb != null) AsyncImage(ep.thumb, ep.title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             else Icon(Icons.Default.PlayArrow, null, tint = TextMute, modifier = Modifier.align(Alignment.Center))
-            // Devam çubuğu (yarım izlenen bölüm).
             if (resume != null) Box(Modifier.fillMaxWidth().height(4.dp).background(LineSoft)) {
                 Box(Modifier.fillMaxWidth(resume.fraction).height(4.dp).background(Accent))
             }

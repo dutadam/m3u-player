@@ -8,8 +8,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material.icons.filled.ThumbUp
@@ -82,8 +82,8 @@ fun MovieDetailScreen(
                         Text("Oynat", color = Ground, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 6.dp))
                     }
                     IconButton(onClick = onFavorite, modifier = Modifier.padding(start = 8.dp)) {
-                        Icon(if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            "Favori", tint = if (isFavorite) Accent else TextDim)
+                        Icon(if (isFavorite) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                            "Daha sonra izle", tint = if (isFavorite) Accent else TextDim)
                     }
                     IconButton(onClick = { onRate(if (rating == 1) 0 else 1) }) {
                         Icon(Icons.Default.ThumbUp, "Beğen", tint = if (rating == 1) Accent else TextDim)
@@ -108,7 +108,7 @@ fun MovieDetailScreen(
                 Spacer(Modifier.height(24.dp))
             }
         }
-        IconButton(onClick = onBack, modifier = Modifier.statusBarsPadding().padding(8.dp)) {
+        IconButton(onClick = onBack, modifier = Modifier.padding(4.dp)) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = Color.White)
         }
     }

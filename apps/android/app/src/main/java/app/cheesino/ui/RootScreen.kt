@@ -71,12 +71,17 @@ fun RootScreen(vm: LibraryViewModel) {
     }
 
     fun playOne(item: PlayItem) { playQueue = listOf(item); playIndex = 0 }
+    fun ratingOf(id: String) = when { id in user.likes -> 1; id in user.dislikes -> -1; else -> 0 }
+    val watchedIds = remember(user.history) { user.history.mapTo(HashSet()) { it.id } }
     val playChannel: (Channel) -> Unit = { playOne(it.toPlayItem()) }
     // İçerik dokunuşu: film → detay, kanal → doğrudan oynat.
     val onContent: (Channel) -> Unit = { ch -> if (ch.kind == MediaKind.VOD) movieDetail = ch else playChannel(ch) }
     val openSeries: (SeriesRef) -> Unit = { detail = it }
+    // Devam Et: dizi ise detay ekranına git, film ise doğrudan oynat.
     val resumePlay: (ResumeMark) -> Unit = { m ->
-        playOne(PlayItem(m.id, m.title, m.url, m.poster, isLive = false, isSeries = m.isSeries))
+        if (m.isSeries && m.seriesId != null)
+            detail = SeriesRef(m.seriesId, m.seriesName ?: m.title, m.poster, null, "")
+        else playOne(PlayItem(m.id, m.title, m.url, m.poster, isLive = false, isSeries = m.isSeries))
     }
 
     Scaffold(
@@ -102,31 +107,46 @@ fun RootScreen(vm: LibraryViewModel) {
         }
     ) { pad ->
         Box(Modifier.fillMaxSize().padding(pad)) {
-            when (tab) {
-                Tab.HOME -> HomeScreen(state, user, onContent, openSeries, resumePlay,
-                    onSettings = { showSettings = true },
-                    onSports = { vm.loadEpg(); showSports = true },
-                    onRefresh = { vm.reload() })
-                Tab.LIVE -> LiveScreen(state, playChannel,
-                    onGuide = { vm.loadEpg(); showGuide = true },
-                    onMulti = { showMulti = true })
-                Tab.MOVIES -> MoviesScreen(state, onContent)
-                Tab.SERIES -> SeriesScreen(state, openSeries)
-                Tab.SEARCH -> SearchScreen(state, onContent, openSeries)
+            val md = movieDetail
+            val sd = detail
+            when {
+                // Detay ekranları scaffold içinde → alt navigasyon görünür kalır.
+                md != null -> MovieDetailScreen(
+                    channel = md,
+                    load = { vm.movieInfo(it) },
+                    isFavorite = md.id in user.favorites,
+                    rating = ratingOf(md.id),
+                    onFavorite = { vm.toggleFavorite(md.id) },
+                    onRate = { vm.setRating(md.id, it) },
+                    onPlay = { movieDetail = null; playChannel(md) },
+                    onBack = { movieDetail = null }
+                )
+                sd != null -> SeriesDetailScreen(
+                    ref = sd,
+                    load = { vm.seriesDetail(it) },
+                    resumeFor = { user.resume[it] },
+                    watchedIds = watchedIds,
+                    favorite = "series_${sd.id}" in user.favorites,
+                    rating = ratingOf("series_${sd.id}"),
+                    onFavorite = { vm.toggleFavorite("series_${sd.id}") },
+                    onRate = { vm.setRating("series_${sd.id}", it) },
+                    onPlayQueue = { queue, i -> playQueue = queue; playIndex = i },
+                    onBack = { detail = null }
+                )
+                else -> when (tab) {
+                    Tab.HOME -> HomeScreen(state, user, onContent, openSeries, resumePlay,
+                        onSettings = { showSettings = true },
+                        onSports = { vm.loadEpg(); showSports = true },
+                        onRefresh = { vm.reload() })
+                    Tab.LIVE -> LiveScreen(state, playChannel,
+                        onGuide = { vm.loadEpg(); showGuide = true },
+                        onMulti = { showMulti = true })
+                    Tab.MOVIES -> MoviesScreen(state, onContent)
+                    Tab.SERIES -> SeriesScreen(state, openSeries)
+                    Tab.SEARCH -> SearchScreen(state, onContent, openSeries)
+                }
             }
         }
-    }
-
-    // Dizi detayı — tam ekran overlay.
-    detail?.let { ref ->
-        SeriesDetailScreen(
-            ref = ref,
-            load = { vm.seriesDetail(it) },
-            resumeFor = { user.resume[it] },
-            watchedIds = remember(user.history) { user.history.mapTo(HashSet()) { e -> e.id } },
-            onPlayQueue = { queue, i -> playQueue = queue; playIndex = i },
-            onBack = { detail = null }
-        )
     }
 
     // Rehber — overlay.
@@ -162,20 +182,6 @@ fun RootScreen(vm: LibraryViewModel) {
             epg = epg,
             onPlay = { showSports = false; playChannel(it) },
             onClose = { showSports = false }
-        )
-    }
-
-    // Film detayı — overlay.
-    movieDetail?.let { ch ->
-        MovieDetailScreen(
-            channel = ch,
-            load = { vm.movieInfo(it) },
-            isFavorite = ch.id in user.favorites,
-            rating = when { ch.id in user.likes -> 1; ch.id in user.dislikes -> -1; else -> 0 },
-            onFavorite = { vm.toggleFavorite(ch.id) },
-            onRate = { vm.setRating(ch.id, it) },
-            onPlay = { movieDetail = null; playChannel(ch) },
-            onBack = { movieDetail = null }
         )
     }
 
