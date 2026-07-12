@@ -57,6 +57,7 @@ fun RootScreen(vm: LibraryViewModel) {
     var showGuide by remember { mutableStateOf(false) }
     var showMulti by remember { mutableStateOf(false) }
     var showSports by remember { mutableStateOf(false) }
+    var showMyList by remember { mutableStateOf(false) }
     val epg by vm.epg.collectAsStateWithLifecycle()
 
     // Kaynak yoksa onboarding tam ekran.
@@ -137,11 +138,13 @@ fun RootScreen(vm: LibraryViewModel) {
                     onPlayQueue = { queue, i -> playQueue = queue; playIndex = i },
                     onBack = { detail = null }
                 )
+                showMyList -> MyListScreen(state, user, onContent, openSeries, onBack = { showMyList = false })
                 else -> when (tab) {
                     Tab.HOME -> HomeScreen(state, user, onContent, openSeries, resumePlay,
                         onSettings = { showSettings = true },
                         onSports = { vm.loadEpg(); showSports = true },
-                        onRefresh = { vm.reload() })
+                        onRefresh = { vm.reload() },
+                        onMyList = { showMyList = true })
                     Tab.LIVE -> LiveScreen(state, epg, playChannel,
                         onGuide = { showGuide = true },
                         onMulti = { showMulti = true })

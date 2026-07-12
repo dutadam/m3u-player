@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
@@ -48,7 +49,8 @@ fun HomeScreen(
     onResume: (ResumeMark) -> Unit,
     onSettings: () -> Unit,
     onSports: () -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    onMyList: () -> Unit
 ) {
     // Görselsiz + isim tekrarını ele (iOS homeList mantığı)
     fun clean(list: List<Channel>): List<Channel> {
@@ -75,8 +77,9 @@ fun HomeScreen(
                 ) { Text("c", color = Ground, fontSize = 22.sp, fontWeight = FontWeight.Black) }
                 Text("cheesino", color = TextHi, fontWeight = FontWeight.Black, fontSize = 21.sp,
                     modifier = Modifier.padding(start = 8.dp).weight(1f))
-                IconButton(onClick = onRefresh) { Icon(Icons.Default.Refresh, "Yenile", tint = TextMute) }
+                IconButton(onClick = onMyList) { Icon(Icons.Default.BookmarkBorder, "Listem", tint = TextMute) }
                 IconButton(onClick = onSports) { Icon(Icons.Default.SportsSoccer, "Spor", tint = TextMute) }
+                IconButton(onClick = onRefresh) { Icon(Icons.Default.Refresh, "Yenile", tint = TextMute) }
                 IconButton(onClick = onSettings) { Icon(Icons.Default.Settings, "Ayarlar", tint = TextMute) }
             }
         }
