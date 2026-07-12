@@ -67,7 +67,7 @@ fun Channel.toPlayItem() = PlayItem(
 private const val SEEK_STEP_MS = 10_000L
 
 @Composable
-fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit) {
+fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEnded: () -> Unit = {}) {
     val context = LocalContext.current
     val activity = context as? Activity
     val audio = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
@@ -101,6 +101,8 @@ fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit) {
             override fun onPlaybackStateChanged(state: Int) {
                 buffering = state == Player.STATE_BUFFERING
                 if (state == Player.STATE_READY) attempts = 0
+                // Bölüm/film bitti → sıradaki (canlıda son yoktur).
+                if (state == Player.STATE_ENDED && !item.isLive) onEnded()
             }
             override fun onPlayerError(error: PlaybackException) {
                 if (attempts < 5) {

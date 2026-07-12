@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -37,7 +38,7 @@ fun SeriesDetailScreen(
     load: suspend (SeriesRef) -> Series?,
     resumeFor: (String) -> ResumeMark?,
     watchedIds: Set<String>,
-    onPlay: (PlayItem) -> Unit,
+    onPlayQueue: (List<PlayItem>, Int) -> Unit,
     onBack: () -> Unit
 ) {
     var series by remember(ref.id) { mutableStateOf<Series?>(null) }
@@ -59,7 +60,7 @@ fun SeriesDetailScreen(
                 "Bölüm bilgisi alınamadı.", color = TextDim,
                 modifier = Modifier.align(Alignment.Center)
             )
-            else -> SeriesContent(s, selectedSeason, { selectedSeason = it }, resumeFor, watchedIds, onPlay)
+            else -> SeriesContent(s, selectedSeason, { selectedSeason = it }, resumeFor, watchedIds, onPlayQueue)
         }
         IconButton(onClick = onBack, modifier = Modifier.padding(8.dp).align(Alignment.TopStart)) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi)
@@ -74,27 +75,23 @@ private fun SeriesContent(
     onSelectSeason: (Int) -> Unit,
     resumeFor: (String) -> ResumeMark?,
     watchedIds: Set<String>,
-    onPlay: (PlayItem) -> Unit
+    onPlayQueue: (List<PlayItem>, Int) -> Unit
 ) {
     val season = s.seasons.firstOrNull { it.number == selectedSeason } ?: s.seasons.first()
+    // Sezonun bölümleri sıralı kuyruk → otomatik sonraki bölüm.
+    val queue = remember(season, s.name) {
+        season.episodes.map { ep ->
+            PlayItem("ep_${ep.id}", "${s.name} — ${ep.title}", ep.url, s.cover, s.genre, false, true)
+        }
+    }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
         item { Header(s) }
         if (s.seasons.size > 1) {
             item { SeasonPicker(s.seasons, selectedSeason, onSelectSeason) }
         }
-        items(season.episodes) { ep ->
+        itemsIndexed(season.episodes) { i, ep ->
             val key = "ep_${ep.id}"
-            EpisodeRow(ep, resumeFor(key), key in watchedIds) {
-                onPlay(PlayItem(
-                    id = key,
-                    title = "${s.name} — ${ep.title}",
-                    url = ep.url,
-                    poster = s.cover,
-                    group = s.genre,
-                    isLive = false,
-                    isSeries = true
-                ))
-            }
+            EpisodeRow(ep, resumeFor(key), key in watchedIds) { onPlayQueue(queue, i) }
         }
     }
 }

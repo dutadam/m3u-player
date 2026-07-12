@@ -17,6 +17,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -45,7 +46,9 @@ fun RootScreen(vm: LibraryViewModel) {
     val state by vm.state.collectAsStateWithLifecycle()
     val user by vm.user.collectAsStateWithLifecycle()
     var tab by remember { mutableStateOf(Tab.HOME) }
-    var playing by remember { mutableStateOf<PlayItem?>(null) }
+    // Oynatma kuyruğu — tek öğe (kanal/film) ya da dizi bölümleri (otomatik sonraki).
+    var playQueue by remember { mutableStateOf<List<PlayItem>>(emptyList()) }
+    var playIndex by remember { mutableIntStateOf(0) }
     var detail by remember { mutableStateOf<SeriesRef?>(null) }
     var showSettings by remember { mutableStateOf(false) }
     var showGuide by remember { mutableStateOf(false) }
@@ -65,10 +68,11 @@ fun RootScreen(vm: LibraryViewModel) {
         return
     }
 
-    val playChannel: (Channel) -> Unit = { playing = it.toPlayItem() }
+    fun playOne(item: PlayItem) { playQueue = listOf(item); playIndex = 0 }
+    val playChannel: (Channel) -> Unit = { playOne(it.toPlayItem()) }
     val openSeries: (SeriesRef) -> Unit = { detail = it }
     val resumePlay: (ResumeMark) -> Unit = { m ->
-        playing = PlayItem(m.id, m.title, m.url, m.poster, isLive = false, isSeries = m.isSeries)
+        playOne(PlayItem(m.id, m.title, m.url, m.poster, isLive = false, isSeries = m.isSeries))
     }
 
     Scaffold(
@@ -97,7 +101,8 @@ fun RootScreen(vm: LibraryViewModel) {
             when (tab) {
                 Tab.HOME -> HomeScreen(state, user, playChannel, openSeries, resumePlay,
                     onSettings = { showSettings = true },
-                    onSports = { vm.loadEpg(); showSports = true })
+                    onSports = { vm.loadEpg(); showSports = true },
+                    onRefresh = { vm.reload() })
                 Tab.LIVE -> LiveScreen(state, playChannel,
                     onGuide = { vm.loadEpg(); showGuide = true },
                     onMulti = { showMulti = true })
@@ -115,7 +120,7 @@ fun RootScreen(vm: LibraryViewModel) {
             load = { vm.seriesDetail(it) },
             resumeFor = { user.resume[it] },
             watchedIds = remember(user.history) { user.history.mapTo(HashSet()) { e -> e.id } },
-            onPlay = { playing = it },
+            onPlayQueue = { queue, i -> playQueue = queue; playIndex = i },
             onBack = { detail = null }
         )
     }
@@ -129,7 +134,7 @@ fun RootScreen(vm: LibraryViewModel) {
             onCatchup = { ch, entry ->
                 vm.catchupUrl(ch, entry)?.let { url ->
                     showGuide = false
-                    playing = PlayItem("${ch.id}_ts", "${ch.name} · baştan", url, ch.logo, isLive = false)
+                    playOne(PlayItem("${ch.id}_ts", "${ch.name} · baştan", url, ch.logo, isLive = false))
                 }
             },
             onClose = { showGuide = false }
@@ -161,8 +166,12 @@ fun RootScreen(vm: LibraryViewModel) {
         SettingsScreen(vm, onClose = { showSettings = false }, onSignedOut = { showSettings = false })
     }
 
-    // Oynatıcı — en üstte.
-    playing?.let { item ->
-        PlayerScreen(item, vm) { playing = null }
+    // Oynatıcı — en üstte. Dizi kuyruğunda bittiğinde otomatik sonraki bölüm.
+    playQueue.getOrNull(playIndex)?.let { item ->
+        PlayerScreen(
+            item = item, vm = vm,
+            onClose = { playQueue = emptyList() },
+            onEnded = { if (playIndex < playQueue.lastIndex) playIndex++ else playQueue = emptyList() }
+        )
     }
 }

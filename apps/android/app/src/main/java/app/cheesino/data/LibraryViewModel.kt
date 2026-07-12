@@ -139,6 +139,11 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
         creds.load()?.let { loadXtream(it) }
     }
 
+    /** İçeriği yeniden çeker (Xtream kaynağı için). M3U'da kayıtlı url yoksa no-op. */
+    fun reload() {
+        creds.load()?.let { loadXtream(it) }
+    }
+
     fun loadXtream(c: XtreamCredentials) {
         _state.value = _state.value.copy(loading = true, error = null)
         viewModelScope.launch {
