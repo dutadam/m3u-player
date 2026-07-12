@@ -16,7 +16,9 @@ data class ResumeMark(
     val positionMs: Long,
     val durationMs: Long,
     val updatedAt: Long,
-    val isSeries: Boolean = false
+    val isSeries: Boolean = false,
+    val seriesId: Int? = null,
+    val seriesName: String? = null
 ) {
     val fraction: Float get() = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
     /** Neredeyse bitmiş (>%92) içerik "devam et" listesinden düşer. */
