@@ -1,8 +1,10 @@
 package app.cheesino.ui
 
 import android.app.Activity
+import android.app.PictureInPictureParams
 import android.content.Context
 import android.media.AudioManager
+import android.os.Build
 import android.view.WindowManager
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -24,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PictureInPictureAlt
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material.icons.filled.Subtitles
@@ -256,6 +259,12 @@ fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEn
                     }
                     Text(item.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp,
                         maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        IconButton(onClick = {
+                            controlsVisible = false
+                            runCatching { activity?.enterPictureInPictureMode(PictureInPictureParams.Builder().build()) }
+                        }) { Icon(Icons.Default.PictureInPictureAlt, "Küçük ekran", tint = Color.White) }
+                    }
                     IconButton(onClick = { showTracks = true }) {
                         Icon(Icons.Default.Subtitles, "Altyazı / Ses", tint = Color.White)
                     }
