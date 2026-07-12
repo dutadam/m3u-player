@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items as lazyItems
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -109,12 +111,12 @@ private fun genresOf(nameGroup: List<Pair<String, String>>): List<String> {
 @Composable
 private fun GenreChips(genres: List<String>, selected: String?, onSelect: (String?) -> Unit) {
     if (genres.isEmpty()) return
-    androidx.compose.foundation.lazy.LazyRow(
+    LazyRow(
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item { Chip("Tümü", selected == null) { onSelect(null) } }
-        androidx.compose.foundation.lazy.items(genres) { g ->
+        lazyItems(genres) { g ->
             Chip(g, selected == g) { onSelect(g) }
         }
     }
