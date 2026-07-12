@@ -330,20 +330,6 @@ private fun CircleBtn(icon: androidx.compose.ui.graphics.vector.ImageVector, siz
 }
 
 @Composable
-private fun BrandLoader(modifier: Modifier = Modifier) {
-    val t = rememberInfiniteTransition(label = "brand")
-    val scale by t.animateFloat(0.85f, 1.1f,
-        infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "s")
-    val a by t.animateFloat(0.5f, 1f,
-        infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "a")
-    Box(
-        modifier.size(64.dp).scale(scale).alpha(a).clip(RoundedCornerShape(18.dp))
-            .background(Brush.linearGradient(listOf(Accent, Gold))),
-        contentAlignment = Alignment.Center
-    ) { Text("c", color = Ground, fontSize = 38.sp, fontWeight = FontWeight.Black) }
-}
-
-@Composable
 private fun GestureZone(modifier: Modifier, onDoubleTap: () -> Unit, onVerticalDrag: (Float) -> Unit) {
     Box(
         modifier.fillMaxHeight().fillMaxWidth(0.28f)

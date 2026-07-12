@@ -31,7 +31,10 @@ data class LibraryState(
 
 class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     private val creds = CredStore(app)
-    private val _state = MutableStateFlow(LibraryState(hasSource = creds.load() != null))
+    // Kayıtlı kaynak varsa açılışta doğrudan yükleniyor durumu → boş ekran görünmez.
+    private val _state = MutableStateFlow(
+        creds.load().let { LibraryState(hasSource = it != null, loading = it != null) }
+    )
     val state: StateFlow<LibraryState> = _state.asStateFlow()
 
     /** Xtream oturumu — dizi detayı/bölüm çekmek için canlı tutulur (M3U kaynağında null). */

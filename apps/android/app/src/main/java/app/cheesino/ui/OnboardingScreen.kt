@@ -53,12 +53,7 @@ fun OnboardingScreen(state: LibraryState, onXtream: (XtreamCredentials) -> Unit,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(Modifier.height(64.dp))
-            // Marka kilidi.
-            Box(
-                Modifier.size(72.dp).clip(RoundedCornerShape(20.dp))
-                    .background(Brush.linearGradient(listOf(Accent, Gold))),
-                contentAlignment = Alignment.Center
-            ) { Text("c", color = Ground, fontSize = 44.sp, fontWeight = FontWeight.Black) }
+            BrandMark(size = 76.dp)
             Spacer(Modifier.height(16.dp))
             Text("cheesino", color = TextHi, fontSize = 32.sp, fontWeight = FontWeight.Black)
             Text("Premium IPTV oynatıcı", color = Accent2, fontSize = 14.sp, fontWeight = FontWeight.Medium)

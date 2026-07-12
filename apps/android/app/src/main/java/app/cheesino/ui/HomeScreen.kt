@@ -69,14 +69,9 @@ fun HomeScreen(
         item {
             Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 6.dp, bottom = 4.dp),
                 verticalAlignment = Alignment.CenterVertically) {
-                // Marka kilidi (logo).
-                Box(
-                    Modifier.size(32.dp).clip(RoundedCornerShape(10.dp))
-                        .background(Brush.linearGradient(listOf(Accent, Gold))),
-                    contentAlignment = Alignment.Center
-                ) { Text("c", color = Ground, fontSize = 22.sp, fontWeight = FontWeight.Black) }
+                BrandMark(size = 34.dp)
                 Text("cheesino", color = TextHi, fontWeight = FontWeight.Black, fontSize = 21.sp,
-                    modifier = Modifier.padding(start = 8.dp).weight(1f))
+                    modifier = Modifier.padding(start = 9.dp).weight(1f))
                 IconButton(onClick = onMyList) { Icon(Icons.Default.BookmarkBorder, "Listem", tint = TextMute) }
                 IconButton(onClick = onSports) { Icon(Icons.Default.SportsSoccer, "Spor", tint = TextMute) }
                 IconButton(onClick = onRefresh) { Icon(Icons.Default.Refresh, "Yenile", tint = TextMute) }

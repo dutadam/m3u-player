@@ -4,19 +4,18 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LiveTv
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,8 +25,12 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.cheesino.core.Channel
 import app.cheesino.core.MediaKind
@@ -35,7 +38,9 @@ import app.cheesino.core.SeriesRef
 import app.cheesino.data.LibraryViewModel
 import app.cheesino.data.ResumeMark
 import app.cheesino.ui.theme.Accent
+import app.cheesino.ui.theme.Accent2
 import app.cheesino.ui.theme.Ground
+import app.cheesino.ui.theme.LineSoft
 import app.cheesino.ui.theme.Surface
 import app.cheesino.ui.theme.TextMute
 
@@ -101,25 +106,7 @@ fun RootScreen(vm: LibraryViewModel) {
 
     Scaffold(
         containerColor = Ground,
-        bottomBar = {
-            NavigationBar(containerColor = Surface) {
-                Tab.entries.forEach { t ->
-                    NavigationBarItem(
-                        selected = tab == t,
-                        onClick = { tab = t },
-                        icon = { Icon(t.icon, t.label) },
-                        label = { Text(t.label) },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Accent,
-                            selectedTextColor = Accent,
-                            indicatorColor = Accent.copy(alpha = 0.16f),
-                            unselectedIconColor = TextMute,
-                            unselectedTextColor = TextMute
-                        )
-                    )
-                }
-            }
-        }
+        bottomBar = { BottomBar(tab) { tab = it } }
     ) { pad ->
         Box(Modifier.fillMaxSize().padding(pad)) {
             val md = movieDetail
@@ -216,5 +203,34 @@ fun RootScreen(vm: LibraryViewModel) {
             onClose = { playQueue = emptyList() },
             onEnded = { if (playIndex < playQueue.lastIndex) playIndex++ else playQueue = emptyList() }
         )
+    }
+}
+
+/** Düz, pill'siz alt sekme çubuğu (tasarım spec'i). */
+@Composable
+private fun BottomBar(selected: Tab, onSelect: (Tab) -> Unit) {
+    Column(Modifier.background(Surface)) {
+        HorizontalDivider(thickness = 1.dp, color = LineSoft.copy(alpha = 0.6f))
+        Row(
+            Modifier.fillMaxWidth().navigationBarsPadding().padding(top = 8.dp, bottom = 8.dp),
+            horizontalArrangement = Arrangement.SpaceAround
+        ) {
+            Tab.entries.forEach { t ->
+                val on = t == selected
+                val tint = if (on) Accent2 else TextMute
+                Column(
+                    Modifier.weight(1f).clickable(
+                        interactionSource = remember { MutableInteractionSource() }, indication = null
+                    ) { onSelect(t) },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(t.icon, t.label, tint = tint, modifier = Modifier.size(24.dp))
+                    Text(t.label, color = tint, fontSize = 10.sp,
+                        fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
+                        modifier = Modifier.padding(top = 3.dp))
+                }
+            }
+        }
     }
 }
