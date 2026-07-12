@@ -1,5 +1,7 @@
 package app.cheesino.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -14,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -30,6 +33,14 @@ fun OnboardingScreen(state: LibraryState, onXtream: (XtreamCredentials) -> Unit,
     var user by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
     var m3u by remember { mutableStateOf("") }
+
+    val context = LocalContext.current
+    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let {
+            runCatching { context.contentResolver.openInputStream(it)?.bufferedReader()?.use { r -> r.readText() } }
+                .getOrNull()?.let { text -> onM3U(text) }
+        }
+    }
 
     Box(
         Modifier.fillMaxSize().background(
@@ -71,6 +82,12 @@ fun OnboardingScreen(state: LibraryState, onXtream: (XtreamCredentials) -> Unit,
                 } else {
                     Field("M3U URL", m3u) { m3u = it }
                     PrimaryButton("Yükle", state.loading) { onM3U(m3u) }
+                    Box(
+                        Modifier.fillMaxWidth().padding(top = 10.dp).clip(RoundedCornerShape(12.dp))
+                            .background(Ground).clickable { filePicker.launch("*/*") }
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) { Text("veya cihazdan .m3u dosyası seç", color = Accent2, fontWeight = FontWeight.Medium, fontSize = 14.sp) }
                 }
 
                 state.error?.let {
