@@ -6,9 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
@@ -22,12 +20,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cheesino.core.Episode
 import app.cheesino.core.Season
 import app.cheesino.core.Series
 import app.cheesino.core.SeriesRef
+import app.cheesino.data.ResumeMark
 import app.cheesino.ui.theme.*
 import coil.compose.AsyncImage
 
@@ -35,6 +35,8 @@ import coil.compose.AsyncImage
 fun SeriesDetailScreen(
     ref: SeriesRef,
     load: suspend (SeriesRef) -> Series?,
+    resumeFor: (String) -> ResumeMark?,
+    watchedIds: Set<String>,
     onPlay: (PlayItem) -> Unit,
     onBack: () -> Unit
 ) {
@@ -57,7 +59,7 @@ fun SeriesDetailScreen(
                 "Bölüm bilgisi alınamadı.", color = TextDim,
                 modifier = Modifier.align(Alignment.Center)
             )
-            else -> SeriesContent(s, selectedSeason, { selectedSeason = it }, onPlay)
+            else -> SeriesContent(s, selectedSeason, { selectedSeason = it }, resumeFor, watchedIds, onPlay)
         }
         IconButton(onClick = onBack, modifier = Modifier.padding(8.dp).align(Alignment.TopStart)) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi)
@@ -70,6 +72,8 @@ private fun SeriesContent(
     s: Series,
     selectedSeason: Int,
     onSelectSeason: (Int) -> Unit,
+    resumeFor: (String) -> ResumeMark?,
+    watchedIds: Set<String>,
     onPlay: (PlayItem) -> Unit
 ) {
     val season = s.seasons.firstOrNull { it.number == selectedSeason } ?: s.seasons.first()
@@ -79,9 +83,10 @@ private fun SeriesContent(
             item { SeasonPicker(s.seasons, selectedSeason, onSelectSeason) }
         }
         items(season.episodes) { ep ->
-            EpisodeRow(ep) {
+            val key = "ep_${ep.id}"
+            EpisodeRow(ep, resumeFor(key), key in watchedIds) {
                 onPlay(PlayItem(
-                    id = "ep_${ep.id}",
+                    id = key,
                     title = "${s.name} — ${ep.title}",
                     url = ep.url,
                     poster = s.cover,
@@ -106,9 +111,10 @@ private fun Header(s: Series) {
         Column(Modifier.padding(start = 14.dp)) {
             Text(s.name, color = TextHi, fontWeight = FontWeight.Black, fontSize = 20.sp, maxLines = 2)
             s.genre?.let { Text(it, color = Accent2, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp)) }
+            // Not: LazyColumn item'ı içinde verticalScroll ölçüm çöker; maxLines yeterli.
             s.plot?.let {
                 Text(it, color = TextDim, fontSize = 13.sp, maxLines = 6,
-                    modifier = Modifier.padding(top = 8.dp).verticalScroll(rememberScrollState()))
+                    overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
             }
         }
     }
@@ -137,20 +143,28 @@ private fun SeasonPicker(seasons: List<Season>, selected: Int, onSelect: (Int) -
 }
 
 @Composable
-private fun EpisodeRow(ep: Episode, onPlay: () -> Unit) {
+private fun EpisodeRow(ep: Episode, resume: ResumeMark?, watched: Boolean, onPlay: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().clickable(onClick = onPlay).padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             Modifier.size(120.dp, 68.dp).clip(RoundedCornerShape(8.dp)).background(Elevated),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.BottomStart
         ) {
             if (ep.thumb != null) AsyncImage(ep.thumb, ep.title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-            else Icon(Icons.Default.PlayArrow, null, tint = TextMute)
+            else Icon(Icons.Default.PlayArrow, null, tint = TextMute, modifier = Modifier.align(Alignment.Center))
+            // Devam çubuğu (yarım izlenen bölüm).
+            if (resume != null) Box(Modifier.fillMaxWidth().height(4.dp).background(LineSoft)) {
+                Box(Modifier.fillMaxWidth(resume.fraction).height(4.dp).background(Accent))
+            }
         }
-        Text("${ep.episodeNum}. ${ep.title}", color = TextHi, fontSize = 14.sp, maxLines = 2,
-            modifier = Modifier.padding(start = 12.dp).weight(1f))
+        Column(Modifier.padding(start = 12.dp).weight(1f)) {
+            Text("${ep.episodeNum}. ${ep.title}", color = TextHi, fontSize = 14.sp, maxLines = 2,
+                overflow = TextOverflow.Ellipsis)
+            if (watched && resume == null)
+                Text("İzlendi", color = Accent2, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp))
+        }
         Icon(Icons.Default.PlayArrow, "Oynat", tint = Accent)
     }
 }

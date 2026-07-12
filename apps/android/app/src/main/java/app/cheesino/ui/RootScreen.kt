@@ -113,6 +113,8 @@ fun RootScreen(vm: LibraryViewModel) {
         SeriesDetailScreen(
             ref = ref,
             load = { vm.seriesDetail(it) },
+            resumeFor = { user.resume[it] },
+            watchedIds = remember(user.history) { user.history.mapTo(HashSet()) { e -> e.id } },
             onPlay = { playing = it },
             onBack = { detail = null }
         )
