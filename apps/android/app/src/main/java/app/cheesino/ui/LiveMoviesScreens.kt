@@ -18,6 +18,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Search
@@ -172,8 +173,16 @@ private fun LiveChannelCard(ch: Channel, now: String?, onTap: () -> Unit) {
 @Composable
 fun MoviesScreen(state: LibraryState, onPlay: (Channel) -> Unit) {
     var q by remember { mutableStateOf("") }
+    var seeAll by remember { mutableStateOf<Pair<String, List<Channel>>?>(null) }
     val all = remember(state.movies) { state.movies.filter { it.logo != null } }
     val query = q.trim().lowercase()
+
+    val sa = seeAll
+    if (sa != null) {
+        CategoryGrid(sa.first, sa.second.map { CardItem(it.name, it.logo) { onPlay(it) } }) { seeAll = null }
+        return
+    }
+
     Column(Modifier.fillMaxSize()) {
         SearchField("Film ara…", q) { q = it }
         Box(Modifier.weight(1f).fillMaxWidth()) {
@@ -186,7 +195,9 @@ fun MoviesScreen(state: LibraryState, onPlay: (Channel) -> Unit) {
                 else -> {
                     val byCat = remember(all) { all.groupBy { it.group } }
                     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 6.dp)) {
-                        byCat.forEach { (cat, list) -> item { PosterRail(cat, list, onPlay) } }
+                        byCat.forEach { (cat, list) ->
+                            item { PosterRail(cat, list, onPlay, onSeeAll = { seeAll = cat to list }) }
+                        }
                     }
                 }
             }
@@ -198,8 +209,16 @@ fun MoviesScreen(state: LibraryState, onPlay: (Channel) -> Unit) {
 @Composable
 fun SeriesScreen(state: LibraryState, onSeries: (SeriesRef) -> Unit) {
     var q by remember { mutableStateOf("") }
+    var seeAll by remember { mutableStateOf<Pair<String, List<SeriesRef>>?>(null) }
     val all = remember(state.visibleSeries) { state.visibleSeries.filter { it.cover != null } }
     val query = q.trim().lowercase()
+
+    val sa = seeAll
+    if (sa != null) {
+        CategoryGrid(sa.first, sa.second.map { CardItem(it.name, it.cover) { onSeries(it) } }) { seeAll = null }
+        return
+    }
+
     Column(Modifier.fillMaxSize()) {
         SearchField("Dizi ara…", q) { q = it }
         Box(Modifier.weight(1f).fillMaxWidth()) {
@@ -217,7 +236,9 @@ fun SeriesScreen(state: LibraryState, onSeries: (SeriesRef) -> Unit) {
                 else -> {
                     val byCat = remember(all) { all.groupBy { it.group } }
                     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 6.dp)) {
-                        byCat.forEach { (cat, list) -> item { SeriesRail(cat, list, onSeries) } }
+                        byCat.forEach { (cat, list) ->
+                            item { SeriesRail(cat, list, onSeries, onSeeAll = { seeAll = cat to list }) }
+                        }
                     }
                 }
             }
@@ -232,6 +253,25 @@ private fun PosterGrid(movies: List<Channel>, onPlay: (Channel) -> Unit) {
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp)
     ) { items(movies) { m -> PosterCard(m.name, m.logo) { onPlay(m) } } }
+}
+
+private class CardItem(val name: String, val poster: String?, val onClick: () -> Unit)
+
+/** Bir kategorinin tüm içeriği — "Tümü" ile açılan poster grid + geri. */
+@Composable
+private fun CategoryGrid(title: String, cards: List<CardItem>, onBack: () -> Unit) {
+    Column(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi) }
+            Text(title, color = TextHi, fontWeight = FontWeight.Black, fontSize = 18.sp,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(112.dp),
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            contentPadding = PaddingValues(16.dp)
+        ) { items(cards) { c -> PosterCard(c.name, c.poster, null, c.onClick) } }
+    }
 }
 
 @Composable
