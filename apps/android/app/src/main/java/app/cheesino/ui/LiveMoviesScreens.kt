@@ -65,6 +65,10 @@ fun LiveScreen(
                 }
             }
         }
+        if (byCat.isEmpty()) {
+            item { EmptyState("Canlı kanal yok", "Bu kaynakta canlı yayın görünmüyor.",
+                modifier = Modifier.fillMaxWidth().padding(vertical = 80.dp)) }
+        }
         byCat.forEach { (cat, chans) ->
             item { LiveRail(cat, chans, epg, onPlay) }
         }
@@ -116,12 +120,19 @@ fun MoviesScreen(state: LibraryState, onPlay: (Channel) -> Unit) {
     val query = q.trim().lowercase()
     Column(Modifier.fillMaxSize()) {
         SearchField("Film ara…", q) { q = it }
-        if (query.length >= 2) {
-            PosterGrid(all.filter { it.name.lowercase().contains(query) }.take(150), onPlay)
-        } else {
-            val byCat = remember(all) { all.groupBy { it.group } }
-            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 6.dp)) {
-                byCat.forEach { (cat, list) -> item { PosterRail(cat, list, onPlay) } }
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+            when {
+                all.isEmpty() -> EmptyState("Film bulunamadı", "Bu kaynakta film kategorisi görünmüyor.")
+                query.length >= 2 -> {
+                    val hits = all.filter { it.name.lowercase().contains(query) }.take(150)
+                    if (hits.isEmpty()) EmptyState("Sonuç yok") else PosterGrid(hits, onPlay)
+                }
+                else -> {
+                    val byCat = remember(all) { all.groupBy { it.group } }
+                    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 6.dp)) {
+                        byCat.forEach { (cat, list) -> item { PosterRail(cat, list, onPlay) } }
+                    }
+                }
             }
         }
     }
@@ -135,17 +146,24 @@ fun SeriesScreen(state: LibraryState, onSeries: (SeriesRef) -> Unit) {
     val query = q.trim().lowercase()
     Column(Modifier.fillMaxSize()) {
         SearchField("Dizi ara…", q) { q = it }
-        if (query.length >= 2) {
-            val hits = all.filter { it.name.lowercase().contains(query) }.take(150)
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(112.dp),
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp)
-            ) { items(hits) { s -> PosterCard(s.name, s.cover) { onSeries(s) } } }
-        } else {
-            val byCat = remember(all) { all.groupBy { it.group } }
-            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 6.dp)) {
-                byCat.forEach { (cat, list) -> item { SeriesRail(cat, list, onSeries) } }
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+            when {
+                all.isEmpty() -> EmptyState("Dizi bulunamadı", "Bu kaynakta dizi kategorisi görünmüyor.")
+                query.length >= 2 -> {
+                    val hits = all.filter { it.name.lowercase().contains(query) }.take(150)
+                    if (hits.isEmpty()) EmptyState("Sonuç yok")
+                    else LazyVerticalGrid(
+                        columns = GridCells.Adaptive(112.dp),
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp)
+                    ) { items(hits) { s -> PosterCard(s.name, s.cover) { onSeries(s) } } }
+                }
+                else -> {
+                    val byCat = remember(all) { all.groupBy { it.group } }
+                    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 6.dp)) {
+                        byCat.forEach { (cat, list) -> item { SeriesRail(cat, list, onSeries) } }
+                    }
+                }
             }
         }
     }

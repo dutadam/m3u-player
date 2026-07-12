@@ -72,6 +72,12 @@ fun RootScreen(vm: LibraryViewModel) {
         return
     }
 
+    // İlk yükleme — içerik henüz gelmediyse tam ekran loader.
+    if (state.channels.isEmpty() && state.loading) {
+        CenterLoader("İçerik yükleniyor…")
+        return
+    }
+
     // Canlı sekmesine girince EPG'yi (rehber + şimdi oynuyor) tembel yükle.
     LaunchedEffect(tab) { if (tab == Tab.LIVE) vm.loadEpg() }
 
