@@ -21,6 +21,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ViewList
+import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,7 +44,7 @@ import app.cheesino.data.LibraryState
 import app.cheesino.ui.theme.*
 import coil.compose.AsyncImage
 
-/** Canlı — kategori rayları; her kanalda EPG'den "şimdi oynuyor". */
+/** Canlı — ray/liste geçişli; her kanalda EPG'den "şimdi oynuyor". */
 @Composable
 fun LiveScreen(
     state: LibraryState,
@@ -51,26 +53,80 @@ fun LiveScreen(
     onGuide: () -> Unit,
     onMulti: () -> Unit
 ) {
+    var listMode by remember { mutableStateOf(false) }
     val byCat = remember(state.live) { state.live.groupBy { it.group } }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 10.dp)) {
-        item {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                Text("Canlı", color = TextHi, fontWeight = FontWeight.Black, fontSize = 22.sp,
-                    modifier = Modifier.weight(1f))
-                IconButton(onClick = onMulti) { Icon(Icons.Default.GridView, "Çoklu ekran", tint = Accent) }
-                TextButton(onClick = onGuide) {
-                    Icon(Icons.Default.CalendarMonth, null, tint = Accent)
-                    Text("  Rehber", color = Accent, fontWeight = FontWeight.Bold)
-                }
+    Column(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Text("Canlı", color = TextHi, fontWeight = FontWeight.Black, fontSize = 22.sp,
+                modifier = Modifier.weight(1f))
+            IconButton(onClick = { listMode = !listMode }) {
+                Icon(if (listMode) Icons.Default.ViewModule else Icons.Default.ViewList,
+                    "Görünüm", tint = Accent)
+            }
+            IconButton(onClick = onMulti) { Icon(Icons.Default.GridView, "Çoklu ekran", tint = Accent) }
+            TextButton(onClick = onGuide) {
+                Icon(Icons.Default.CalendarMonth, null, tint = Accent)
+                Text("  Rehber", color = Accent, fontWeight = FontWeight.Bold)
             }
         }
-        if (byCat.isEmpty()) {
-            item { EmptyState("Canlı kanal yok", "Bu kaynakta canlı yayın görünmüyor.",
-                modifier = Modifier.fillMaxWidth().padding(vertical = 80.dp)) }
+        when {
+            byCat.isEmpty() -> EmptyState("Canlı kanal yok", "Bu kaynakta canlı yayın görünmüyor.",
+                modifier = Modifier.weight(1f).fillMaxWidth())
+            listMode -> LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(bottom = 12.dp)) {
+                byCat.forEach { (cat, chans) ->
+                    item { CategoryHeader(cat) }
+                    lazyItems(chans) { ch ->
+                        val list = ch.tvgId?.let { epg[it] }
+                        val now = list?.firstOrNull { it.isLiveNow }
+                        val next = list?.firstOrNull { it.start > (now?.stop ?: 0L) }
+                        LiveListRow(ch, now?.title, next?.title, onPlay)
+                    }
+                }
+            }
+            else -> LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(vertical = 6.dp)) {
+                byCat.forEach { (cat, chans) -> item { LiveRail(cat, chans, epg, onPlay) } }
+            }
         }
-        byCat.forEach { (cat, chans) ->
-            item { LiveRail(cat, chans, epg, onPlay) }
+    }
+}
+
+@Composable
+private fun CategoryHeader(title: String) {
+    Row(Modifier.padding(start = 16.dp, top = 14.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(4.dp, 16.dp).clip(RoundedCornerShape(2.dp)).background(Accent))
+        Text(title, color = TextHi, fontWeight = FontWeight.Bold, fontSize = 15.sp,
+            modifier = Modifier.padding(start = 8.dp))
+    }
+}
+
+@Composable
+private fun LiveListRow(ch: Channel, now: String?, next: String?, onPlay: (Channel) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable { onPlay(ch) }.padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier.size(58.dp, 40.dp).clip(RoundedCornerShape(8.dp)).background(Elevated),
+            contentAlignment = Alignment.Center
+        ) {
+            if (ch.logo != null) AsyncImage(ch.logo, ch.name, Modifier.padding(6.dp).fillMaxSize(), contentScale = ContentScale.Fit)
+            else Text(ch.name.take(2).uppercase(), color = TextHi, fontSize = 11.sp, fontWeight = FontWeight.Black)
+        }
+        Column(Modifier.padding(start = 12.dp).weight(1f)) {
+            Text(ch.name, color = TextHi, fontWeight = FontWeight.Bold, fontSize = 14.sp,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(now ?: "Program bilgisi yok", color = if (now != null) Accent2 else TextMute,
+                fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            next?.let {
+                Text("Sırada · $it", color = TextDim, fontSize = 11.sp, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis)
+            }
+        }
+        ch.quality?.label?.let {
+            Box(Modifier.clip(RoundedCornerShape(6.dp)).background(Accent).padding(horizontal = 5.dp, vertical = 1.dp)) {
+                Text(it, color = Ground, fontSize = 9.sp, fontWeight = FontWeight.Black)
+            }
         }
     }
 }
