@@ -51,6 +51,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.cast.CastPlayer
+import androidx.media3.cast.SessionAvailabilityListener
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
@@ -60,6 +62,9 @@ import androidx.media3.common.Tracks
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import androidx.mediarouter.app.MediaRouteButton
+import com.google.android.gms.cast.framework.CastButtonFactory
+import com.google.android.gms.cast.framework.CastContext
 import app.cheesino.core.Channel
 import app.cheesino.core.MediaKind
 import app.cheesino.core.StreamResolver
@@ -101,6 +106,11 @@ fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEn
         mutableStateOf(existing != null && existing.positionMs > 30_000 && !existing.finished)
     }
     var startAtMs by remember(item.id) { mutableStateOf(0L) }
+
+    // Chromecast — cihaz varsa. Play Services yoksa null (buton gizli).
+    val castContext = remember { runCatching { CastContext.getSharedInstance(context) }.getOrNull() }
+    val castPlayer = remember(castContext) { castContext?.let { CastPlayer(it) } }
+    var casting by remember { mutableStateOf(castPlayer?.isCastSessionAvailable == true) }
 
     var buffering by remember { mutableStateOf(true) }
     var isPlaying by remember { mutableStateOf(true) }
@@ -166,6 +176,22 @@ fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEn
         }
     }
 
+    // Cast oturumu geldi/gitti → yereli/cast'i değiştir.
+    DisposableEffect(castPlayer) {
+        val cp = castPlayer
+        if (cp != null) {
+            cp.setSessionAvailabilityListener(object : SessionAvailabilityListener {
+                override fun onCastSessionAvailable() {
+                    casting = true
+                    cp.setMediaItem(MediaItem.fromUri(item.url)); cp.playWhenReady = true
+                    player.pause()
+                }
+                override fun onCastSessionUnavailable() { casting = false; player.play() }
+            })
+        }
+        onDispose { cp?.setSessionAvailabilityListener(null); cp?.release() }
+    }
+
     LaunchedEffect(item.id) { if (!item.isLive) vm.recordPlay(item.id, item.title, item.group) }
 
     // Konum/süre + periyodik kayıt.
@@ -196,6 +222,7 @@ fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEn
                     subtitleView?.setFractionalTextSize(vm.subtitleScale)
                 }
             },
+            update = { it.player = if (casting) castPlayer else player },
             modifier = Modifier.fillMaxSize()
         )
 
@@ -259,6 +286,13 @@ fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEn
                     }
                     Text(item.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp,
                         maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    // Chromecast butonu (cihaz destekliyorsa; MediaRouteButton AppCompat teması ister).
+                    if (castContext != null) {
+                        AndroidView(factory = { ctx ->
+                            val themed = android.view.ContextThemeWrapper(ctx, androidx.appcompat.R.style.Theme_AppCompat_NoActionBar)
+                            MediaRouteButton(themed).also { CastButtonFactory.setUpMediaRouteButton(themed, it) }
+                        })
+                    }
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                         IconButton(onClick = {
                             controlsVisible = false

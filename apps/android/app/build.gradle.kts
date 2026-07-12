@@ -54,6 +54,10 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer-hls:1.4.1")
     implementation("androidx.media3:media3-ui:1.4.1")
     implementation("androidx.media3:media3-session:1.4.1")
+    // Chromecast — media3 CastPlayer + Google Cast framework (MediaRouteButton AppCompat teması ister)
+    implementation("androidx.media3:media3-cast:1.4.1")
+    implementation("com.google.android.gms:play-services-cast-framework:21.5.0")
+    implementation("androidx.appcompat:appcompat:1.7.0")
 
     // Ağ + JSON + görsel + kalıcılık
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
