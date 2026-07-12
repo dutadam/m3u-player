@@ -1,6 +1,7 @@
 package app.cheesino.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -28,18 +29,28 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cheesino.core.Channel
+import app.cheesino.core.EpgEntry
 import app.cheesino.core.GenreTagger
 import app.cheesino.core.SeriesRef
 import app.cheesino.data.LibraryState
 import app.cheesino.ui.theme.*
+import coil.compose.AsyncImage
 
-/** Canlı — kategori bazlı yatay raylar (iOS ile aynı dil). */
+/** Canlı — kategori rayları; her kanalda EPG'den "şimdi oynuyor". */
 @Composable
-fun LiveScreen(state: LibraryState, onPlay: (Channel) -> Unit, onGuide: () -> Unit, onMulti: () -> Unit) {
+fun LiveScreen(
+    state: LibraryState,
+    epg: Map<String, List<EpgEntry>>,
+    onPlay: (Channel) -> Unit,
+    onGuide: () -> Unit,
+    onMulti: () -> Unit
+) {
     val byCat = remember(state.live) { state.live.groupBy { it.group } }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 10.dp)) {
         item {
@@ -55,8 +66,45 @@ fun LiveScreen(state: LibraryState, onPlay: (Channel) -> Unit, onGuide: () -> Un
             }
         }
         byCat.forEach { (cat, chans) ->
-            item { ChannelRail(cat, chans, onPlay) }
+            item { LiveRail(cat, chans, epg, onPlay) }
         }
+    }
+}
+
+@Composable
+private fun LiveRail(title: String, channels: List<Channel>, epg: Map<String, List<EpgEntry>>, onPlay: (Channel) -> Unit) {
+    if (channels.isEmpty()) return
+    Rail(title) {
+        LazyRow(contentPadding = PaddingValues(horizontal = 16.dp)) {
+            lazyItems(channels.take(30)) { ch ->
+                val now = ch.tvgId?.let { epg[it] }?.firstOrNull { it.isLiveNow }?.title
+                LiveChannelCard(ch, now) { onPlay(ch) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LiveChannelCard(ch: Channel, now: String?, onTap: () -> Unit) {
+    Column(Modifier.focusHighlight(14).padding(end = 11.dp).width(150.dp).clickable(onClick = onTap)) {
+        Box(
+            Modifier.size(150.dp, 86.dp).clip(RoundedCornerShape(14.dp)).background(Elevated)
+                .border(1.dp, LineSoft.copy(alpha = 0.5f), RoundedCornerShape(14.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            if (ch.logo != null) AsyncImage(ch.logo, ch.name, Modifier.padding(14.dp).fillMaxSize(), contentScale = ContentScale.Fit)
+            else Text(ch.name.take(2).uppercase(), color = TextHi, fontWeight = FontWeight.Black)
+            ch.quality?.label?.let {
+                Box(
+                    Modifier.align(Alignment.TopEnd).padding(5.dp).clip(RoundedCornerShape(6.dp))
+                        .background(Accent).padding(horizontal = 5.dp, vertical = 1.dp)
+                ) { Text(it, color = Ground, fontSize = 9.sp, fontWeight = FontWeight.Black) }
+            }
+        }
+        Text(ch.name, color = TextHi, fontSize = 12.sp, fontWeight = FontWeight.Medium,
+            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
+        Text(now ?: "Program bilgisi yok", color = if (now != null) Accent2 else TextMute, fontSize = 10.sp,
+            maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

@@ -16,6 +16,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -69,6 +70,9 @@ fun RootScreen(vm: LibraryViewModel) {
         )
         return
     }
+
+    // Canlı sekmesine girince EPG'yi (rehber + şimdi oynuyor) tembel yükle.
+    LaunchedEffect(tab) { if (tab == Tab.LIVE) vm.loadEpg() }
 
     fun playOne(item: PlayItem) { playQueue = listOf(item); playIndex = 0 }
     fun ratingOf(id: String) = when { id in user.likes -> 1; id in user.dislikes -> -1; else -> 0 }
@@ -138,8 +142,8 @@ fun RootScreen(vm: LibraryViewModel) {
                         onSettings = { showSettings = true },
                         onSports = { vm.loadEpg(); showSports = true },
                         onRefresh = { vm.reload() })
-                    Tab.LIVE -> LiveScreen(state, playChannel,
-                        onGuide = { vm.loadEpg(); showGuide = true },
+                    Tab.LIVE -> LiveScreen(state, epg, playChannel,
+                        onGuide = { showGuide = true },
                         onMulti = { showMulti = true })
                     Tab.MOVIES -> MoviesScreen(state, onContent)
                     Tab.SERIES -> SeriesScreen(state, openSeries)
