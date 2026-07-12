@@ -15,6 +15,11 @@ class AppSettings(context: Context) {
         get() = prefs.getBoolean("parental", false)
         set(v) { prefs.edit().putBoolean("parental", v).apply() }
 
+    /** Altyazı boyutu — PlayerView fractional text size (0.04 küçük · 0.06 orta · 0.09 büyük). */
+    var subtitleScale: Float
+        get() = prefs.getFloat("sub_scale", 0.06f)
+        set(v) { prefs.edit().putFloat("sub_scale", v).apply() }
+
     private var pinHash: String?
         get() = prefs.getString("pin", null)
         set(v) { prefs.edit().putString("pin", v).apply() }

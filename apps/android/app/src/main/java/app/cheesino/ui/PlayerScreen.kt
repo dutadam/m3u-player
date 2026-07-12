@@ -190,6 +190,7 @@ fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEn
                     this.player = player
                     useController = false
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    subtitleView?.setFractionalTextSize(vm.subtitleScale)
                 }
             },
             modifier = Modifier.fillMaxSize()

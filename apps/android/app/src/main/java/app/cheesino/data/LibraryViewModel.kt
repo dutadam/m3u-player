@@ -76,6 +76,10 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     val hasPin: Boolean get() = settings.hasPin
 
     fun setUserAgent(v: String) { settings.userAgent = v }
+    val subtitleScale: Float get() = settings.subtitleScale
+    fun setSubtitleScale(v: Float) { settings.subtitleScale = v }
+    /** Favori/beğeni/geçmiş/ilerleme temizle. */
+    fun clearUserData() { _user.value = UserData(); userStore.save(UserData()) }
     fun setPin(pin: String) { settings.setPin(pin); _state.value = _state.value.copy(parentalOn = true, adultUnlocked = false) }
     fun disableParental(pin: String): Boolean {
         if (!settings.verifyPin(pin)) return false

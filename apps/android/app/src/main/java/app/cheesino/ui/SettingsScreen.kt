@@ -1,10 +1,13 @@
 package app.cheesino.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -26,6 +29,7 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
     var pin2 by remember { mutableStateOf("") }
     var msg by remember { mutableStateOf<String?>(null) }
     var parentalOn by remember { mutableStateOf(vm.parentalEnabled) }
+    var subScale by remember { mutableStateOf(vm.subtitleScale) }
 
     Column(Modifier.fillMaxSize().background(Ground).statusBarsPadding().verticalScroll(rememberScrollState())) {
         // Başlık
@@ -44,6 +48,19 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
                 modifier = Modifier.padding(top = 8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Accent)
             ) { Text("Kaydet", fontWeight = FontWeight.Bold) }
+        }
+
+        Section("Altyazı Boyutu") {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("Küçük" to 0.04f, "Orta" to 0.06f, "Büyük" to 0.09f).forEach { (lbl, sc) ->
+                    val active = kotlin.math.abs(subScale - sc) < 0.001f
+                    Box(
+                        Modifier.clip(RoundedCornerShape(10.dp)).background(if (active) Accent else Elevated)
+                            .clickable { subScale = sc; vm.setSubtitleScale(sc) }
+                            .padding(horizontal = 18.dp, vertical = 10.dp)
+                    ) { Text(lbl, color = if (active) Ground else TextHi, fontWeight = FontWeight.Bold) }
+                }
+            }
         }
 
         Section("Ebeveyn Kilidi") {
@@ -87,6 +104,15 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
             }
         }
 
+        Section("Veriler") {
+            Text("Favori, beğeni, izleme geçmişi ve ilerleme cihazında tutulur.",
+                color = TextDim, fontSize = 13.sp)
+            Button(onClick = { vm.clearUserData(); msg = "Veriler temizlendi." },
+                modifier = Modifier.padding(top = 8.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Elevated)
+            ) { Text("İzleme Verilerini Temizle", color = Live, fontWeight = FontWeight.Bold) }
+        }
+
         Section("Kaynak") {
             Button(onClick = { vm.signOut(); onSignedOut() }, modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = Elevated)
@@ -95,8 +121,13 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
 
         msg?.let { Text(it, color = Accent2, fontSize = 13.sp, modifier = Modifier.padding(16.dp)) }
 
-        Text("cheesino içerik barındırmaz — kendi kaynağını getirirsin. Veriler cihazda tutulur, telemetri yok.",
-            color = TextMute, fontSize = 12.sp, modifier = Modifier.padding(16.dp))
+        Section("Hakkında") {
+            Text("cheesino · sürüm 0.1.0", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Text("Premium IPTV oynatıcı. İçerik barındırmaz — kendi kaynağını getirirsin. " +
+                "Kimlik bilgileri cihazda şifreli, telemetri yok.",
+                color = TextMute, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+        }
+        Spacer(Modifier.height(16.dp))
     }
 }
 
