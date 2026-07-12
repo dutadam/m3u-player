@@ -226,42 +226,42 @@ fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEn
             modifier = Modifier.fillMaxSize()
         )
 
-        // Merkez dokunuş — kontrolleri aç/kapat.
+        // Merkez dokunuş — tek dokunuş kontrolleri açar, çift dokunuş konuma göre ±10 sn.
         Box(Modifier.fillMaxSize().pointerInput(Unit) {
-            detectTapGestures(onTap = { controlsVisible = !controlsVisible })
+            detectTapGestures(
+                onTap = { controlsVisible = !controlsVisible },
+                onDoubleTap = { offset ->
+                    if (item.isLive) return@detectTapGestures
+                    if (offset.x < size.width / 2f) {
+                        player.seekTo((player.currentPosition - SEEK_STEP_MS).coerceAtLeast(0)); hud = "⏪ 10 sn"
+                    } else {
+                        val dur = player.duration
+                        player.seekTo((player.currentPosition + SEEK_STEP_MS).let { if (dur > 0) it.coerceAtMost(dur) else it })
+                        hud = "⏩ 10 sn"
+                    }
+                }
+            )
         })
 
-        // Yan jest bölgeleri.
-        GestureZone(
-            Modifier.align(Alignment.CenterStart),
-            onDoubleTap = { player.seekTo((player.currentPosition - SEEK_STEP_MS).coerceAtLeast(0)); hud = "⏪ 10 sn" },
-            onVerticalDrag = { dy ->
-                activity?.window?.let { w ->
-                    val lp = w.attributes
-                    val cur = if (lp.screenBrightness in 0f..1f) lp.screenBrightness else 0.5f
-                    val next = (cur - dy / 800f).coerceIn(0.01f, 1f)
-                    lp.screenBrightness = next; w.attributes = lp
-                    hud = "☀ ${(next * 100).roundToInt()}%"
-                }
+        // Yan jest bölgeleri — yalnız dikey kaydırma (çakışmasın): sol parlaklık, sağ ses.
+        GestureZone(Modifier.align(Alignment.CenterStart)) { dy ->
+            activity?.window?.let { w ->
+                val lp = w.attributes
+                val cur = if (lp.screenBrightness in 0f..1f) lp.screenBrightness else 0.5f
+                val next = (cur - dy / 800f).coerceIn(0.01f, 1f)
+                lp.screenBrightness = next; w.attributes = lp
+                hud = "☀ ${(next * 100).roundToInt()}%"
             }
-        )
-        GestureZone(
-            Modifier.align(Alignment.CenterEnd),
-            onDoubleTap = {
-                val dur = player.duration
-                player.seekTo((player.currentPosition + SEEK_STEP_MS).let { if (dur > 0) it.coerceAtMost(dur) else it })
-                hud = "⏩ 10 sn"
-            },
-            onVerticalDrag = { dy ->
-                val cur = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
-                val delta = (-dy / 40f).roundToInt()
-                if (delta != 0) {
-                    val next = (cur + delta).coerceIn(0, maxVol)
-                    audio.setStreamVolume(AudioManager.STREAM_MUSIC, next, 0)
-                    hud = "🔊 ${(next * 100 / maxVol)}%"
-                }
+        }
+        GestureZone(Modifier.align(Alignment.CenterEnd)) { dy ->
+            val cur = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+            val delta = (-dy / 40f).roundToInt()
+            if (delta != 0) {
+                val next = (cur + delta).coerceIn(0, maxVol)
+                audio.setStreamVolume(AudioManager.STREAM_MUSIC, next, 0)
+                hud = "🔊 ${(next * 100 / maxVol)}%"
             }
-        )
+        }
 
         // Marka loader (canlı dışı buffer).
         if (buffering && !askResume) BrandLoader(Modifier.align(Alignment.Center))
@@ -373,10 +373,9 @@ private fun CircleBtn(icon: androidx.compose.ui.graphics.vector.ImageVector, siz
 }
 
 @Composable
-private fun GestureZone(modifier: Modifier, onDoubleTap: () -> Unit, onVerticalDrag: (Float) -> Unit) {
+private fun GestureZone(modifier: Modifier, onVerticalDrag: (Float) -> Unit) {
     Box(
-        modifier.fillMaxHeight().fillMaxWidth(0.28f)
-            .pointerInput(Unit) { detectTapGestures(onDoubleTap = { onDoubleTap() }) }
+        modifier.fillMaxHeight().fillMaxWidth(0.30f)
             .pointerInput(Unit) { detectVerticalDragGestures { _, dy -> onVerticalDrag(dy) } }
     )
 }
