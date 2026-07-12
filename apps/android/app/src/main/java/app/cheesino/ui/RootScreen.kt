@@ -1,5 +1,9 @@
 package app.cheesino.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -145,25 +149,27 @@ fun RootScreen(vm: LibraryViewModel) {
                     onBack = { detail = null }
                 )
                 showMyList -> MyListScreen(state, user, onContent, openSeries, onBack = { showMyList = false })
-                else -> when (tab) {
-                    Tab.HOME -> HomeScreen(state, user, onContent, openSeries, resumePlay,
-                        onSettings = { showSettings = true },
-                        onSports = { vm.loadEpg(); showSports = true },
-                        onRefresh = { vm.reload() },
-                        onMyList = { showMyList = true })
-                    Tab.LIVE -> LiveScreen(state, epg, playChannel,
-                        onGuide = { showGuide = true },
-                        onMulti = { showMulti = true })
-                    Tab.MOVIES -> MoviesScreen(state, onContent)
-                    Tab.SERIES -> SeriesScreen(state, openSeries)
-                    Tab.SEARCH -> SearchScreen(state, onContent, openSeries)
+                else -> Crossfade(targetState = tab, label = "tab") { t ->
+                    when (t) {
+                        Tab.HOME -> HomeScreen(state, user, onContent, openSeries, resumePlay,
+                            onSettings = { showSettings = true },
+                            onSports = { vm.loadEpg(); showSports = true },
+                            onRefresh = { vm.reload() },
+                            onMyList = { showMyList = true })
+                        Tab.LIVE -> LiveScreen(state, epg, playChannel,
+                            onGuide = { showGuide = true },
+                            onMulti = { showMulti = true })
+                        Tab.MOVIES -> MoviesScreen(state, onContent)
+                        Tab.SERIES -> SeriesScreen(state, openSeries)
+                        Tab.SEARCH -> SearchScreen(state, onContent, openSeries)
+                    }
                 }
             }
         }
     }
 
-    // Rehber — overlay.
-    if (showGuide) {
+    // Rehber — overlay (fade).
+    AnimatedVisibility(visible = showGuide, enter = fadeIn(), exit = fadeOut()) {
         GuideScreen(
             channels = state.live,
             epg = epg,
@@ -188,8 +194,8 @@ fun RootScreen(vm: LibraryViewModel) {
         )
     }
 
-    // Spor merkezi — overlay.
-    if (showSports) {
+    // Spor merkezi — overlay (fade).
+    AnimatedVisibility(visible = showSports, enter = fadeIn(), exit = fadeOut()) {
         SportsScreen(
             channels = state.live,
             epg = epg,
@@ -198,8 +204,8 @@ fun RootScreen(vm: LibraryViewModel) {
         )
     }
 
-    // Ayarlar — overlay.
-    if (showSettings) {
+    // Ayarlar — overlay (fade).
+    AnimatedVisibility(visible = showSettings, enter = fadeIn(), exit = fadeOut()) {
         SettingsScreen(vm, onClose = { showSettings = false }, onSignedOut = { showSettings = false })
     }
 
