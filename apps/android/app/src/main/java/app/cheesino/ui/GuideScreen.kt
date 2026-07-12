@@ -9,10 +9,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Replay
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,36 +39,67 @@ fun GuideScreen(
     onCatchup: (Channel, EpgEntry) -> Unit,
     onClose: () -> Unit
 ) {
+    var q by remember { mutableStateOf("") }
+    val query = q.trim().lowercase()
+
     Column(Modifier.fillMaxSize().background(Ground).statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi) }
             Text("Rehber", color = TextHi, fontWeight = FontWeight.Black, fontSize = 20.sp)
         }
+        OutlinedTextField(
+            value = q, onValueChange = { q = it }, singleLine = true,
+            placeholder = { Text("Kanal ara…") },
+            leadingIcon = { Icon(Icons.Default.Search, null) },
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = TextHi, unfocusedTextColor = TextHi,
+                focusedBorderColor = Accent, unfocusedBorderColor = LineSoft,
+                focusedLeadingIconColor = Accent, unfocusedLeadingIconColor = TextMute
+            )
+        )
         if (epg.isEmpty()) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("EPG yükleniyor veya bu kaynakta yok.", color = TextMute)
-            }
-            return
+            Text("EPG yükleniyor… kanallar aşağıda listeleniyor.", color = TextMute, fontSize = 12.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
         }
+
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 16.dp)) {
-            items(channels) { ch ->
-                val list = ch.tvgId?.let { epg[it] } ?: emptyList()
-                val now = list.firstOrNull { it.isLiveNow }
-                val next = list.firstOrNull { it.start > (now?.stop ?: 0L) }
-                GuideRow(ch, now, next, onPlay, onCatchup)
+            if (query.length >= 2) {
+                val hits = channels.filter { it.name.lowercase().contains(query) }
+                if (hits.isEmpty()) item { Text("Sonuç yok.", color = TextMute, modifier = Modifier.padding(16.dp)) }
+                items(hits) { ch -> GuideRow(ch, epg, onPlay, onCatchup) }
+            } else {
+                val byCat = channels.groupBy { it.group }
+                byCat.forEach { (cat, chans) ->
+                    item { GuideCategoryHeader(cat) }
+                    items(chans) { ch -> GuideRow(ch, epg, onPlay, onCatchup) }
+                }
             }
         }
     }
 }
 
 @Composable
+private fun GuideCategoryHeader(title: String) {
+    Row(Modifier.fillMaxWidth().background(Surface).padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(4.dp, 15.dp).clip(RoundedCornerShape(2.dp)).background(Accent))
+        Text(title, color = TextHi, fontWeight = FontWeight.Bold, fontSize = 14.sp,
+            modifier = Modifier.padding(start = 8.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
 private fun GuideRow(
     ch: Channel,
-    now: EpgEntry?,
-    next: EpgEntry?,
+    epg: Map<String, List<EpgEntry>>,
     onPlay: (Channel) -> Unit,
     onCatchup: (Channel, EpgEntry) -> Unit
 ) {
+    val list = ch.tvgId?.let { epg[it] } ?: emptyList()
+    val now = list.firstOrNull { it.isLiveNow }
+    val next = list.firstOrNull { it.start > (now?.stop ?: 0L) }
     Row(
         Modifier.fillMaxWidth().clickable { onPlay(ch) }.padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
