@@ -32,7 +32,7 @@ fun GuideScreen(
     onCatchup: (Channel, EpgEntry) -> Unit,
     onClose: () -> Unit
 ) {
-    Column(Modifier.fillMaxSize().background(Ground)) {
+    Column(Modifier.fillMaxSize().background(Ground).statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi) }
             Text("Rehber", color = TextHi, fontWeight = FontWeight.Black, fontSize = 20.sp)

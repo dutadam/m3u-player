@@ -27,7 +27,7 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
     var msg by remember { mutableStateOf<String?>(null) }
     var parentalOn by remember { mutableStateOf(vm.parentalEnabled) }
 
-    Column(Modifier.fillMaxSize().background(Ground).verticalScroll(rememberScrollState())) {
+    Column(Modifier.fillMaxSize().background(Ground).statusBarsPadding().verticalScroll(rememberScrollState())) {
         // Başlık
         Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi) }

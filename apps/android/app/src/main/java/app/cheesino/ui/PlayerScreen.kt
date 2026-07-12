@@ -209,7 +209,7 @@ fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEn
         }
 
         // Üst bar — favori, beğen/beğenme, kapat.
-        Row(Modifier.align(Alignment.TopEnd).padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
             val fav = item.id in user.favorites
             val rating = when { item.id in user.likes -> 1; item.id in user.dislikes -> -1; else -> 0 }
             IconButton(onClick = { vm.setRating(item.id, if (rating == 1) 0 else 1) }) {

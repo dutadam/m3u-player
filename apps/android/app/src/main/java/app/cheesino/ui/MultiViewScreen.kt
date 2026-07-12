@@ -56,7 +56,7 @@ fun MultiViewScreen(
 
     fun persist() = onSave(MultiViewConfig(rows, cols, slots.toList()))
 
-    Column(Modifier.fillMaxSize().background(Color.Black)) {
+    Column(Modifier.fillMaxSize().background(Color.Black).statusBarsPadding()) {
         // Üst bar — kapat + düzen seçici.
         Row(Modifier.fillMaxWidth().background(Ground).padding(8.dp),
             verticalAlignment = Alignment.CenterVertically) {

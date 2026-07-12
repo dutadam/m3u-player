@@ -39,7 +39,7 @@ fun SportsScreen(
     val byId = remember(channels) { channels.associateBy { it.id } }
     val timeFmt = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
 
-    Column(Modifier.fillMaxSize().background(Ground)) {
+    Column(Modifier.fillMaxSize().background(Ground).statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi) }
             Text("Spor Merkezi", color = TextHi, fontWeight = FontWeight.Black, fontSize = 20.sp)

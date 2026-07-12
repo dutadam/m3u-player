@@ -52,7 +52,7 @@ fun SeriesDetailScreen(
         loading = false
     }
 
-    Box(Modifier.fillMaxSize().background(Ground)) {
+    Box(Modifier.fillMaxSize().background(Ground).statusBarsPadding()) {
         val s = series
         when {
             loading -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = Accent)
