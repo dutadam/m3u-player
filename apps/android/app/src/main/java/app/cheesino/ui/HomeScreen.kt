@@ -65,10 +65,16 @@ fun HomeScreen(
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 10.dp)) {
         item {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 6.dp, bottom = 4.dp),
                 verticalAlignment = Alignment.CenterVertically) {
-                Text("cheesino", color = TextHi, fontWeight = FontWeight.Black, fontSize = 22.sp,
-                    modifier = Modifier.weight(1f))
+                // Marka kilidi (logo).
+                Box(
+                    Modifier.size(32.dp).clip(RoundedCornerShape(10.dp))
+                        .background(Brush.linearGradient(listOf(Accent, Gold))),
+                    contentAlignment = Alignment.Center
+                ) { Text("c", color = Ground, fontSize = 22.sp, fontWeight = FontWeight.Black) }
+                Text("cheesino", color = TextHi, fontWeight = FontWeight.Black, fontSize = 21.sp,
+                    modifier = Modifier.padding(start = 8.dp).weight(1f))
                 IconButton(onClick = onRefresh) { Icon(Icons.Default.Refresh, "Yenile", tint = TextMute) }
                 IconButton(onClick = onSports) { Icon(Icons.Default.SportsSoccer, "Spor", tint = TextMute) }
                 IconButton(onClick = onSettings) { Icon(Icons.Default.Settings, "Ayarlar", tint = TextMute) }

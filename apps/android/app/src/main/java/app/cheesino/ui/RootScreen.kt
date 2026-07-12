@@ -97,7 +97,7 @@ fun RootScreen(vm: LibraryViewModel) {
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = Accent,
                             selectedTextColor = Accent,
-                            indicatorColor = Ground,
+                            indicatorColor = Accent.copy(alpha = 0.16f),
                             unselectedIconColor = TextMute,
                             unselectedTextColor = TextMute
                         )

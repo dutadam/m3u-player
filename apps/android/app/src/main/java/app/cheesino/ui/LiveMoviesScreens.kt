@@ -12,11 +12,14 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,79 +60,69 @@ fun LiveScreen(state: LibraryState, onPlay: (Channel) -> Unit, onGuide: () -> Un
     }
 }
 
-/** Filmler — tür filtreli poster grid. */
+/** Filmler — üstte arama + kategori rayları (poster'a dokun → detay). */
 @Composable
 fun MoviesScreen(state: LibraryState, onPlay: (Channel) -> Unit) {
+    var q by remember { mutableStateOf("") }
     val all = remember(state.movies) { state.movies.filter { it.logo != null } }
-    val genres = remember(all) { genresOf(all.map { it.name to it.group }) }
-    var selected by remember { mutableStateOf<String?>(null) }
-    val shown = remember(all, selected) {
-        val g = selected
-        if (g == null) all else all.filter { GenreTagger.tags(it.name, it.group).contains(g) }
-    }
+    val query = q.trim().lowercase()
     Column(Modifier.fillMaxSize()) {
-        GenreChips(genres, selected) { selected = it }
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(112.dp),
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp)
-        ) {
-            items(shown) { m -> PosterCard(m.name, m.logo) { onPlay(m) } }
+        SearchField("Film ara…", q) { q = it }
+        if (query.length >= 2) {
+            PosterGrid(all.filter { it.name.lowercase().contains(query) }.take(150), onPlay)
+        } else {
+            val byCat = remember(all) { all.groupBy { it.group } }
+            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 6.dp)) {
+                byCat.forEach { (cat, list) -> item { PosterRail(cat, list, onPlay) } }
+            }
         }
     }
 }
 
-/** Diziler — tür filtreli poster grid → detay (get_series_info) ekranına gider. */
+/** Diziler — üstte arama + kategori rayları → detay (get_series_info) ekranına gider. */
 @Composable
 fun SeriesScreen(state: LibraryState, onSeries: (SeriesRef) -> Unit) {
+    var q by remember { mutableStateOf("") }
     val all = remember(state.visibleSeries) { state.visibleSeries.filter { it.cover != null } }
-    val genres = remember(all) { genresOf(all.map { it.name to (it.genre ?: it.group) }) }
-    var selected by remember { mutableStateOf<String?>(null) }
-    val shown = remember(all, selected) {
-        val g = selected
-        if (g == null) all else all.filter { GenreTagger.tags(it.name, it.genre, it.group).contains(g) }
-    }
+    val query = q.trim().lowercase()
     Column(Modifier.fillMaxSize()) {
-        GenreChips(genres, selected) { selected = it }
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(112.dp),
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp)
-        ) {
-            items(shown) { s -> PosterCard(s.name, s.cover) { onSeries(s) } }
-        }
-    }
-}
-
-/** İçerikte en az 3 kez geçen kanonik türleri döndürür (çok az olan türü gösterme). */
-private fun genresOf(nameGroup: List<Pair<String, String>>): List<String> {
-    val counts = HashMap<String, Int>()
-    nameGroup.forEach { (n, g) -> GenreTagger.tags(n, g).forEach { counts[it] = (counts[it] ?: 0) + 1 } }
-    return counts.filter { it.value >= 3 }.keys.sortedBy { GenreTagger.canonical.indexOf(it) }
-}
-
-@Composable
-private fun GenreChips(genres: List<String>, selected: String?, onSelect: (String?) -> Unit) {
-    if (genres.isEmpty()) return
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        item { Chip("Tümü", selected == null) { onSelect(null) } }
-        lazyItems(genres) { g ->
-            Chip(g, selected == g) { onSelect(g) }
+        SearchField("Dizi ara…", q) { q = it }
+        if (query.length >= 2) {
+            val hits = all.filter { it.name.lowercase().contains(query) }.take(150)
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(112.dp),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp)
+            ) { items(hits) { s -> PosterCard(s.name, s.cover) { onSeries(s) } } }
+        } else {
+            val byCat = remember(all) { all.groupBy { it.group } }
+            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 6.dp)) {
+                byCat.forEach { (cat, list) -> item { SeriesRail(cat, list, onSeries) } }
+            }
         }
     }
 }
 
 @Composable
-private fun Chip(label: String, active: Boolean, onClick: () -> Unit) {
-    Box(
-        Modifier.clip(RoundedCornerShape(20.dp))
-            .background(if (active) Accent else Elevated)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp)
-    ) {
-        Text(label, color = if (active) Ground else TextHi, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-    }
+private fun PosterGrid(movies: List<Channel>, onPlay: (Channel) -> Unit) {
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(112.dp),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp)
+    ) { items(movies) { m -> PosterCard(m.name, m.logo) { onPlay(m) } } }
+}
+
+@Composable
+private fun SearchField(hint: String, value: String, onChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = value, onValueChange = onChange, singleLine = true,
+        placeholder = { Text(hint) },
+        leadingIcon = { Icon(Icons.Default.Search, null) },
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor = TextHi, unfocusedTextColor = TextHi,
+            focusedBorderColor = Accent, unfocusedBorderColor = LineSoft,
+            focusedLeadingIconColor = Accent, unfocusedLeadingIconColor = TextMute
+        )
+    )
 }
