@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.media.AudioManager
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
@@ -12,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.CircularProgressIndicator
@@ -31,9 +33,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.TrackSelectionOverride
+import androidx.media3.common.Tracks
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import app.cheesino.core.Channel
@@ -41,10 +46,7 @@ import app.cheesino.core.MediaKind
 import app.cheesino.core.StreamResolver
 import app.cheesino.data.LibraryViewModel
 import app.cheesino.data.ResumeMark
-import app.cheesino.ui.theme.Accent
-import app.cheesino.ui.theme.Ground
-import app.cheesino.ui.theme.Live
-import app.cheesino.ui.theme.TextHi
+import app.cheesino.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -83,6 +85,7 @@ fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEn
 
     var buffering by remember { mutableStateOf(true) }
     var hud by remember { mutableStateOf<String?>(null) }
+    var showTracks by remember { mutableStateOf(false) }
 
     val player = remember(item.id) {
         ExoPlayer.Builder(context).build().apply {
@@ -212,6 +215,9 @@ fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEn
         Row(Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
             val fav = item.id in user.favorites
             val rating = when { item.id in user.likes -> 1; item.id in user.dislikes -> -1; else -> 0 }
+            IconButton(onClick = { showTracks = true }) {
+                Icon(Icons.Default.Subtitles, "Altyazı / Ses", tint = Color.White)
+            }
             IconButton(onClick = { vm.setRating(item.id, if (rating == 1) 0 else 1) }) {
                 Icon(Icons.Default.ThumbUp, "Beğen", tint = if (rating == 1) Accent else Color.White)
             }
@@ -224,6 +230,9 @@ fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEn
             }
             IconButton(onClick = onClose) { Icon(Icons.Default.Close, "Kapat", tint = Color.White) }
         }
+
+        // Altyazı / ses parça seçici.
+        if (showTracks) TrackDialog(player) { showTracks = false }
 
         // Kaldığın yerden devam diyalogu.
         if (askResume && existing != null) {
@@ -248,6 +257,63 @@ private fun GestureZone(
             .fillMaxWidth(0.28f)
             .pointerInput(Unit) { detectTapGestures(onDoubleTap = { onDoubleTap() }) }
             .pointerInput(Unit) { detectVerticalDragGestures { _, dy -> onVerticalDrag(dy) } }
+    )
+}
+
+@Composable
+private fun TrackDialog(player: ExoPlayer, onDismiss: () -> Unit) {
+    val tracks = player.currentTracks
+    val audio = tracks.groups.filter { it.type == C.TRACK_TYPE_AUDIO && it.isSupported }
+    val text = tracks.groups.filter { it.type == C.TRACK_TYPE_TEXT && it.isSupported }
+    val textOff = text.none { g -> (0 until g.length).any { g.isTrackSelected(it) } }
+
+    fun select(group: Tracks.Group, index: Int) {
+        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+            .setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, index))
+            .setTrackTypeDisabled(group.type, false)
+            .build()
+        onDismiss()
+    }
+    fun disableText() {
+        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true).build()
+        onDismiss()
+    }
+    fun label(group: Tracks.Group, i: Int): String {
+        val f = group.getTrackFormat(i)
+        return f.label ?: f.language?.uppercase() ?: "Parça ${i + 1}"
+    }
+
+    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.7f)).clickable { onDismiss() },
+        contentAlignment = Alignment.Center) {
+        Column(Modifier.width(300.dp).clip(RoundedCornerShape(16.dp)).background(Ground).padding(16.dp)) {
+            if (audio.isNotEmpty()) {
+                Text("Ses", color = Accent2, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                audio.forEach { g ->
+                    for (i in 0 until g.length) if (g.isTrackSupported(i))
+                        TrackRow(label(g, i), g.isTrackSelected(i)) { select(g, i) }
+                }
+                Spacer(Modifier.height(12.dp))
+            }
+            Text("Altyazı", color = Accent2, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            TrackRow("Kapalı", textOff) { disableText() }
+            text.forEach { g ->
+                for (i in 0 until g.length) if (g.isTrackSupported(i))
+                    TrackRow(label(g, i), g.isTrackSelected(i)) { select(g, i) }
+            }
+            if (audio.isEmpty() && text.isEmpty())
+                Text("Ek parça yok.", color = TextMute, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
+        }
+    }
+}
+
+@Composable
+private fun TrackRow(label: String, selected: Boolean, onClick: () -> Unit) {
+    Text(
+        (if (selected) "● " else "○ ") + label,
+        color = if (selected) Accent else TextHi, fontSize = 14.sp,
+        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 8.dp)
     )
 }
 
