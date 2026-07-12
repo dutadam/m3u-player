@@ -3,6 +3,9 @@ package app.cheesino.ui
 import android.app.Activity
 import android.content.Context
 import android.media.AudioManager
+import android.view.WindowManager
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -143,6 +146,21 @@ fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEn
         }
         player.addListener(listener)
         onDispose { saveNow(); player.removeListener(listener); player.release() }
+    }
+
+    // Ekranı açık tut + tam ekran (sistem çubuklarını gizle).
+    DisposableEffect(Unit) {
+        val window = activity?.window
+        window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        val controller = window?.let { WindowInsetsControllerCompat(it, it.decorView) }
+        controller?.apply {
+            hide(WindowInsetsCompat.Type.systemBars())
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
+        onDispose {
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            controller?.show(WindowInsetsCompat.Type.systemBars())
+        }
     }
 
     LaunchedEffect(item.id) { if (!item.isLive) vm.recordPlay(item.id, item.title, item.group) }
