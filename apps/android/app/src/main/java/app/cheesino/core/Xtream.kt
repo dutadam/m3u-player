@@ -124,6 +124,25 @@ class XtreamClient(val creds: XtreamCredentials) {
         }
     }
 
+    /** get_vod_info → film detayı (özet/afiş/puan). Bulunamazsa null. */
+    suspend fun vodInfo(channel: Channel): MovieInfo? {
+        val id = channel.id.removePrefix("vod_").toIntOrNull() ?: return null
+        val root = try {
+            json.parseToJsonElement(get(api("get_vod_info", mapOf("vod_id" to id.toString())))) as? JsonObject
+        } catch (e: Exception) { null } ?: return null
+        val info = root["info"] as? JsonObject ?: return null
+        return MovieInfo(
+            plot = (info["plot"].asStr() ?: info["description"].asStr())?.ifBlank { null },
+            genre = info["genre"].asStr()?.ifBlank { null },
+            cast = info["cast"].asStr()?.ifBlank { null },
+            director = info["director"].asStr()?.ifBlank { null },
+            rating = info["rating"].asDoubleOrNull()?.takeIf { it > 0 },
+            cover = (info["movie_image"].asStr() ?: info["cover_big"].asStr())?.ifBlank { null } ?: channel.logo,
+            releaseDate = (info["releasedate"].asStr() ?: info["release_date"].asStr())?.ifBlank { null },
+            durationSecs = info["duration_secs"].asLongOrNull()
+        )
+    }
+
     /** get_series_info → sezon/bölüm ağacı. iOS'taki clunky "JSON indir-seç" akışının yerine. */
     suspend fun seriesInfo(ref: SeriesRef): Series {
         val empty = Series(ref.id.toString(), ref.name, ref.cover, null, ref.genre, emptyList())

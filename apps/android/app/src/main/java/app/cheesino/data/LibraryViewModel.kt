@@ -174,6 +174,9 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     /** Dizi detayını (sezon/bölüm) tembel çeker. M3U kaynağında Xtream yoksa null döner. */
     suspend fun seriesDetail(ref: SeriesRef): Series? = client?.seriesInfo(ref)
 
+    /** Film detayını (özet/afiş) tembel çeker. Xtream yoksa null. */
+    suspend fun movieInfo(ch: Channel): MovieInfo? = client?.vodInfo(ch)
+
     fun loadM3U(text: String) {
         val result = M3UParser.parse(text)
         if (result.channels.isEmpty()) { _state.value = _state.value.copy(error = "M3U içinde kanal bulunamadı."); return }

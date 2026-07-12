@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.cheesino.core.Channel
+import app.cheesino.core.MediaKind
 import app.cheesino.core.SeriesRef
 import app.cheesino.data.LibraryViewModel
 import app.cheesino.data.ResumeMark
@@ -50,6 +51,7 @@ fun RootScreen(vm: LibraryViewModel) {
     var playQueue by remember { mutableStateOf<List<PlayItem>>(emptyList()) }
     var playIndex by remember { mutableIntStateOf(0) }
     var detail by remember { mutableStateOf<SeriesRef?>(null) }
+    var movieDetail by remember { mutableStateOf<Channel?>(null) }
     var showSettings by remember { mutableStateOf(false) }
     var showGuide by remember { mutableStateOf(false) }
     var showMulti by remember { mutableStateOf(false) }
@@ -70,6 +72,8 @@ fun RootScreen(vm: LibraryViewModel) {
 
     fun playOne(item: PlayItem) { playQueue = listOf(item); playIndex = 0 }
     val playChannel: (Channel) -> Unit = { playOne(it.toPlayItem()) }
+    // İçerik dokunuşu: film → detay, kanal → doğrudan oynat.
+    val onContent: (Channel) -> Unit = { ch -> if (ch.kind == MediaKind.VOD) movieDetail = ch else playChannel(ch) }
     val openSeries: (SeriesRef) -> Unit = { detail = it }
     val resumePlay: (ResumeMark) -> Unit = { m ->
         playOne(PlayItem(m.id, m.title, m.url, m.poster, isLive = false, isSeries = m.isSeries))
@@ -99,16 +103,16 @@ fun RootScreen(vm: LibraryViewModel) {
     ) { pad ->
         Box(Modifier.fillMaxSize().padding(pad)) {
             when (tab) {
-                Tab.HOME -> HomeScreen(state, user, playChannel, openSeries, resumePlay,
+                Tab.HOME -> HomeScreen(state, user, onContent, openSeries, resumePlay,
                     onSettings = { showSettings = true },
                     onSports = { vm.loadEpg(); showSports = true },
                     onRefresh = { vm.reload() })
                 Tab.LIVE -> LiveScreen(state, playChannel,
                     onGuide = { vm.loadEpg(); showGuide = true },
                     onMulti = { showMulti = true })
-                Tab.MOVIES -> MoviesScreen(state, playChannel)
+                Tab.MOVIES -> MoviesScreen(state, onContent)
                 Tab.SERIES -> SeriesScreen(state, openSeries)
-                Tab.SEARCH -> SearchScreen(state, playChannel, openSeries)
+                Tab.SEARCH -> SearchScreen(state, onContent, openSeries)
             }
         }
     }
@@ -158,6 +162,20 @@ fun RootScreen(vm: LibraryViewModel) {
             epg = epg,
             onPlay = { showSports = false; playChannel(it) },
             onClose = { showSports = false }
+        )
+    }
+
+    // Film detayı — overlay.
+    movieDetail?.let { ch ->
+        MovieDetailScreen(
+            channel = ch,
+            load = { vm.movieInfo(it) },
+            isFavorite = ch.id in user.favorites,
+            rating = when { ch.id in user.likes -> 1; ch.id in user.dislikes -> -1; else -> 0 },
+            onFavorite = { vm.toggleFavorite(ch.id) },
+            onRate = { vm.setRating(ch.id, it) },
+            onPlay = { movieDetail = null; playChannel(ch) },
+            onBack = { movieDetail = null }
         )
     }
 

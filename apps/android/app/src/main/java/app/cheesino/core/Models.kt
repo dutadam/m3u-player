@@ -75,6 +75,18 @@ data class XtreamCredentials(val server: String, val username: String, val passw
     }
 }
 
+/** get_vod_info çıktısı — film detay ekranı için. */
+data class MovieInfo(
+    val plot: String? = null,
+    val genre: String? = null,
+    val cast: String? = null,
+    val director: String? = null,
+    val rating: Double? = null,
+    val cover: String? = null,
+    val releaseDate: String? = null,
+    val durationSecs: Long? = null
+)
+
 data class EpgEntry(val channelId: String, val start: Long, val stop: Long, val title: String, val desc: String? = null) {
     val isLiveNow: Boolean get() { val n = System.currentTimeMillis() / 1000; return start <= n && n < stop }
 }
