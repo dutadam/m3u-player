@@ -71,7 +71,9 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
     var showAudio by remember { mutableStateOf(false) }
     var failed by remember(item.id) { mutableStateOf(false) }
     var speed by remember(item.id) { mutableStateOf(1f) }
+    var arIdx by remember(item.id) { mutableStateOf(0) }
     var hud by remember { mutableStateOf<String?>(null) }
+    val ratios = remember { listOf<Pair<String, String?>>("Oto" to null, "16:9" to "16:9", "4:3" to "4:3") }
 
     val audioMgr = remember { context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager }
     val maxVol = remember { audioMgr.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC).coerceAtLeast(1) }
@@ -236,6 +238,12 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
                             controlsVisible = true
                         }.padding(horizontal = 8.dp, vertical = 6.dp))
                 }
+                Text(ratios[arIdx].first, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable {
+                        arIdx = (arIdx + 1) % ratios.size
+                        runCatching { mediaPlayer.setAspectRatio(ratios[arIdx].second); mediaPlayer.scale = 0f }
+                        hud = "En-boy · ${ratios[arIdx].first}"; controlsVisible = true
+                    }.padding(horizontal = 8.dp, vertical = 6.dp))
                 IconButton(onClick = { showAudio = true }) {
                     Icon(Icons.Default.Audiotrack, "Ses parçası", tint = Color.White)
                 }

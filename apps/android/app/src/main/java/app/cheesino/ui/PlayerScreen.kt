@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.PictureInPictureAlt
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay10
@@ -124,6 +125,14 @@ fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEn
     var controlsVisible by remember { mutableStateOf(true) }
     var hud by remember { mutableStateOf<String?>(null) }
     var showTracks by remember { mutableStateOf(false) }
+    // En-boy oranı: Sığdır → Yakınlaştır → Kapla (siyah bantları kaldır).
+    var resizeIdx by remember { mutableIntStateOf(0) }
+    val resizeModes = remember { listOf(
+        AspectRatioFrameLayout.RESIZE_MODE_FIT,
+        AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
+        AspectRatioFrameLayout.RESIZE_MODE_FILL
+    ) }
+    val resizeLabels = remember { listOf("Sığdır", "Yakınlaştır", "Kapla") }
 
     val player = remember(item.id) {
         // 4K/yüksek bit hızı için daha büyük buffer → daha az takılma.
@@ -244,7 +253,10 @@ fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEn
                     }
                 }
             },
-            update = { it.player = if (casting) castPlayer else player },
+            update = {
+                it.player = if (casting) castPlayer else player
+                it.resizeMode = resizeModes[resizeIdx]
+            },
             modifier = Modifier.fillMaxSize()
         )
 
@@ -321,6 +333,10 @@ fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEn
                             runCatching { activity?.enterPictureInPictureMode(PictureInPictureParams.Builder().build()) }
                         }) { Icon(Icons.Default.PictureInPictureAlt, "Küçük ekran", tint = Color.White) }
                     }
+                    IconButton(onClick = {
+                        resizeIdx = (resizeIdx + 1) % resizeModes.size
+                        hud = resizeLabels[resizeIdx]; controlsVisible = true
+                    }) { Icon(Icons.Default.AspectRatio, "En-boy oranı", tint = Color.White) }
                     IconButton(onClick = { showTracks = true }) {
                         Icon(Icons.Default.Subtitles, "Altyazı / Ses", tint = Color.White)
                     }
