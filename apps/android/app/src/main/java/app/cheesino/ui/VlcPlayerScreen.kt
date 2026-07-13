@@ -1,15 +1,19 @@
 package app.cheesino.ui
 
 import android.app.Activity
+import android.content.Context
 import android.net.Uri
 import android.view.WindowManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Audiotrack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -24,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -63,11 +68,20 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
     var scrubValue by remember { mutableStateOf(0f) }
     var controlsVisible by remember { mutableStateOf(true) }
     var showSubs by remember { mutableStateOf(false) }
+    var showAudio by remember { mutableStateOf(false) }
     var failed by remember(item.id) { mutableStateOf(false) }
+    var speed by remember(item.id) { mutableStateOf(1f) }
+    var hud by remember { mutableStateOf<String?>(null) }
 
+    val audioMgr = remember { context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager }
+    val maxVol = remember { audioMgr.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC).coerceAtLeast(1) }
+
+    // Canlıda düşük gecikme için daha küçük buffer; VOD'da biraz daha büyük.
+    val cacheMs = if (item.isLive) 1200 else 1800
     val libVlc = remember(item.id) {
         LibVLC(context, arrayListOf(
-            "--network-caching=2000", "--no-drop-late-frames", "--no-skip-frames", "--http-reconnect"
+            "--network-caching=$cacheMs", "--live-caching=$cacheMs", "--file-caching=$cacheMs",
+            "--no-drop-late-frames", "--no-skip-frames", "--http-reconnect", "--avcodec-fast", "--avcodec-skiploopfilter=4"
         ))
     }
     val mediaPlayer = remember(item.id) { MediaPlayer(libVlc) }
@@ -84,7 +98,7 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
         val url = app.cheesino.core.StreamResolver.candidates(item.url).firstOrNull()?.url ?: item.url
         val media = Media(libVlc, Uri.parse(url)).apply {
             setHWDecoderEnabled(true, false)
-            addOption(":network-caching=2000")
+            addOption(":network-caching=$cacheMs")
             if (startAtMs > 0) addOption(":start-time=${startAtMs / 1000}")
         }
         mediaPlayer.media = media
@@ -134,16 +148,64 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
         if (controlsVisible && isPlaying) { delay(4000); controlsVisible = false }
     }
 
+    if (hud != null) LaunchedEffect(hud) { delay(700); hud = null }
+
     Box(
         Modifier.fillMaxSize().background(Color.Black)
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                controlsVisible = !controlsVisible
+            .pointerInput(item.id) {
+                detectTapGestures(
+                    onTap = { controlsVisible = !controlsVisible },
+                    onDoubleTap = { off ->
+                        if (!item.isLive && lengthMs > 0) {
+                            val fwd = off.x > size.width / 2
+                            val np = (mediaPlayer.time + if (fwd) 10_000 else -10_000).coerceIn(0, lengthMs)
+                            mediaPlayer.time = np; positionMs = np
+                            hud = if (fwd) "»  +10 sn" else "«  -10 sn"
+                        }
+                    }
+                )
+            }
+            .pointerInput(item.id) {
+                var leftSide = false
+                var startBright = 0f
+                var startVol = 0
+                detectVerticalDragGestures(
+                    onDragStart = { off ->
+                        leftSide = off.x < size.width / 2
+                        startBright = activity?.window?.attributes?.screenBrightness ?: 0.5f
+                        if (startBright < 0f) startBright = 0.5f
+                        startVol = audioMgr.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)
+                    },
+                    onVerticalDrag = { _, dragAmount ->
+                        val delta = -dragAmount / size.height   // yukarı = artış
+                        if (leftSide) {
+                            val b = (startBright + delta * 1.5f).coerceIn(0.01f, 1f)
+                            startBright = b
+                            activity?.window?.let { w ->
+                                w.attributes = w.attributes.apply { screenBrightness = b }
+                            }
+                            hud = "☀  ${(b * 100).toInt()}%"
+                        } else {
+                            val v = (startVol + (delta * maxVol * 1.5f)).toInt().coerceIn(0, maxVol)
+                            startVol = v
+                            audioMgr.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, v, 0)
+                            hud = "🔊  ${(v * 100 / maxVol)}%"
+                        }
+                    }
+                )
             }
     ) {
         AndroidView(
             factory = { ctx -> VLCVideoLayout(ctx).also { mediaPlayer.attachViews(it, null, false, false) } },
             modifier = Modifier.fillMaxSize()
         )
+
+        hud?.let {
+            Text(it, color = Color.White, fontWeight = FontWeight.Black, fontSize = 18.sp,
+                modifier = Modifier.align(Alignment.Center)
+                    .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(10.dp))
+                    .padding(horizontal = 18.dp, vertical = 10.dp))
+        }
 
         if (buffering && !failed) BrandLoader(modifier = Modifier.align(Alignment.Center))
 
@@ -166,6 +228,17 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
                 Text("VLC", color = Ground, fontSize = 10.sp, fontWeight = FontWeight.Black,
                     modifier = Modifier.padding(end = 4.dp)
                         .background(Accent, RoundedCornerShape(6.dp)).padding(horizontal = 6.dp, vertical = 2.dp))
+                if (!item.isLive && lengthMs > 0) {
+                    Text("${speed}x", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable {
+                            speed = when (speed) { 1f -> 1.25f; 1.25f -> 1.5f; 1.5f -> 2f; 2f -> 0.5f; else -> 1f }
+                            runCatching { mediaPlayer.rate = speed }
+                            controlsVisible = true
+                        }.padding(horizontal = 8.dp, vertical = 6.dp))
+                }
+                IconButton(onClick = { showAudio = true }) {
+                    Icon(Icons.Default.Audiotrack, "Ses parçası", tint = Color.White)
+                }
                 IconButton(onClick = { showSubs = true }) {
                     Icon(Icons.Default.Subtitles, "Altyazı", tint = Color.White)
                 }
@@ -212,6 +285,29 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
         }
 
         if (showSubs) SubtitleSheet(mediaPlayer, onClose = { showSubs = false })
+        if (showAudio) AudioSheet(mediaPlayer, onClose = { showAudio = false })
+    }
+}
+
+/** Ses parçası seçici — VLC audio track'leri (çoklu dil). */
+@Composable
+private fun AudioSheet(mediaPlayer: MediaPlayer, onClose: () -> Unit) {
+    val tracks = remember { mediaPlayer.audioTracks?.toList() ?: emptyList() }
+    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.6f))
+        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClose)) {
+        Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+            .background(Elevated, RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+            .navigationBarsPadding().padding(16.dp)) {
+            Text("Ses", color = TextHi, fontWeight = FontWeight.Black, fontSize = 16.sp,
+                modifier = Modifier.padding(bottom = 8.dp))
+            tracks.filter { it.id >= 0 }.forEach { t ->
+                Text(t.name ?: "Parça ${t.id}", color = TextHi, fontSize = 14.sp,
+                    modifier = Modifier.fillMaxWidth()
+                        .clickable { mediaPlayer.setAudioTrack(t.id); onClose() }.padding(vertical = 10.dp))
+            }
+            if (tracks.none { it.id >= 0 }) Text("Tek ses parçası var.", color = TextMute, fontSize = 12.sp,
+                modifier = Modifier.padding(vertical = 8.dp))
+        }
     }
 }
 
