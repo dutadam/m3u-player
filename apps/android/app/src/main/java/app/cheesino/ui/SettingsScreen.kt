@@ -34,6 +34,7 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
     var subScale by remember { mutableStateOf(vm.subtitleScale) }
     var subColor by remember { mutableStateOf(vm.subtitleColor) }
     var subBgOn by remember { mutableStateOf(vm.subtitleBg != 0) }
+    var engine by remember { mutableStateOf(vm.playerEngine) }
 
     Column(Modifier.fillMaxSize().background(Ground).statusBarsPadding().verticalScroll(rememberScrollState())) {
         // Başlık
@@ -43,9 +44,26 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
         }
 
         Section("Oynatma") {
+            Text("Oynatıcı motoru", color = TextDim, fontSize = 12.sp, modifier = Modifier.padding(bottom = 6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("Otomatik" to 0, "ExoPlayer" to 1, "VLC" to 2).forEach { (lbl, v) ->
+                    val on = engine == v
+                    Box(
+                        Modifier.weight(1f).clip(RoundedCornerShape(10.dp))
+                            .background(if (on) Accent else Elevated)
+                            .clickable { engine = v; vm.setPlayerEngine(v) }
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) { Text(lbl, color = if (on) Ground else TextHi, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
+                }
+            }
+            Text("Otomatik: ExoPlayer başlar, açılmayan/kasan yayınlarda VLC devreye girer. " +
+                "VLC daha geniş codec (MKV/AVI/HEVC) destekler.",
+                color = TextMute, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
+
             OutlinedTextField(
                 value = ua, onValueChange = { ua = it }, label = { Text("User-Agent") },
-                singleLine = true, modifier = Modifier.fillMaxWidth(),
+                singleLine = true, modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
                 colors = fieldColors()
             )
             Button(onClick = { vm.setUserAgent(ua); msg = "User-Agent kaydedildi." },

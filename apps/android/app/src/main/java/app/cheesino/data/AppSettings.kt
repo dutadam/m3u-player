@@ -15,6 +15,11 @@ class AppSettings(context: Context) {
         get() = prefs.getBoolean("parental", false)
         set(v) { prefs.edit().putBoolean("parental", v).apply() }
 
+    /** Oynatıcı motoru: 0 = Otomatik (ExoPlayer, hata olursa VLC'ye düş), 1 = ExoPlayer, 2 = VLC. */
+    var playerEngine: Int
+        get() = prefs.getInt("player_engine", 0)
+        set(v) { prefs.edit().putInt("player_engine", v.coerceIn(0, 2)).apply() }
+
     /** Altyazı boyutu — PlayerView fractional text size (0.04 küçük · 0.06 orta · 0.09 büyük). */
     var subtitleScale: Float
         get() = prefs.getFloat("sub_scale", 0.06f)

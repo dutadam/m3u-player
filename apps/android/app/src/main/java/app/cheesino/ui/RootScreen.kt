@@ -212,11 +212,24 @@ fun RootScreen(vm: LibraryViewModel) {
 
     // Oynatıcı — en üstte. Dizi kuyruğunda bittiğinde otomatik sonraki bölüm.
     playQueue.getOrNull(playIndex)?.let { item ->
-        PlayerScreen(
+        PlayerHost(
             item = item, vm = vm,
             onClose = { playQueue = emptyList() },
             onEnded = { if (playIndex < playQueue.lastIndex) playIndex++ else playQueue = emptyList() }
         )
+    }
+}
+
+/** Oynatıcı motorunu seçer: 0 Otomatik (ExoPlayer → hata olursa VLC), 1 ExoPlayer, 2 VLC. */
+@Composable
+private fun PlayerHost(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEnded: () -> Unit) {
+    val engine = vm.playerEngine
+    var useVlc by remember(item.id) { mutableStateOf(engine == 2) }
+    if (useVlc) {
+        VlcPlayerScreen(item, vm, onClose, onEnded)
+    } else {
+        PlayerScreen(item, vm, onClose, onEnded,
+            onFallback = if (engine == 0) ({ useVlc = true }) else null)
     }
 }
 

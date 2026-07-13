@@ -97,7 +97,8 @@ fun Channel.toPlayItem() = PlayItem(
 private const val SEEK_STEP_MS = 10_000L
 
 @Composable
-fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEnded: () -> Unit = {}) {
+fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEnded: () -> Unit = {},
+                 onFallback: (() -> Unit)? = null) {
     val context = LocalContext.current
     val activity = context as? Activity
     val audio = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
@@ -161,10 +162,13 @@ fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEn
             }
             override fun onIsPlayingChanged(playing: Boolean) { isPlaying = playing }
             override fun onPlayerError(error: PlaybackException) {
-                if (attempts < 5) {
+                if (attempts < 3) {
                     attempts++
                     startAtMs = player.currentPosition.coerceAtLeast(0)
                     player.prepare(); player.playWhenReady = true
+                } else {
+                    // ExoPlayer oynatamadı — Otomatik modda VLC motoruna devret.
+                    onFallback?.invoke()
                 }
             }
         }

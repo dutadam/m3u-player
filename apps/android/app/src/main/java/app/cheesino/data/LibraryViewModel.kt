@@ -116,6 +116,9 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     val hasPin: Boolean get() = settings.hasPin
 
     fun setUserAgent(v: String) { settings.userAgent = v }
+    /** Oynatıcı motoru: 0 Otomatik · 1 ExoPlayer · 2 VLC. */
+    val playerEngine: Int get() = settings.playerEngine
+    fun setPlayerEngine(v: Int) { settings.playerEngine = v }
     val subtitleScale: Float get() = settings.subtitleScale
     fun setSubtitleScale(v: Float) { settings.subtitleScale = v }
     val subtitleColor: Int get() = settings.subtitleColor

@@ -49,7 +49,7 @@ dependencies {
     // Android TV (Compose for TV — leanback yerine)
     implementation("androidx.tv:tv-material:1.0.0")
 
-    // Oynatıcı — Media3 (ExoPlayer). HLS/MP4/DASH. MKV/TS için ileride libVLC eklenir.
+    // Oynatıcı — Media3 (ExoPlayer) birincil: HLS/MP4/DASH.
     implementation("androidx.media3:media3-exoplayer:1.4.1")
     implementation("androidx.media3:media3-exoplayer-hls:1.4.1")
     implementation("androidx.media3:media3-ui:1.4.1")
@@ -58,6 +58,10 @@ dependencies {
     implementation("androidx.media3:media3-cast:1.4.1")
     implementation("com.google.android.gms:play-services-cast-framework:21.5.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
+
+    // libVLC — MKV/AVI/HEVC ve geniş codec desteği için ikinci oynatıcı motoru (ExoPlayer'ın
+    // oynatamadığı/kastığı yayınlarda devreye girer). Büyük native kütüphane.
+    implementation("org.videolan.android:libvlc-all:3.6.2")
 
     // Ağ + JSON + görsel + kalıcılık
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
