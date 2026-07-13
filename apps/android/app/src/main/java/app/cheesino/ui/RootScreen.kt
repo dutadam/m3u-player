@@ -220,11 +220,16 @@ fun RootScreen(vm: LibraryViewModel) {
     }
 }
 
-/** Oynatıcı motorunu seçer: 0 Otomatik (ExoPlayer → hata olursa VLC), 1 ExoPlayer, 2 VLC. */
+/**
+ * Oynatıcı motorunu seçer:
+ *  0 Otomatik → film/dizi (VOD) VLC (geniş codec), canlı ExoPlayer (Cast/PiP/düşük gecikme);
+ *  1 ExoPlayer her zaman; 2 VLC her zaman.
+ * Otomatik/ExoPlayer'da ExoPlayer oynatamazsa VLC'ye düşer.
+ */
 @Composable
 private fun PlayerHost(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEnded: () -> Unit) {
     val engine = vm.playerEngine
-    var useVlc by remember(item.id) { mutableStateOf(engine == 2) }
+    var useVlc by remember(item.id) { mutableStateOf(engine == 2 || (engine == 0 && !item.isLive)) }
     if (useVlc) {
         VlcPlayerScreen(item, vm, onClose, onEnded)
     } else {

@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -24,6 +25,19 @@ import app.cheesino.core.SeriesRef
 import app.cheesino.data.ResumeMark
 import app.cheesino.ui.theme.*
 import coil.compose.AsyncImage
+
+/**
+ * Yatay çerçevede dikey poster göstermek için: arka planda bulanık "fill" + önde tam "fit".
+ * Böylece portre görsel yatay kutuda saçma bir dilime kırpılmaz (Netflix hero stili).
+ */
+@Composable
+fun BlurCover(url: String, desc: String?, modifier: Modifier = Modifier) {
+    Box(modifier) {
+        AsyncImage(url, null, Modifier.matchParentSize().blur(22.dp), contentScale = ContentScale.Crop)
+        Box(Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.28f)))
+        AsyncImage(url, desc, Modifier.matchParentSize(), contentScale = ContentScale.Fit)
+    }
+}
 
 @Composable
 fun Rail(title: String, onSeeAll: (() -> Unit)? = null, content: @Composable () -> Unit) {
@@ -113,7 +127,7 @@ fun ResumeCard(mark: ResumeMark, onTap: () -> Unit) {
             contentAlignment = Alignment.BottomStart
         ) {
             if (mark.poster != null)
-                AsyncImage(mark.poster, mark.title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                BlurCover(mark.poster, mark.title, Modifier.fillMaxSize())
             // ilerleme çubuğu
             Box(Modifier.fillMaxWidth().height(4.dp).background(Color.Black.copy(alpha = 0.5f))) {
                 Box(Modifier.fillMaxWidth(mark.fraction).height(4.dp).background(Accent))

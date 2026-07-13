@@ -25,7 +25,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -37,7 +36,6 @@ import app.cheesino.data.Recommender
 import app.cheesino.data.ResumeMark
 import app.cheesino.data.UserData
 import app.cheesino.ui.theme.*
-import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
 
 @Composable
@@ -133,7 +131,8 @@ private fun Hero(items: List<Channel>, onPlay: (Channel) -> Unit) {
             .clickable { onPlay(item) }
     ) {
         item.logo?.let {
-            AsyncImage(it, item.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            // Portre poster'ı yatay hero'da bulanık dolgu + tam sığdır ile göster (kırpma yok).
+            BlurCover(it, item.name, Modifier.fillMaxSize())
         }
         // Alt karartma.
         Box(Modifier.fillMaxSize().background(

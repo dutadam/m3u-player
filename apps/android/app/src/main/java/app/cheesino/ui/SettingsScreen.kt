@@ -57,8 +57,8 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
                     ) { Text(lbl, color = if (on) Ground else TextHi, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                 }
             }
-            Text("Otomatik: ExoPlayer başlar, açılmayan/kasan yayınlarda VLC devreye girer. " +
-                "VLC daha geniş codec (MKV/AVI/HEVC) destekler.",
+            Text("Otomatik (önerilen): film/dizi VLC ile (geniş codec — MKV/AVI/HEVC), canlı yayın " +
+                "ExoPlayer ile (Chromecast/PiP/düşük gecikme). ExoPlayer açamazsa VLC devreye girer.",
                 color = TextMute, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
 
             OutlinedTextField(
