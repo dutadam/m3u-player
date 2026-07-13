@@ -122,7 +122,8 @@ private fun CategoryHeader(title: String) {
 @Composable
 private fun LiveListRow(ch: Channel, now: String?, next: String?, onPlay: (Channel) -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable { onPlay(ch) }.padding(horizontal = 16.dp, vertical = 8.dp),
+        Modifier.fillMaxWidth().focusHighlight(10, scaleFocused = 1f).clickable { onPlay(ch) }
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(

@@ -136,7 +136,8 @@ private fun GuideRow(
     val matched = matchQuery.takeIf { it.length >= 2 && !ch.name.lowercase().contains(it) }
         ?.let { q -> list.firstOrNull { it.title.lowercase().contains(q) && it != now } }
     Row(
-        Modifier.fillMaxWidth().clickable { onSelect(ch) }.padding(horizontal = 16.dp, vertical = 10.dp),
+        Modifier.fillMaxWidth().focusHighlight(10, scaleFocused = 1f).clickable { onSelect(ch) }
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {

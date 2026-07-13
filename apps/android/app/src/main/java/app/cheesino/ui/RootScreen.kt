@@ -275,7 +275,7 @@ private fun BottomBar(selected: Tab, onSelect: (Tab) -> Unit) {
             Tab.entries.forEach { t ->
                 val on = t == selected
                 Row(
-                    Modifier.clip(RoundedCornerShape(20.dp))
+                    Modifier.focusHighlight(20).clip(RoundedCornerShape(20.dp))
                         .background(if (on) Accent else Color.Transparent)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() }, indication = null
