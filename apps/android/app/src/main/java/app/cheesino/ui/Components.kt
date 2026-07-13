@@ -85,7 +85,7 @@ fun ChannelCard(ch: Channel, onTap: () -> Unit) {
         ) {
             if (ch.logo != null) AsyncImage(ch.logo, ch.name, Modifier.padding(12.dp).fillMaxSize(), contentScale = ContentScale.Fit)
             else Text(ch.name.take(2).uppercase(), color = TextHi, fontWeight = FontWeight.Black)
-            ch.quality?.label?.let { Badge(it, Modifier.align(Alignment.TopEnd).padding(5.dp)) }
+            ch.quality?.label?.let { Badge(it, qualityColor(it), Modifier.align(Alignment.TopEnd).padding(5.dp)) }
         }
         Text(ch.name, color = TextDim, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 6.dp))
@@ -130,19 +130,24 @@ fun PosterCard(name: String, poster: String?, badge: String? = null, onTap: () -
         ) {
             if (poster != null) AsyncImage(poster, name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             else Text(name.take(2).uppercase(), color = TextMute, fontWeight = FontWeight.Black, fontSize = 22.sp)
-            badge?.let { Badge(it, Modifier.align(Alignment.TopStart).padding(6.dp)) }
+            badge?.let { Badge(it, if (it.startsWith("★")) Gold else qualityColor(it), Modifier.align(Alignment.TopStart).padding(6.dp)) }
         }
         Text(name, color = TextDim, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 6.dp))
     }
 }
 
-/** Küçük etiket — kalite (4K/HD) veya puan (★). */
+/** Küçük etiket — kalite (4K/FHD/HD) veya puan (★). Renk spec'e göre kodlu. */
 @Composable
-private fun Badge(text: String, modifier: Modifier = Modifier) {
+private fun Badge(text: String, bg: Color, modifier: Modifier = Modifier) {
     Box(
-        modifier.clip(RoundedCornerShape(6.dp))
-            .background(Brush.horizontalGradient(listOf(Accent, Gold)))
-            .padding(horizontal = 6.dp, vertical = 2.dp)
+        modifier.clip(RoundedCornerShape(6.dp)).background(bg).padding(horizontal = 6.dp, vertical = 2.dp)
     ) { Text(text, color = Ground, fontSize = 10.sp, fontWeight = FontWeight.Black) }
+}
+
+fun qualityColor(label: String): Color = when (label) {
+    "4K" -> Gold
+    "FHD" -> QualityFhd
+    "HD" -> QualityHd
+    else -> QualityHd
 }

@@ -161,7 +161,7 @@ private fun LiveChannelCard(ch: Channel, now: String?, onTap: () -> Unit) {
             ch.quality?.label?.let {
                 Box(
                     Modifier.align(Alignment.TopEnd).padding(5.dp).clip(RoundedCornerShape(6.dp))
-                        .background(Accent).padding(horizontal = 5.dp, vertical = 1.dp)
+                        .background(qualityColor(it)).padding(horizontal = 5.dp, vertical = 1.dp)
                 ) { Text(it, color = Ground, fontSize = 9.sp, fontWeight = FontWeight.Black) }
             }
         }
