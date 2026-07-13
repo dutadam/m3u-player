@@ -72,9 +72,24 @@ object Recommender {
         return out
     }
 
-    /** "Devam Et" — bitmemiş işaretler, en son izlenene göre. */
-    fun continueWatching(user: UserData): List<ResumeMark> =
-        user.resume.values.filter { !it.finished }.sortedByDescending { it.updatedAt }
+    /**
+     * "Devam Et" — bitmemiş işaretler, en son izlenene göre.
+     * Bir dizinin bölümleri TEK karta indirgenir (en son bölüm), böylece her bölüm ayrı görünmez.
+     * Anahtar: seriesId → seriesName → başlık öneki ("Dizi — Bölüm" formatı) → id.
+     */
+    fun continueWatching(user: UserData): List<ResumeMark> {
+        val marks = user.resume.values.filter { !it.finished }.sortedByDescending { it.updatedAt }
+        val seen = HashSet<String>()
+        return marks.filter { m ->
+            val key = when {
+                m.isSeries && m.seriesId != null -> "s${m.seriesId}"
+                m.isSeries && !m.seriesName.isNullOrBlank() -> "sn:${m.seriesName.lowercase()}"
+                m.title.contains(" — ") -> "t:${m.title.substringBefore(" — ").trim().lowercase()}"
+                else -> "id:${m.id}"
+            }
+            seen.add(key)
+        }
+    }
 
     fun favorites(channels: List<Channel>, user: UserData): List<Channel> =
         channels.filter { it.id in user.favorites }

@@ -59,10 +59,7 @@ fun HomeScreen(
     }
 
     // Bunların hepsi ucuz (filter) — ağır iş (öneri/raylar) arka planda önceden hesaplandı.
-    val continueW = remember(user.resume) {
-        Recommender.continueWatching(user)
-            .distinctBy { if (it.isSeries && it.seriesId != null) "s${it.seriesId}" else it.id }
-    }
+    val continueW = remember(user.resume) { Recommender.continueWatching(user) }
     val recommended = remember(recommendedIn) { clean(recommendedIn) }
     val favorites = remember(state.visibleChannels, user.favorites) { clean(Recommender.favorites(state.visibleChannels, user)) }
     val featured = remember(recommended, state.topRated) {

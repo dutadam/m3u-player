@@ -133,7 +133,9 @@ fun ResumeCard(mark: ResumeMark, onTap: () -> Unit) {
                 Box(Modifier.fillMaxWidth(mark.fraction).height(4.dp).background(Accent))
             }
         }
-        Text(mark.title, color = TextDim, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+        // Dizi ise bölüm başlığı yerine dizinin adını göster.
+        Text(mark.seriesName?.takeIf { mark.isSeries } ?: mark.title,
+            color = TextDim, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 6.dp))
     }
 }

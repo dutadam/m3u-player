@@ -30,14 +30,14 @@ object SportsFinder {
 
     fun today(channels: List<Channel>, epg: Map<String, List<EpgEntry>>): List<Match> {
         val now = System.currentTimeMillis() / 1000
-        val from = now - 2 * 3600       // biten yakın maçlar da görünsün
-        val to = now + 22 * 3600        // önümüzdeki ~1 gün
+        val from = now - 30 * 60        // yalnız az önce başlamışlar (biten eskiyi gösterme)
+        val to = now + 24 * 3600        // önümüzdeki ~1 gün
         val out = ArrayList<Match>()
         for (ch in channels) {
             val list = ch.tvgId?.let { epg[it] } ?: continue
             val sportChannel = sportWords.any { ch.group.lowercase().contains(it) || ch.name.lowercase().contains(it) }
             for (e in list) {
-                if (e.stop < from || e.start > to) continue
+                if (e.stop < from || e.start > to || e.stop <= now && !sportChannel) continue
                 val t = e.title.lowercase()
                 val isSport = sportChannel || sportWords.any { t.contains(it) }
                 if (isSport && (looksLikeMatch(t) || sportChannel)) {
@@ -45,6 +45,10 @@ object SportsFinder {
                 }
             }
         }
-        return out.sortedBy { it.start }.take(200)
+        // Aynı programın kalite varyantlarını (HD/FHD/HEVC/SD) tek karta indir.
+        val seen = HashSet<String>()
+        val deduped = out.filter { seen.add("${it.title.trim().lowercase()}#${it.start / 60}") }
+        // Canlı olanlar üstte, sonra başlama saatine göre.
+        return deduped.sortedWith(compareByDescending<Match> { it.isLiveNow }.thenBy { it.start }).take(200)
     }
 }
