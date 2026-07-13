@@ -42,8 +42,6 @@ import app.cheesino.core.Channel
 import app.cheesino.core.EpgEntry
 import app.cheesino.core.SeriesRef
 import app.cheesino.data.LibraryState
-import app.cheesino.data.RailEngine
-import app.cheesino.data.UserData
 import app.cheesino.ui.theme.*
 import coil.compose.AsyncImage
 
@@ -175,7 +173,7 @@ private fun LiveChannelCard(ch: Channel, now: String?, onTap: () -> Unit) {
 
 /** Filmler — arama + dinamik tür/senaryo rayları + Xtream kategorileri (poster'a dokun → detay). */
 @Composable
-fun MoviesScreen(state: LibraryState, user: UserData, onPlay: (Channel) -> Unit) {
+fun MoviesScreen(state: LibraryState, movieRails: List<Pair<String, List<Channel>>>, onPlay: (Channel) -> Unit) {
     var q by remember { mutableStateOf("") }
     var seeAll by remember { mutableStateOf<Pair<String, List<Channel>>?>(null) }
     val all = remember(state.movies) { state.movies.filter { it.logo != null } }
@@ -197,10 +195,9 @@ fun MoviesScreen(state: LibraryState, user: UserData, onPlay: (Channel) -> Unit)
                     if (hits.isEmpty()) EmptyState("Sonuç yok") else PosterGrid(hits, onPlay)
                 }
                 else -> {
-                    val dyn = remember(all, user) { RailEngine.movieRails(all, state.visibleChannels, user) }
                     val byCat = remember(all) { all.groupBy { it.group } }
                     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 6.dp)) {
-                        dyn.forEach { (title, list) ->
+                        movieRails.forEach { (title, list) ->
                             item { PosterRail(title, list, onPlay, onSeeAll = { seeAll = title to list }) }
                         }
                         byCat.forEach { (cat, list) ->
@@ -215,7 +212,7 @@ fun MoviesScreen(state: LibraryState, user: UserData, onPlay: (Channel) -> Unit)
 
 /** Diziler — arama + dinamik tür/senaryo rayları + kategoriler → detay ekranına gider. */
 @Composable
-fun SeriesScreen(state: LibraryState, user: UserData, onSeries: (SeriesRef) -> Unit) {
+fun SeriesScreen(state: LibraryState, seriesRails: List<Pair<String, List<SeriesRef>>>, onSeries: (SeriesRef) -> Unit) {
     var q by remember { mutableStateOf("") }
     var seeAll by remember { mutableStateOf<Pair<String, List<SeriesRef>>?>(null) }
     val all = remember(state.visibleSeries) { state.visibleSeries.filter { it.cover != null } }
@@ -242,10 +239,9 @@ fun SeriesScreen(state: LibraryState, user: UserData, onSeries: (SeriesRef) -> U
                     ) { items(hits) { s -> PosterCard(s.name, s.cover) { onSeries(s) } } }
                 }
                 else -> {
-                    val dyn = remember(all, user) { RailEngine.seriesRails(all, user) }
                     val byCat = remember(all) { all.groupBy { it.group } }
                     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 6.dp)) {
-                        dyn.forEach { (title, list) ->
+                        seriesRails.forEach { (title, list) ->
                             item { SeriesRail(title, list, onSeries, onSeeAll = { seeAll = title to list }) }
                         }
                         byCat.forEach { (cat, list) ->

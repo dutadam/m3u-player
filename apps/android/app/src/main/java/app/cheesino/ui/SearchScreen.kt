@@ -36,6 +36,7 @@ import app.cheesino.ui.theme.*
 @Composable
 fun SearchScreen(
     state: LibraryState,
+    genres: List<String>,
     onPlay: (Channel) -> Unit,
     onSeries: (SeriesRef) -> Unit,
     onBack: () -> Unit
@@ -46,12 +47,6 @@ fun SearchScreen(
 
     val movies = remember(state.visibleChannels) { state.visibleChannels.filter { it.kind == MediaKind.VOD && it.logo != null } }
     val series = remember(state.visibleSeries) { state.visibleSeries.filter { it.cover != null } }
-    val genres = remember(movies, series) {
-        val c = HashMap<String, Int>()
-        movies.forEach { m -> GenreTagger.tags(m.name, m.group).forEach { c[it] = (c[it] ?: 0) + 1 } }
-        series.forEach { s -> GenreTagger.tags(s.name, s.genre, s.group).forEach { c[it] = (c[it] ?: 0) + 1 } }
-        c.filter { it.value >= 3 }.keys.sortedBy { GenreTagger.canonical.indexOf(it) }
-    }
 
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 12.dp, top = 6.dp),

@@ -32,7 +32,6 @@ import androidx.compose.ui.unit.sp
 import app.cheesino.core.Channel
 import app.cheesino.core.SeriesRef
 import app.cheesino.data.LibraryState
-import app.cheesino.data.RailEngine
 import app.cheesino.data.Recommender
 import app.cheesino.data.ResumeMark
 import app.cheesino.data.UserData
@@ -44,6 +43,9 @@ import kotlinx.coroutines.delay
 fun HomeScreen(
     state: LibraryState,
     user: UserData,
+    recommendedIn: List<Channel>,
+    movieRails: List<Pair<String, List<Channel>>>,
+    seriesRails: List<Pair<String, List<SeriesRef>>>,
     onPlay: (Channel) -> Unit,
     onSeries: (SeriesRef) -> Unit,
     onResume: (ResumeMark) -> Unit,
@@ -56,19 +58,16 @@ fun HomeScreen(
         return list.filter { it.logo != null && seen.add(it.name.lowercase()) }
     }
 
-    // Devam Et — dizi bölümleri tek kartta (en son izlenen), tıklanınca dizi detayına gider.
+    // Bunların hepsi ucuz (filter) — ağır iş (öneri/raylar) arka planda önceden hesaplandı.
     val continueW = remember(user.resume) {
         Recommender.continueWatching(user)
             .distinctBy { if (it.isSeries && it.seriesId != null) "s${it.seriesId}" else it.id }
     }
-    val recommended = remember(state.visibleChannels, user) { clean(Recommender.recommended(state.visibleChannels, user)) }
+    val recommended = remember(recommendedIn) { clean(recommendedIn) }
     val favorites = remember(state.visibleChannels, user.favorites) { clean(Recommender.favorites(state.visibleChannels, user)) }
     val featured = remember(recommended, state.topRated) {
         (recommended + clean(state.topRated)).distinctBy { it.name.lowercase() }.filter { it.logo != null }.take(6)
     }
-    // Dinamik tür + senaryo rayları (beğeniye göre sıralı, günlük değişir).
-    val movieRails = remember(state.movies, user) { RailEngine.movieRails(state.movies, state.visibleChannels, user) }
-    val seriesRails = remember(state.visibleSeries, user) { RailEngine.seriesRails(state.visibleSeries, user) }
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 10.dp)) {
         item {

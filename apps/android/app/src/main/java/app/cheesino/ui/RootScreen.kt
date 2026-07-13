@@ -58,6 +58,7 @@ private enum class Tab(val label: String, val icon: ImageVector) {
 fun RootScreen(vm: LibraryViewModel) {
     val state by vm.state.collectAsStateWithLifecycle()
     val user by vm.user.collectAsStateWithLifecycle()
+    val discover by vm.discover.collectAsStateWithLifecycle()
     var tab by remember { mutableStateOf(Tab.HOME) }
     // Oynatma kuyruğu — tek öğe (kanal/film) ya da dizi bölümleri (otomatik sonraki).
     var playQueue by remember { mutableStateOf<List<PlayItem>>(emptyList()) }
@@ -139,10 +140,11 @@ fun RootScreen(vm: LibraryViewModel) {
                     onBack = { detail = null }
                 )
                 showMyList -> MyListScreen(state, user, onContent, openSeries, onBack = { showMyList = false })
-                showSearch -> SearchScreen(state, onContent, openSeries, onBack = { showSearch = false })
+                showSearch -> SearchScreen(state, discover.genres, onContent, openSeries, onBack = { showSearch = false })
                 else -> Crossfade(targetState = tab, label = "tab") { t ->
                     when (t) {
-                        Tab.HOME -> HomeScreen(state, user, onContent, openSeries, resumePlay,
+                        Tab.HOME -> HomeScreen(state, user, discover.recommended, discover.movieRails, discover.seriesRails,
+                            onContent, openSeries, resumePlay,
                             onSettings = { showSettings = true },
                             onSearch = { showSearch = true },
                             onMyList = { showMyList = true })
@@ -150,8 +152,8 @@ fun RootScreen(vm: LibraryViewModel) {
                             onGuide = { showGuide = true },
                             onMulti = { showMulti = true },
                             onSports = { vm.loadEpg(); showSports = true })
-                        Tab.MOVIES -> MoviesScreen(state, user, onContent)
-                        Tab.SERIES -> SeriesScreen(state, user, openSeries)
+                        Tab.MOVIES -> MoviesScreen(state, discover.movieRails, onContent)
+                        Tab.SERIES -> SeriesScreen(state, discover.seriesRails, openSeries)
                     }
                 }
             }

@@ -29,6 +29,14 @@ data class LibraryState(
     val topRated get() = movies.filter { (it.rating ?: 0.0) >= 7.5 }.sortedByDescending { it.rating }
 }
 
+/** Arka planda hesaplanan keşif verisi — ana thread'i kilitlemez, kompozisyonda ağır iş yok. */
+data class Discover(
+    val recommended: List<Channel> = emptyList(),
+    val movieRails: List<Pair<String, List<Channel>>> = emptyList(),
+    val seriesRails: List<Pair<String, List<SeriesRef>>> = emptyList(),
+    val genres: List<String> = emptyList()
+)
+
 class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     private val creds = CredStore(app)
     // Kayıtlı kaynak varsa açılışta doğrudan yükleniyor durumu → boş ekran görünmez.
@@ -39,6 +47,30 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Xtream oturumu — dizi detayı/bölüm çekmek için canlı tutulur (M3U kaynağında null). */
     private var client: XtreamClient? = null
+
+    // ---- Keşif (arka planda hesaplanır; kullanıcı değişiminde DEĞİL, içerik yüklenince yenilenir) ----
+    private val _discover = MutableStateFlow(Discover())
+    val discover: StateFlow<Discover> = _discover.asStateFlow()
+
+    private fun rebuildDiscover() {
+        val st = _state.value
+        val u = _user.value
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
+            val allCh = st.visibleChannels
+            val movies = allCh.filter { it.kind == MediaKind.VOD }
+            val series = st.visibleSeries
+            val rec = runCatching { Recommender.recommended(allCh, u) }.getOrDefault(emptyList())
+            val mRails = runCatching { RailEngine.movieRails(movies, allCh, u) }.getOrDefault(emptyList())
+            val sRails = runCatching { RailEngine.seriesRails(series, u) }.getOrDefault(emptyList())
+            val genres = runCatching {
+                val c = HashMap<String, Int>()
+                movies.forEach { m -> GenreTagger.tags(m.name, m.group).forEach { c[it] = (c[it] ?: 0) + 1 } }
+                series.forEach { s -> GenreTagger.tags(s.name, s.genre, s.group).forEach { c[it] = (c[it] ?: 0) + 1 } }
+                c.filter { it.value >= 3 }.keys.sortedBy { GenreTagger.canonical.indexOf(it) }
+            }.getOrDefault(emptyList())
+            _discover.value = Discover(rec, mRails, sRails, genres)
+        }
+    }
 
     // ---- EPG (rehber) ----
     private var epgSourceUrl: String? = null   // M3U url-tvg (Xtream'de xmltv.php kullanılır)
@@ -176,6 +208,7 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
                 _epg.value = emptyMap()
                 _state.value = LibraryState(channels = live + vod, series = series, loading = false,
                     hasSource = true, parentalOn = settings.parentalEnabled)
+                rebuildDiscover()
             } catch (e: Exception) {
                 _state.value = _state.value.copy(loading = false, error = "Giriş başarısız — sunucu/kullanıcı/şifreyi kontrol edin.")
             }
@@ -205,6 +238,7 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
         _epg.value = emptyMap()
         _state.value = LibraryState(channels = result.channels, loading = false,
             hasSource = true, parentalOn = settings.parentalEnabled)
+        rebuildDiscover()
     }
 
     fun loadM3UUrl(url: String) {
