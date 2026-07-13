@@ -49,7 +49,7 @@ fun GuideScreen(
         }
         OutlinedTextField(
             value = q, onValueChange = { q = it }, singleLine = true,
-            placeholder = { Text("Kanal ara…") },
+            placeholder = { Text("Kanal veya program ara…") },
             leadingIcon = { Icon(Icons.Default.Search, null) },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
             shape = RoundedCornerShape(12.dp),
@@ -66,9 +66,13 @@ fun GuideScreen(
 
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 16.dp)) {
             if (query.length >= 2) {
-                val hits = channels.filter { it.name.lowercase().contains(query) }
+                // Kanal adına VE program içeriğine (EPG başlıkları) göre ara.
+                val hits = channels.filter { ch ->
+                    ch.name.lowercase().contains(query) ||
+                        (ch.tvgId?.let { epg[it] }?.any { e -> e.title.lowercase().contains(query) } == true)
+                }
                 if (hits.isEmpty()) item { Text("Sonuç yok.", color = TextMute, modifier = Modifier.padding(16.dp)) }
-                items(hits) { ch -> GuideRow(ch, epg, onPlay, onCatchup) }
+                items(hits) { ch -> GuideRow(ch, epg, onPlay, onCatchup, query) }
             } else {
                 fun hasNow(ch: Channel) = ch.tvgId?.let { epg[it] }?.any { it.isLiveNow } == true
                 // Kategoriler EPG yoğunluğuna göre (alfabetik değil); içinde EPG olanlar üstte.
@@ -77,7 +81,7 @@ fun GuideScreen(
                     .entries.sortedByDescending { (_, chans) -> chans.count { hasNow(it) } }
                 byCat.forEach { (cat, chans) ->
                     item { GuideCategoryHeader(cat, chans.count { hasNow(it) }) }
-                    items(chans) { ch -> GuideRow(ch, epg, onPlay, onCatchup) }
+                    items(chans) { ch -> GuideRow(ch, epg, onPlay, onCatchup, "") }
                 }
             }
         }
@@ -101,11 +105,15 @@ private fun GuideRow(
     ch: Channel,
     epg: Map<String, List<EpgEntry>>,
     onPlay: (Channel) -> Unit,
-    onCatchup: (Channel, EpgEntry) -> Unit
+    onCatchup: (Channel, EpgEntry) -> Unit,
+    matchQuery: String
 ) {
     val list = ch.tvgId?.let { epg[it] } ?: emptyList()
     val now = list.firstOrNull { it.isLiveNow }
     val next = list.firstOrNull { it.start > (now?.stop ?: 0L) }
+    // Arama program başlığıyla eşleştiyse (ve şu an oynayan değilse) o programı da göster.
+    val matched = matchQuery.takeIf { it.length >= 2 && !ch.name.lowercase().contains(it) }
+        ?.let { q -> list.firstOrNull { it.title.lowercase().contains(q) && it != now } }
     Row(
         Modifier.fillMaxWidth().clickable { onPlay(ch) }.padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -130,6 +138,11 @@ private fun GuideRow(
                 Text("${hhmm(it.start)} · ${it.title}", color = TextDim, fontSize = 11.sp,
                     maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
             }
+            matched?.let {
+                Text("🔎 ${dayHhmm(it.start)} · ${it.title}", color = Accent2, fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 3.dp))
+            }
         }
         // Catchup — arşiv destekliyorsa şu anki programı baştan izle.
         if (ch.supportsCatchup && now != null) {
@@ -142,6 +155,8 @@ private fun GuideRow(
 
 private val timeFmt = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
 private fun hhmm(epochSec: Long): String = timeFmt.format(java.util.Date(epochSec * 1000))
+private val dayTimeFmt = java.text.SimpleDateFormat("d MMM HH:mm", java.util.Locale.getDefault())
+private fun dayHhmm(epochSec: Long): String = dayTimeFmt.format(java.util.Date(epochSec * 1000))
 
 private fun progress(e: EpgEntry): Float {
     val n = System.currentTimeMillis() / 1000

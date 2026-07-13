@@ -26,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,7 +60,9 @@ fun RootScreen(vm: LibraryViewModel) {
     val state by vm.state.collectAsStateWithLifecycle()
     val user by vm.user.collectAsStateWithLifecycle()
     val discover by vm.discover.collectAsStateWithLifecycle()
-    var tab by remember { mutableStateOf(Tab.HOME) }
+    // Sekme uygulamaya geri dönüşte/ekran dönmede korunur (ana sayfaya atmasın).
+    var tabOrdinal by rememberSaveable { mutableIntStateOf(0) }
+    val tab = Tab.entries[tabOrdinal]
     // Oynatma kuyruğu — tek öğe (kanal/film) ya da dizi bölümleri (otomatik sonraki).
     var playQueue by remember { mutableStateOf<List<PlayItem>>(emptyList()) }
     var playIndex by remember { mutableIntStateOf(0) }
@@ -85,9 +88,10 @@ fun RootScreen(vm: LibraryViewModel) {
         return
     }
 
-    // İlk yükleme — içerik henüz gelmediyse tam ekran loader.
+    // İlk yükleme — içerik henüz gelmediyse iskelet (shimmer) göster; spinner beklemek yerine
+    // içerik geliyormuş hissi → daha az bekliyormuş algısı.
     if (state.channels.isEmpty() && state.loading) {
-        CenterLoader("İçerik yükleniyor…")
+        HomeSkeleton()
         return
     }
 
@@ -113,7 +117,7 @@ fun RootScreen(vm: LibraryViewModel) {
         bottomBar = {
             // Sekmeye dokununca açık detay/arama/liste katmanını kapat → gezinme takılmasın.
             BottomBar(tab) { t ->
-                tab = t; detail = null; movieDetail = null; showMyList = false; showSearch = false
+                tabOrdinal = t.ordinal; detail = null; movieDetail = null; showMyList = false; showSearch = false
             }
         }
     ) { pad ->

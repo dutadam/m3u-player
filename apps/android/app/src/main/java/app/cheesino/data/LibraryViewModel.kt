@@ -183,21 +183,28 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     fun clearResume(id: String) = mutateUser { u -> u.copy(resume = u.resume - id) }
     fun resumeOf(id: String): ResumeMark? = _user.value.resume[id]
 
-    /** Açılış: önbellek varsa anında göster, sonra ağdan arka planda tazele; yoksa tam yükle. */
+    /**
+     * Açılış: içerik zaten belleğe yüklendiyse (uygulamaya geri dönüş / ekran döndürme) hiçbir şey yapma.
+     * Önbellek varsa anında göster; yalnızca önbellek 24 saatten eskiyse ağdan arka planda tazele.
+     */
     fun restore() {
+        if (_state.value.channels.isNotEmpty()) return   // geri dönüşte yeniden yükleme yok
         val c = creds.load() ?: return
         val cached = contentCache.load(xtKey(c))
         if (cached != null && cached.channels.isNotEmpty()) {
             client = XtreamClient(c)   // detay (dizi/film) çekimleri için canlı istemci
             _epg.value = emptyMap()
+            val stale = System.currentTimeMillis() - cached.savedAt > DAY_MS
             _state.value = LibraryState(channels = cached.channels, series = cached.series,
-                loading = false, refreshing = true, hasSource = true, parentalOn = settings.parentalEnabled)
+                loading = false, refreshing = stale, hasSource = true, parentalOn = settings.parentalEnabled)
             rebuildDiscover()
-            loadXtream(c, background = true)   // içerik ekranda, ağ arka planda güncelliyor
+            if (stale) loadXtream(c, background = true)   // günde bir kez otomatik tazele
         } else {
             loadXtream(c)
         }
     }
+
+    private companion object { const val DAY_MS = 24L * 3600 * 1000 }
 
     /** Manuel yenileme (ayarlardan). İçerik varsa ekranı boşaltmadan arka planda tazeler. */
     fun reload() {

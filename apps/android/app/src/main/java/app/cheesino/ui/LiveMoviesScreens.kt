@@ -56,6 +56,8 @@ fun LiveScreen(
     onSports: () -> Unit
 ) {
     var listMode by remember { mutableStateOf(false) }
+    var q by remember { mutableStateOf("") }
+    val query = q.trim().lowercase()
     val byCat = remember(state.live) { state.live.groupBy { it.group } }
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -73,7 +75,21 @@ fun LiveScreen(
                 Text(" Rehber", color = Accent, fontWeight = FontWeight.Bold)
             }
         }
+        SearchField("Kanal ara…", q) { q = it }
         when {
+            query.length >= 2 -> {
+                val hits = remember(query, state.live) {
+                    state.live.filter { it.name.lowercase().contains(query) }.take(300)
+                }
+                if (hits.isEmpty()) EmptyState("Sonuç yok", modifier = Modifier.weight(1f).fillMaxWidth())
+                else LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(bottom = 12.dp)) {
+                    lazyItems(hits) { ch ->
+                        val list = ch.tvgId?.let { epg[it] }
+                        val now = list?.firstOrNull { it.isLiveNow }
+                        LiveListRow(ch, now?.title, null, onPlay)
+                    }
+                }
+            }
             byCat.isEmpty() -> EmptyState("Canlı kanal yok", "Bu kaynakta canlı yayın görünmüyor.",
                 modifier = Modifier.weight(1f).fillMaxWidth())
             listMode -> LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(bottom = 12.dp)) {

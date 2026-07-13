@@ -14,6 +14,9 @@ object RailEngine {
 
     val daySeed: Long get() = System.currentTimeMillis() / 86_400_000L
 
+    // Ray listesi kapasitesi — ekranda ilk 30 gösterilir ama "Tümü" bu kadarını açar.
+    private const val CAP = 300
+
     private fun jitter(key: String, salt: Long): Double {
         var h = 1125899906842597L
         for (c in key) h = 31 * h + c.code
@@ -49,16 +52,16 @@ object RailEngine {
         for (g in GenreTagger.canonical) {
             val items = tagged.filter { g in it.tags }
             if (items.size >= 6)
-                rails.add(Scored(g, items.sortedByDescending { it.score }.take(30).map { it.ch }, (affinity[g] ?: 0.0) * 1.5 + jitter(g, seed)))
+                rails.add(Scored(g, items.sortedByDescending { it.score }.take(CAP).map { it.ch }, (affinity[g] ?: 0.0) * 1.5 + jitter(g, seed)))
         }
         for ((title, keys) in scenarios) {
             val items = tagged.filter { m -> keys.any { m.nameLower.contains(it) } }
             if (items.size >= 5)
-                rails.add(Scored(title, items.sortedByDescending { it.score }.take(30).map { it.ch }, 0.6 + jitter(title, seed)))
+                rails.add(Scored(title, items.sortedByDescending { it.score }.take(CAP).map { it.ch }, 0.6 + jitter(title, seed)))
         }
         val kult = tagged.filter { (it.ch.rating ?: 0.0) >= 8.2 }
         if (kult.size >= 6)
-            rails.add(Scored("Kült & Efsane", kult.sortedByDescending { it.score }.take(30).map { it.ch }, 0.9 + jitter("kult", seed)))
+            rails.add(Scored("Kült & Efsane", kult.sortedByDescending { it.score }.take(CAP).map { it.ch }, 0.9 + jitter("kult", seed)))
 
         return rails.sortedByDescending { it.score }.take(limit).map { it.title to it.items }
     }
@@ -77,12 +80,12 @@ object RailEngine {
         for (g in GenreTagger.canonical) {
             val items = tagged.filter { g in it.tags }
             if (items.size >= 5)
-                rails.add((g to items.sortedByDescending { it.jit }.take(30).map { it.s }) to jitter(g, seed))
+                rails.add((g to items.sortedByDescending { it.jit }.take(CAP).map { it.s }) to jitter(g, seed))
         }
         for ((title, keys) in scenarios) {
             val items = tagged.filter { m -> keys.any { m.nameLower.contains(it) } }
             if (items.size >= 5)
-                rails.add((title to items.sortedByDescending { it.jit }.take(30).map { it.s }) to (0.5 + jitter(title, seed)))
+                rails.add((title to items.sortedByDescending { it.jit }.take(CAP).map { it.s }) to (0.5 + jitter(title, seed)))
         }
         return rails.sortedByDescending { it.second }.take(limit).map { it.first }
     }
