@@ -178,11 +178,21 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Dizi detayını (sezon/bölüm) tembel çeker. M3U kaynağında Xtream yoksa null döner. */
-    suspend fun seriesDetail(ref: SeriesRef): Series? = client?.seriesInfo(ref)
+    // Detay önbelleği — tekrar açılışta anında gelsin (ağ beklemesi yok).
+    private val seriesCache = HashMap<Int, Series>()
+    private val movieCache = HashMap<String, MovieInfo>()
 
-    /** Film detayını (özet/afiş) tembel çeker. Xtream yoksa null. */
-    suspend fun movieInfo(ch: Channel): MovieInfo? = client?.vodInfo(ch)
+    /** Dizi detayını (sezon/bölüm) tembel çeker + önbellekler. M3U'da null. */
+    suspend fun seriesDetail(ref: SeriesRef): Series? {
+        seriesCache[ref.id]?.let { return it }
+        return client?.seriesInfo(ref)?.also { seriesCache[ref.id] = it }
+    }
+
+    /** Film detayını (özet/afiş) tembel çeker + önbellekler. */
+    suspend fun movieInfo(ch: Channel): MovieInfo? {
+        movieCache[ch.id]?.let { return it }
+        return client?.vodInfo(ch)?.also { movieCache[ch.id] = it }
+    }
 
     fun loadM3U(text: String) {
         val result = M3UParser.parse(text)
@@ -212,5 +222,8 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     fun loadMultiView(): MultiViewConfig = mvStore.load()
     fun saveMultiView(c: MultiViewConfig) = mvStore.save(c)
 
-    fun signOut() { client = null; creds.clear(); _state.value = LibraryState(hasSource = false) }
+    fun signOut() {
+        client = null; creds.clear(); seriesCache.clear(); movieCache.clear()
+        _state.value = LibraryState(hasSource = false)
+    }
 }
