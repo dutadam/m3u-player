@@ -99,6 +99,11 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Canlı kanalın geçmiş programını baştan izleme (timeshift) URL'i — yalnız Xtream + arşiv. */
+    // ---- Pro yetkilendirme ----
+    private val entitlements = Entitlements(app)
+    val isPro: StateFlow<Boolean> = entitlements.isPro
+    fun setPro(v: Boolean) = entitlements.setPro(v)
+
     // ---- Program hatırlatıcıları ----
     fun isReminded(ch: Channel, e: EpgEntry) = Reminders.isSet(getApplication(), ch.id, e.start)
     fun toggleReminder(ch: Channel, e: EpgEntry) {

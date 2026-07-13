@@ -21,11 +21,14 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.cheesino.BuildConfig
 import app.cheesino.data.LibraryViewModel
 import app.cheesino.ui.theme.*
 
 @Composable
-fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () -> Unit) {
+fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () -> Unit, onUpgrade: () -> Unit = {}) {
+    val isPro by vm.isPro.collectAsStateWithLifecycle()
     var ua by remember { mutableStateOf(vm.userAgent) }
     var pin by remember { mutableStateOf("") }
     var pin2 by remember { mutableStateOf("") }
@@ -41,6 +44,22 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
         Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi) }
             Text("Ayarlar", color = TextHi, fontWeight = FontWeight.Black, fontSize = 20.sp)
+        }
+
+        Section(if (isPro) "cheesino Pro · Aktif" else "cheesino Pro") {
+            if (isPro) {
+                Text("Pro aktif — tüm özellikler açık. Teşekkürler!", color = TextDim, fontSize = 13.sp)
+            } else {
+                Text("Çoklu ekran, zaman çizelgesi, sınırsız kaynak, senkron ve daha fazlası.",
+                    color = TextDim, fontSize = 13.sp, modifier = Modifier.padding(bottom = 8.dp))
+                Button(onClick = onUpgrade, modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Accent)
+                ) { Text("Pro'ya Geç", fontWeight = FontWeight.Black, color = Ground) }
+            }
+            if (BuildConfig.DEBUG) {
+                Text("Geliştirici: Pro'yu değiştir", color = TextMute, fontSize = 11.sp,
+                    modifier = Modifier.padding(top = 10.dp).clickable { vm.setPro(!isPro) })
+            }
         }
 
         Section("Oynatma") {

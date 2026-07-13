@@ -60,6 +60,9 @@ fun RootScreen(vm: LibraryViewModel) {
     val state by vm.state.collectAsStateWithLifecycle()
     val user by vm.user.collectAsStateWithLifecycle()
     val discover by vm.discover.collectAsStateWithLifecycle()
+    val isPro by vm.isPro.collectAsStateWithLifecycle()
+    var paywallFor by remember { mutableStateOf<app.cheesino.data.ProFeature?>(null) }
+    var showPaywall by remember { mutableStateOf(false) }
     // Sekme uygulamaya geri dönüşte/ekran dönmede korunur (ana sayfaya atmasın).
     var tabOrdinal by rememberSaveable { mutableIntStateOf(0) }
     val tab = Tab.entries[tabOrdinal]
@@ -159,7 +162,10 @@ fun RootScreen(vm: LibraryViewModel) {
                             onMyList = { showMyList = true })
                         Tab.LIVE -> LiveScreen(state, epg, playChannel,
                             onGuide = { showGuide = true },
-                            onMulti = { showMulti = true },
+                            onMulti = {
+                                if (isPro) showMulti = true
+                                else { paywallFor = app.cheesino.data.ProFeature.MULTI_VIEW; showPaywall = true }
+                            },
                             onSports = { vm.loadEpg(); showSports = true })
                         Tab.MOVIES -> MoviesScreen(state, discover.movieRails, onContent)
                         Tab.SERIES -> SeriesScreen(state, discover.seriesRails, openSeries)
@@ -209,7 +215,20 @@ fun RootScreen(vm: LibraryViewModel) {
 
     // Ayarlar — overlay (fade).
     AnimatedVisibility(visible = showSettings, enter = fadeIn(), exit = fadeOut()) {
-        SettingsScreen(vm, onClose = { showSettings = false }, onSignedOut = { showSettings = false })
+        SettingsScreen(vm, onClose = { showSettings = false }, onSignedOut = { showSettings = false },
+            onUpgrade = { showSettings = false; paywallFor = null; showPaywall = true })
+    }
+
+    // Pro paywall — overlay (fade).
+    AnimatedVisibility(visible = showPaywall, enter = fadeIn(), exit = fadeOut()) {
+        PaywallScreen(
+            highlight = paywallFor,
+            onUpgrade = {
+                // TODO: gerçek Play Billing satın alma akışı (ürün Play Console'da tanımlanınca).
+                showPaywall = false
+            },
+            onClose = { showPaywall = false }
+        )
     }
 
     // Oynatıcı — en üstte. Dizi kuyruğunda bittiğinde otomatik sonraki bölüm.
