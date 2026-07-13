@@ -47,7 +47,8 @@ private fun JsonElement?.asStr(): String? = (this as? JsonPrimitive)?.contentOrN
     @SerialName("series_id") val seriesId: JsonElement? = null,
     val cover: String? = null,
     val genre: String? = null,
-    @SerialName("category_id") val cat: String? = null
+    @SerialName("category_id") val cat: String? = null,
+    val rating: JsonElement? = null
 )
 
 /** player_api.php istemcisi — CORS/proxy YOK (native). */
@@ -120,7 +121,8 @@ class XtreamClient(val creds: XtreamCredentials) {
             .associate { (it.id ?: "") to (it.name ?: "Diziler") }
         return decodeList(api("get_series"), kotlinx.serialization.builtins.ListSerializer(SeriesRaw.serializer())).map { s ->
             SeriesRef(id = s.seriesId.asInt(), name = s.name ?: "Dizi", cover = s.cover?.ifBlank { null },
-                genre = s.genre, group = cats[s.cat ?: ""] ?: "Diziler")
+                genre = s.genre, group = cats[s.cat ?: ""] ?: "Diziler",
+                rating = s.rating.asDoubleOrNull()?.takeIf { it > 0 })
         }
     }
 
@@ -145,7 +147,7 @@ class XtreamClient(val creds: XtreamCredentials) {
 
     /** get_series_info → sezon/bölüm ağacı. iOS'taki clunky "JSON indir-seç" akışının yerine. */
     suspend fun seriesInfo(ref: SeriesRef): Series {
-        val empty = Series(ref.id.toString(), ref.name, ref.cover, null, ref.genre, emptyList())
+        val empty = Series(ref.id.toString(), ref.name, ref.cover, null, ref.genre, emptyList(), ref.rating)
         val root = try {
             json.parseToJsonElement(get(api("get_series_info", mapOf("series_id" to ref.id.toString())))) as? JsonObject
         } catch (e: Exception) { null } ?: return empty
@@ -154,6 +156,7 @@ class XtreamClient(val creds: XtreamCredentials) {
         val plot = info?.get("plot").asStr()?.ifBlank { null }
         val genre = info?.get("genre").asStr()?.ifBlank { null } ?: ref.genre
         val cover = info?.get("cover").asStr()?.ifBlank { null } ?: ref.cover
+        val rating = info?.get("rating").asDoubleOrNull()?.takeIf { it > 0 } ?: ref.rating
 
         val seasons = ArrayList<Season>()
         (root["episodes"] as? JsonObject)?.forEach { (seasonKey, arr) ->
@@ -177,6 +180,6 @@ class XtreamClient(val creds: XtreamCredentials) {
             if (episodes.isNotEmpty()) seasons.add(Season(seasonKey.toIntOrNull() ?: 0, episodes))
         }
         seasons.sortBy { it.number }
-        return Series(ref.id.toString(), ref.name, cover, plot, genre, seasons)
+        return Series(ref.id.toString(), ref.name, cover, plot, genre, seasons, rating)
     }
 }

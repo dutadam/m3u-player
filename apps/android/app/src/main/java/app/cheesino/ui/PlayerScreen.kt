@@ -60,6 +60,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
@@ -126,10 +127,13 @@ fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEn
     val player = remember(item.id) {
         // 4K/yüksek bit hızı için daha büyük buffer → daha az takılma.
         val loadControl = DefaultLoadControl.Builder()
-            .setBufferDurationsMs(30_000, 120_000, 2_500, 5_000)
+            .setBufferDurationsMs(50_000, 240_000, 2_500, 5_000)
+            .setBackBuffer(30_000, true)
             .setPrioritizeTimeOverSizeThresholds(true)
             .build()
-        ExoPlayer.Builder(context).setLoadControl(loadControl).build().apply {
+        // Bir donanım kod çözücü açılamaz/yetişemezse ikincil kod çözücüye düş.
+        val renderers = DefaultRenderersFactory(context).setEnableDecoderFallback(true)
+        ExoPlayer.Builder(context, renderers).setLoadControl(loadControl).build().apply {
             val url = StreamResolver.candidates(item.url).firstOrNull()?.url ?: item.url
             setMediaItem(MediaItem.fromUri(url))
             if (startAtMs > 0) seekTo(startAtMs)

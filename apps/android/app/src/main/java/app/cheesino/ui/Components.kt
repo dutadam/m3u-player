@@ -70,7 +70,10 @@ fun SeriesRail(title: String, items: List<SeriesRef>, onTap: (SeriesRef) -> Unit
     if (items.isEmpty()) return
     Rail(title, onSeeAll) {
         LazyRow(contentPadding = PaddingValues(horizontal = 16.dp)) {
-            items(items.take(30)) { s -> PosterCard(s.name, s.cover, null) { onTap(s) } }
+            items(items.take(30)) { s ->
+                val badge = s.rating?.takeIf { it > 0 }?.let { "★ ${"%.1f".format(it)}" }
+                PosterCard(s.name, s.cover, badge) { onTap(s) }
+            }
         }
     }
 }

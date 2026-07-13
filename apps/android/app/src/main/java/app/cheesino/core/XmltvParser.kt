@@ -13,14 +13,27 @@ import java.util.TimeZone
  */
 object XmltvParser {
 
-    private val fmt = SimpleDateFormat("yyyyMMddHHmmss", Locale.US)
+    private val fmtUtc = SimpleDateFormat("yyyyMMddHHmmss", Locale.US)
         .apply { timeZone = TimeZone.getTimeZone("UTC") }
+    private val fmtTz = SimpleDateFormat("yyyyMMddHHmmss Z", Locale.US)
 
-    /** "20240711183000 +0000" → epoch saniye (tz offset MVP'de yok sayılır). */
+    /**
+     * "20240711183000 +0300" → epoch saniye. TZ offset'i DİKKATE ALINIR — aksi halde
+     * "şimdi oynuyor"/CANLI penceresi offset kadar (TR'de 3 saat) kayar.
+     */
     private fun parseTime(s: String?): Long {
         if (s.isNullOrBlank()) return 0
-        val core = s.trim().take(14)
-        return try { (fmt.parse(core)?.time ?: 0L) / 1000 } catch (e: Exception) { 0L }
+        val t = s.trim()
+        val core = t.take(14)
+        val rest = t.drop(14).trim()   // "+0300" / "-0500" olabilir
+        return try {
+            if (rest.length >= 5 && (rest[0] == '+' || rest[0] == '-'))
+                (fmtTz.parse("$core ${rest.take(5)}")?.time ?: 0L) / 1000
+            else
+                (fmtUtc.parse(core)?.time ?: 0L) / 1000
+        } catch (e: Exception) {
+            try { (fmtUtc.parse(core)?.time ?: 0L) / 1000 } catch (e2: Exception) { 0L }
+        }
     }
 
     fun parse(xml: String): Map<String, List<EpgEntry>> {

@@ -56,7 +56,8 @@ fun HomeScreen(
 ) {
     fun clean(list: List<Channel>): List<Channel> {
         val seen = HashSet<String>()
-        return list.filter { it.logo != null && seen.add(it.name.lowercase()) }
+        // Aynı filmin 4K/FHD/HD/HEVC gibi varyantları tek posterde toplanır.
+        return list.filter { it.logo != null && seen.add(baseTitle(it.name)) }
     }
 
     // Bunların hepsi ucuz (filter) — ağır iş (öneri/raylar) arka planda önceden hesaplandı.
@@ -104,6 +105,19 @@ fun HomeScreen(
         }
     }
 }
+
+private val QUALITY_TOKENS = Regex(
+    "\\b(4K|UHD|FHD|FULL ?HD|HD|SD|HEVC|H\\.?265|H\\.?264|X265|X264|2160P|1080P|720P|480P|HDR|DOLBY|DUAL|MULTI|TR|EN)\\b",
+    RegexOption.IGNORE_CASE
+)
+
+/** Kalite/codec etiketlerini atıp normalize eder → aynı filmin varyantları tek anahtarda toplanır. */
+fun baseTitle(name: String): String =
+    name.replace(QUALITY_TOKENS, " ")
+        .replace(Regex("[\\[\\](){}|]"), " ")
+        .replace(Regex("\\s+"), " ")
+        .trim()
+        .lowercase()
 
 /** Öne çıkan içerik — 6 sn'de bir dönen büyük hero. */
 @Composable

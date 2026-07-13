@@ -43,7 +43,8 @@ data class SeriesRef(
     val name: String,
     val cover: String? = null,
     val genre: String? = null,
-    val group: String
+    val group: String,
+    val rating: Double? = null
 )
 
 @Serializable
@@ -60,7 +61,7 @@ data class Episode(
 
 data class Season(val number: Int, val episodes: List<Episode>)
 data class Series(val id: String, val name: String, val cover: String?, val plot: String?,
-                  val genre: String?, val seasons: List<Season>)
+                  val genre: String?, val seasons: List<Season>, val rating: Double? = null)
 
 @Serializable
 data class XtreamCredentials(val server: String, val username: String, val password: String) {

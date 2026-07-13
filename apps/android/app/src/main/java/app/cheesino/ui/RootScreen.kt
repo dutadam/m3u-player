@@ -110,7 +110,12 @@ fun RootScreen(vm: LibraryViewModel) {
 
     Scaffold(
         containerColor = Ground,
-        bottomBar = { BottomBar(tab) { tab = it } }
+        bottomBar = {
+            // Sekmeye dokununca açık detay/arama/liste katmanını kapat → gezinme takılmasın.
+            BottomBar(tab) { t ->
+                tab = t; detail = null; movieDetail = null; showMyList = false; showSearch = false
+            }
+        }
     ) { pad ->
         Box(Modifier.fillMaxSize().padding(pad)) {
             val md = movieDetail

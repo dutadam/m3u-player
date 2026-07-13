@@ -143,6 +143,10 @@ private fun Header(
             Column(Modifier.padding(start = 14.dp)) {
                 Text(s.name, color = TextHi, fontWeight = FontWeight.Black, fontSize = 20.sp, maxLines = 2,
                     overflow = TextOverflow.Ellipsis)
+                s.rating?.takeIf { it > 0 }?.let {
+                    Text("★ ${"%.1f".format(it)} · IMDb", color = Gold, fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+                }
                 s.genre?.let { Text(it, color = Accent2, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp)) }
                 s.plot?.let {
                     Text(it, color = TextDim, fontSize = 13.sp, maxLines = 5,

@@ -11,6 +11,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -51,6 +53,7 @@ fun MultiViewScreen(
         mutableStateListOf<String?>().apply { repeat(6) { add(initial.slotChannelIds.getOrNull(it)) } }
     }
     var activeSlot by remember { mutableIntStateOf(0) }
+    var expanded by remember { mutableStateOf<Int?>(null) }   // tek slot tam ekran
     var pickerFor by remember { mutableStateOf<Int?>(null) }
     val byId = remember(channels) { channels.associateBy { it.id } }
 
@@ -74,21 +77,38 @@ fun MultiViewScreen(
             }
         }
 
-        // Grid.
-        Column(Modifier.weight(1f).fillMaxWidth()) {
-            for (r in 0 until rows) {
-                Row(Modifier.weight(1f).fillMaxWidth()) {
-                    for (c in 0 until cols) {
-                        val idx = r * cols + c
-                        Box(Modifier.weight(1f).fillMaxHeight()) {
-                            val ch = slots[idx]?.let { byId[it] }
-                            SlotCell(
-                                channel = ch,
-                                active = idx == activeSlot,
-                                onTap = { activeSlot = idx },
-                                onAssign = { pickerFor = idx },
-                                onClear = { slots[idx] = null; persist() }
-                            )
+        // Grid — bir slot tam ekransa yalnız onu göster.
+        val exp = expanded
+        if (exp != null) {
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                SlotCell(
+                    channel = slots.getOrNull(exp)?.let { byId[it] },
+                    active = true,
+                    expanded = true,
+                    onTap = { activeSlot = exp },
+                    onAssign = { pickerFor = exp },
+                    onClear = { slots[exp] = null; expanded = null; persist() },
+                    onToggleExpand = { expanded = null }
+                )
+            }
+        } else {
+            Column(Modifier.weight(1f).fillMaxWidth()) {
+                for (r in 0 until rows) {
+                    Row(Modifier.weight(1f).fillMaxWidth()) {
+                        for (c in 0 until cols) {
+                            val idx = r * cols + c
+                            Box(Modifier.weight(1f).fillMaxHeight()) {
+                                val ch = slots[idx]?.let { byId[it] }
+                                SlotCell(
+                                    channel = ch,
+                                    active = idx == activeSlot,
+                                    expanded = false,
+                                    onTap = { activeSlot = idx },
+                                    onAssign = { pickerFor = idx },
+                                    onClear = { slots[idx] = null; persist() },
+                                    onToggleExpand = { expanded = idx; activeSlot = idx }
+                                )
+                            }
                         }
                     }
                 }
@@ -110,9 +130,11 @@ fun MultiViewScreen(
 private fun SlotCell(
     channel: Channel?,
     active: Boolean,
+    expanded: Boolean,
     onTap: () -> Unit,
     onAssign: () -> Unit,
-    onClear: () -> Unit
+    onClear: () -> Unit,
+    onToggleExpand: () -> Unit
 ) {
     val context = LocalContext.current
     Box(
@@ -131,18 +153,26 @@ private fun SlotCell(
             LaunchedEffect(active) { player.volume = if (active) 1f else 0f }
             DisposableEffect(player) { onDispose { player.release() } }
             AndroidView(
-                factory = { PlayerView(it).apply { this.player = player; useController = false } },
+                factory = { PlayerView(it).apply { useController = false } },
+                // Kanal değişince yeni player'a yeniden bağla — aksi halde eski yayın kalır.
+                update = { it.player = player },
                 modifier = Modifier.fillMaxSize()
             )
-            // Kanal adı + kaldır.
+            // Kanal adı + tam ekran + kaldır.
             Row(Modifier.align(Alignment.TopStart).padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(channel.name, color = TextHi, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
                         .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
                         .padding(horizontal = 4.dp))
             }
-            IconButton(onClick = onClear, modifier = Modifier.align(Alignment.TopEnd)) {
-                Icon(Icons.Default.Close, "Kaldır", tint = Color.White)
+            Row(Modifier.align(Alignment.TopEnd), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onToggleExpand) {
+                    Icon(if (expanded) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                        if (expanded) "Küçült" else "Tam ekran", tint = Color.White)
+                }
+                IconButton(onClick = onClear) {
+                    Icon(Icons.Default.Close, "Kaldır", tint = Color.White)
+                }
             }
             if (active) Text("● SES", color = Accent, fontSize = 10.sp, fontWeight = FontWeight.Bold,
                 modifier = Modifier.align(Alignment.BottomStart).padding(4.dp))
