@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import app.cheesino.core.Channel
 import app.cheesino.core.SeriesRef
 import app.cheesino.data.LibraryState
+import app.cheesino.data.RailEngine
 import app.cheesino.data.Recommender
 import app.cheesino.data.ResumeMark
 import app.cheesino.data.UserData
@@ -65,6 +66,9 @@ fun HomeScreen(
     val featured = remember(recommended, state.topRated) {
         (recommended + clean(state.topRated)).distinctBy { it.name.lowercase() }.filter { it.logo != null }.take(6)
     }
+    // Dinamik tür + senaryo rayları (beğeniye göre sıralı, günlük değişir).
+    val movieRails = remember(state.movies, user) { RailEngine.movieRails(state.movies, state.visibleChannels, user) }
+    val seriesRails = remember(state.visibleSeries, user) { RailEngine.seriesRails(state.visibleSeries, user) }
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 10.dp)) {
         item {
@@ -78,15 +82,20 @@ fun HomeScreen(
             }
         }
         if (featured.isNotEmpty()) item { Hero(featured, onPlay) }
+        // Öncelikli raylar üstte.
         item { ResumeRail("Devam Et", continueW, onResume) }
         item { PosterRail("Sana Özel", recommended, onPlay) }
         item { PosterRail("Daha Sonra İzle", favorites, onPlay) }
         item { PosterRail("Son Eklenenler", clean(state.recentlyAdded), onPlay) }
         item { PosterRail("Yüksek Puanlı · IMDb", clean(state.topRated), onPlay) }
-        item { PosterRail("Filmler", clean(state.movies), onPlay) }
+        // Dinamik tür/senaryo rayları — film ve dizi karışık.
+        movieRails.take(6).forEach { (title, list) -> item { PosterRail(title, clean(list), onPlay) } }
+        seriesRails.take(4).forEach { (title, list) -> item { SeriesRail(title, list, onSeries) } }
+        // Genel katalog en altta.
+        item { PosterRail("Tüm Filmler", clean(state.movies), onPlay) }
         item {
             if (state.visibleSeries.isNotEmpty())
-                SeriesRail("Diziler", state.visibleSeries.filter { it.cover != null }, onSeries)
+                SeriesRail("Tüm Diziler", state.visibleSeries.filter { it.cover != null }, onSeries)
         }
     }
 }

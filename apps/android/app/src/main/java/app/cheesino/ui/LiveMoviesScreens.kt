@@ -39,9 +39,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cheesino.core.Channel
 import app.cheesino.core.EpgEntry
-import app.cheesino.core.GenreTagger
 import app.cheesino.core.SeriesRef
 import app.cheesino.data.LibraryState
+import app.cheesino.data.RailEngine
+import app.cheesino.data.UserData
 import app.cheesino.ui.theme.*
 import coil.compose.AsyncImage
 
@@ -171,9 +172,9 @@ private fun LiveChannelCard(ch: Channel, now: String?, onTap: () -> Unit) {
     }
 }
 
-/** Filmler — üstte arama + kategori rayları (poster'a dokun → detay). */
+/** Filmler — arama + dinamik tür/senaryo rayları + Xtream kategorileri (poster'a dokun → detay). */
 @Composable
-fun MoviesScreen(state: LibraryState, onPlay: (Channel) -> Unit) {
+fun MoviesScreen(state: LibraryState, user: UserData, onPlay: (Channel) -> Unit) {
     var q by remember { mutableStateOf("") }
     var seeAll by remember { mutableStateOf<Pair<String, List<Channel>>?>(null) }
     val all = remember(state.movies) { state.movies.filter { it.logo != null } }
@@ -181,7 +182,7 @@ fun MoviesScreen(state: LibraryState, onPlay: (Channel) -> Unit) {
 
     val sa = seeAll
     if (sa != null) {
-        CategoryGrid(sa.first, sa.second.map { CardItem(it.name, it.logo) { onPlay(it) } }) { seeAll = null }
+        CategoryGrid(sa.first, sa.second.map { CardItem(it.name, it.logo) { onPlay(it) } }, q, { q = it }) { seeAll = null }
         return
     }
 
@@ -195,8 +196,12 @@ fun MoviesScreen(state: LibraryState, onPlay: (Channel) -> Unit) {
                     if (hits.isEmpty()) EmptyState("Sonuç yok") else PosterGrid(hits, onPlay)
                 }
                 else -> {
+                    val dyn = remember(all, user) { RailEngine.movieRails(all, state.visibleChannels, user) }
                     val byCat = remember(all) { all.groupBy { it.group } }
                     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 6.dp)) {
+                        dyn.forEach { (title, list) ->
+                            item { PosterRail(title, list, onPlay, onSeeAll = { seeAll = title to list }) }
+                        }
                         byCat.forEach { (cat, list) ->
                             item { PosterRail(cat, list, onPlay, onSeeAll = { seeAll = cat to list }) }
                         }
@@ -207,9 +212,9 @@ fun MoviesScreen(state: LibraryState, onPlay: (Channel) -> Unit) {
     }
 }
 
-/** Diziler — üstte arama + kategori rayları → detay (get_series_info) ekranına gider. */
+/** Diziler — arama + dinamik tür/senaryo rayları + kategoriler → detay ekranına gider. */
 @Composable
-fun SeriesScreen(state: LibraryState, onSeries: (SeriesRef) -> Unit) {
+fun SeriesScreen(state: LibraryState, user: UserData, onSeries: (SeriesRef) -> Unit) {
     var q by remember { mutableStateOf("") }
     var seeAll by remember { mutableStateOf<Pair<String, List<SeriesRef>>?>(null) }
     val all = remember(state.visibleSeries) { state.visibleSeries.filter { it.cover != null } }
@@ -217,7 +222,7 @@ fun SeriesScreen(state: LibraryState, onSeries: (SeriesRef) -> Unit) {
 
     val sa = seeAll
     if (sa != null) {
-        CategoryGrid(sa.first, sa.second.map { CardItem(it.name, it.cover) { onSeries(it) } }) { seeAll = null }
+        CategoryGrid(sa.first, sa.second.map { CardItem(it.name, it.cover) { onSeries(it) } }, q, { q = it }) { seeAll = null }
         return
     }
 
@@ -236,8 +241,12 @@ fun SeriesScreen(state: LibraryState, onSeries: (SeriesRef) -> Unit) {
                     ) { items(hits) { s -> PosterCard(s.name, s.cover) { onSeries(s) } } }
                 }
                 else -> {
+                    val dyn = remember(all, user) { RailEngine.seriesRails(all, user) }
                     val byCat = remember(all) { all.groupBy { it.group } }
                     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 6.dp)) {
+                        dyn.forEach { (title, list) ->
+                            item { SeriesRail(title, list, onSeries, onSeeAll = { seeAll = title to list }) }
+                        }
                         byCat.forEach { (cat, list) ->
                             item { SeriesRail(cat, list, onSeries, onSeeAll = { seeAll = cat to list }) }
                         }
@@ -259,20 +268,23 @@ private fun PosterGrid(movies: List<Channel>, onPlay: (Channel) -> Unit) {
 
 private class CardItem(val name: String, val poster: String?, val onClick: () -> Unit)
 
-/** Bir kategorinin tüm içeriği — "Tümü" ile açılan poster grid + geri. */
+/** Bir kategorinin tüm içeriği — "Tümü" ile açılan poster grid; arama korunur. */
 @Composable
-private fun CategoryGrid(title: String, cards: List<CardItem>, onBack: () -> Unit) {
+private fun CategoryGrid(title: String, cards: List<CardItem>, query: String, onQuery: (String) -> Unit, onBack: () -> Unit) {
+    val q = query.trim().lowercase()
+    val shown = if (q.length >= 2) cards.filter { it.name.lowercase().contains(q) } else cards
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().padding(start = 4.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi) }
             Text(title, color = TextHi, fontWeight = FontWeight.Black, fontSize = 18.sp,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+        SearchField("$title içinde ara…", query, onQuery)
         LazyVerticalGrid(
             columns = GridCells.Adaptive(112.dp),
             modifier = Modifier.weight(1f).fillMaxWidth(),
             contentPadding = PaddingValues(16.dp)
-        ) { items(cards) { c -> PosterCard(c.name, c.poster, null, c.onClick) } }
+        ) { items(shown) { c -> PosterCard(c.name, c.poster, null, c.onClick) } }
     }
 }
 

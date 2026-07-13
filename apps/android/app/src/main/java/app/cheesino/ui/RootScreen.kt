@@ -150,8 +150,8 @@ fun RootScreen(vm: LibraryViewModel) {
                             onGuide = { showGuide = true },
                             onMulti = { showMulti = true },
                             onSports = { vm.loadEpg(); showSports = true })
-                        Tab.MOVIES -> MoviesScreen(state, onContent)
-                        Tab.SERIES -> SeriesScreen(state, openSeries)
+                        Tab.MOVIES -> MoviesScreen(state, user, onContent)
+                        Tab.SERIES -> SeriesScreen(state, user, openSeries)
                     }
                 }
             }
