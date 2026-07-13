@@ -5,9 +5,11 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LiveTv
@@ -27,6 +29,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -38,18 +42,16 @@ import app.cheesino.core.SeriesRef
 import app.cheesino.data.LibraryViewModel
 import app.cheesino.data.ResumeMark
 import app.cheesino.ui.theme.Accent
-import app.cheesino.ui.theme.Accent2
+import app.cheesino.ui.theme.Elevated
 import app.cheesino.ui.theme.Ground
 import app.cheesino.ui.theme.LineSoft
-import app.cheesino.ui.theme.Surface
 import app.cheesino.ui.theme.TextMute
 
 private enum class Tab(val label: String, val icon: ImageVector) {
     HOME("Ana Sayfa", Icons.Default.Home),
     LIVE("Canlı", Icons.Default.LiveTv),
     MOVIES("Filmler", Icons.Default.Movie),
-    SERIES("Diziler", Icons.Default.Tv),
-    SEARCH("Ara", Icons.Default.Search)
+    SERIES("Diziler", Icons.Default.Tv)
 }
 
 @Composable
@@ -67,6 +69,7 @@ fun RootScreen(vm: LibraryViewModel) {
     var showMulti by remember { mutableStateOf(false) }
     var showSports by remember { mutableStateOf(false) }
     var showMyList by remember { mutableStateOf(false) }
+    var showSearch by remember { mutableStateOf(false) }
     val epg by vm.epg.collectAsStateWithLifecycle()
 
     // Kaynak yoksa onboarding tam ekran.
@@ -136,19 +139,19 @@ fun RootScreen(vm: LibraryViewModel) {
                     onBack = { detail = null }
                 )
                 showMyList -> MyListScreen(state, user, onContent, openSeries, onBack = { showMyList = false })
+                showSearch -> SearchScreen(state, onContent, openSeries, onBack = { showSearch = false })
                 else -> Crossfade(targetState = tab, label = "tab") { t ->
                     when (t) {
                         Tab.HOME -> HomeScreen(state, user, onContent, openSeries, resumePlay,
                             onSettings = { showSettings = true },
-                            onSports = { vm.loadEpg(); showSports = true },
-                            onRefresh = { vm.reload() },
+                            onSearch = { showSearch = true },
                             onMyList = { showMyList = true })
                         Tab.LIVE -> LiveScreen(state, epg, playChannel,
                             onGuide = { showGuide = true },
-                            onMulti = { showMulti = true })
+                            onMulti = { showMulti = true },
+                            onSports = { vm.loadEpg(); showSports = true })
                         Tab.MOVIES -> MoviesScreen(state, onContent)
                         Tab.SERIES -> SeriesScreen(state, openSeries)
-                        Tab.SEARCH -> SearchScreen(state, onContent, openSeries)
                     }
                 }
             }
@@ -206,29 +209,31 @@ fun RootScreen(vm: LibraryViewModel) {
     }
 }
 
-/** Düz, pill'siz alt sekme çubuğu (tasarım spec'i). */
+/** Modern yüzen sekme çubuğu — aktif sekme accent pill'e genişler (icon+etiket), diğerleri sadece icon. */
 @Composable
 private fun BottomBar(selected: Tab, onSelect: (Tab) -> Unit) {
-    Column(Modifier.background(Surface)) {
-        HorizontalDivider(thickness = 1.dp, color = LineSoft.copy(alpha = 0.6f))
+    Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 14.dp, vertical = 10.dp)) {
         Row(
-            Modifier.fillMaxWidth().navigationBarsPadding().padding(top = 8.dp, bottom = 8.dp),
-            horizontalArrangement = Arrangement.SpaceAround
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp)).background(Elevated)
+                .border(1.dp, LineSoft.copy(alpha = 0.7f), RoundedCornerShape(26.dp))
+                .padding(6.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Tab.entries.forEach { t ->
                 val on = t == selected
-                val tint = if (on) Accent2 else TextMute
-                Column(
-                    Modifier.weight(1f).clickable(
-                        interactionSource = remember { MutableInteractionSource() }, indication = null
-                    ) { onSelect(t) },
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                Row(
+                    Modifier.clip(RoundedCornerShape(20.dp))
+                        .background(if (on) Accent else Color.Transparent)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() }, indication = null
+                        ) { onSelect(t) }
+                        .padding(horizontal = if (on) 16.dp else 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(t.icon, t.label, tint = tint, modifier = Modifier.size(24.dp))
-                    Text(t.label, color = tint, fontSize = 10.sp,
-                        fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
-                        modifier = Modifier.padding(top = 3.dp))
+                    Icon(t.icon, t.label, tint = if (on) Ground else TextMute, modifier = Modifier.size(22.dp))
+                    if (on) Text(t.label, color = Ground, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                        modifier = Modifier.padding(start = 7.dp))
                 }
             }
         }

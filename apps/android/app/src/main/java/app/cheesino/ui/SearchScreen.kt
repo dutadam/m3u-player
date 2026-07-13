@@ -12,12 +12,15 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items as lazyItems
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
@@ -34,7 +37,8 @@ import app.cheesino.ui.theme.*
 fun SearchScreen(
     state: LibraryState,
     onPlay: (Channel) -> Unit,
-    onSeries: (SeriesRef) -> Unit
+    onSeries: (SeriesRef) -> Unit,
+    onBack: () -> Unit
 ) {
     var query by remember { mutableStateOf("") }
     var genre by remember { mutableStateOf<String?>(null) }
@@ -50,18 +54,22 @@ fun SearchScreen(
     }
 
     Column(Modifier.fillMaxSize()) {
-        OutlinedTextField(
-            value = query, onValueChange = { query = it }, singleLine = true,
-            placeholder = { Text("Kanal, film, dizi ara…") },
-            leadingIcon = { Icon(Icons.Default.Search, null) },
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = TextHi, unfocusedTextColor = TextHi,
-                focusedBorderColor = Accent, unfocusedBorderColor = LineSoft,
-                focusedLeadingIconColor = Accent, unfocusedLeadingIconColor = TextMute
+        Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 12.dp, top = 6.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi) }
+            OutlinedTextField(
+                value = query, onValueChange = { query = it }, singleLine = true,
+                placeholder = { Text("Kanal, film, dizi ara…") },
+                leadingIcon = { Icon(Icons.Default.Search, null) },
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = TextHi, unfocusedTextColor = TextHi,
+                    focusedBorderColor = Accent, unfocusedBorderColor = LineSoft,
+                    focusedLeadingIconColor = Accent, unfocusedLeadingIconColor = TextMute
+                )
             )
-        )
+        }
 
         // Tür filtresi çipleri (arama boşken keşif için).
         if (q.length < 2 && genres.isNotEmpty()) {
@@ -97,9 +105,20 @@ fun SearchScreen(
                     val g = genre!!
                     val gm = movies.filter { GenreTagger.tags(it.name, it.group).contains(g) }
                     val gs = series.filter { GenreTagger.tags(it.name, it.genre, it.group).contains(g) }
-                    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 6.dp)) {
-                        item { PosterRail("$g · Filmler", gm, onPlay) }
-                        item { SeriesRail("$g · Diziler", gs, onSeries) }
+                    if (gm.isEmpty() && gs.isEmpty()) EmptyState("$g için içerik yok")
+                    else LazyVerticalGrid(
+                        columns = GridCells.Adaptive(112.dp),
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        if (gs.isNotEmpty()) {
+                            header("$g · Diziler")
+                            items(gs) { s -> PosterCard(s.name, s.cover) { onSeries(s) } }
+                        }
+                        if (gm.isNotEmpty()) {
+                            header("$g · Filmler")
+                            items(gm) { m -> PosterCard(m.name, m.logo) { onPlay(m) } }
+                        }
                     }
                 }
                 else -> {

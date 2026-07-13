@@ -52,7 +52,8 @@ fun LiveScreen(
     epg: Map<String, List<EpgEntry>>,
     onPlay: (Channel) -> Unit,
     onGuide: () -> Unit,
-    onMulti: () -> Unit
+    onMulti: () -> Unit,
+    onSports: () -> Unit
 ) {
     var listMode by remember { mutableStateOf(false) }
     val byCat = remember(state.live) { state.live.groupBy { it.group } }
@@ -61,6 +62,7 @@ fun LiveScreen(
             verticalAlignment = Alignment.CenterVertically) {
             Text("Canlı", color = TextHi, fontWeight = FontWeight.Black, fontSize = 22.sp,
                 modifier = Modifier.weight(1f))
+            IconButton(onClick = onSports) { Icon(Icons.Default.SportsSoccer, "Spor Merkezi", tint = Accent) }
             IconButton(onClick = { listMode = !listMode }) {
                 Icon(if (listMode) Icons.Default.ViewModule else Icons.Default.ViewList,
                     "Görünüm", tint = Accent)
@@ -68,7 +70,7 @@ fun LiveScreen(
             IconButton(onClick = onMulti) { Icon(Icons.Default.GridView, "Çoklu ekran", tint = Accent) }
             TextButton(onClick = onGuide) {
                 Icon(Icons.Default.CalendarMonth, null, tint = Accent)
-                Text("  Rehber", color = Accent, fontWeight = FontWeight.Bold)
+                Text(" Rehber", color = Accent, fontWeight = FontWeight.Bold)
             }
         }
         when {

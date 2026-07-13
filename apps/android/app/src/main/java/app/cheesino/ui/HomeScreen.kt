@@ -8,9 +8,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -48,40 +47,40 @@ fun HomeScreen(
     onSeries: (SeriesRef) -> Unit,
     onResume: (ResumeMark) -> Unit,
     onSettings: () -> Unit,
-    onSports: () -> Unit,
-    onRefresh: () -> Unit,
+    onSearch: () -> Unit,
     onMyList: () -> Unit
 ) {
-    // Görselsiz + isim tekrarını ele (iOS homeList mantığı)
     fun clean(list: List<Channel>): List<Channel> {
         val seen = HashSet<String>()
         return list.filter { it.logo != null && seen.add(it.name.lowercase()) }
     }
 
-    val continueW = remember(user.resume) { Recommender.continueWatching(user) }
-    val recommended = remember(state.visibleChannels, user) { Recommender.recommended(state.visibleChannels, user) }
+    // Devam Et — dizi bölümleri tek kartta (en son izlenen), tıklanınca dizi detayına gider.
+    val continueW = remember(user.resume) {
+        Recommender.continueWatching(user)
+            .distinctBy { if (it.isSeries && it.seriesId != null) "s${it.seriesId}" else it.id }
+    }
+    val recommended = remember(state.visibleChannels, user) { clean(Recommender.recommended(state.visibleChannels, user)) }
     val favorites = remember(state.visibleChannels, user.favorites) { clean(Recommender.favorites(state.visibleChannels, user)) }
     val featured = remember(recommended, state.topRated) {
-        (recommended + clean(state.topRated)).distinctBy { it.id }.filter { it.logo != null }.take(6)
+        (recommended + clean(state.topRated)).distinctBy { it.name.lowercase() }.filter { it.logo != null }.take(6)
     }
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 10.dp)) {
         item {
-            Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 6.dp, bottom = 4.dp),
+            Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 4.dp),
                 verticalAlignment = Alignment.CenterVertically) {
-                BrandMark(size = 34.dp)
-                Text("cheesino", color = TextHi, fontWeight = FontWeight.Black, fontSize = 21.sp,
-                    modifier = Modifier.padding(start = 9.dp).weight(1f))
+                BrandMark(size = 36.dp)
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = onSearch) { Icon(Icons.Default.Search, "Ara", tint = TextMute) }
                 IconButton(onClick = onMyList) { Icon(Icons.Default.BookmarkBorder, "Listem", tint = TextMute) }
-                IconButton(onClick = onSports) { Icon(Icons.Default.SportsSoccer, "Spor", tint = TextMute) }
-                IconButton(onClick = onRefresh) { Icon(Icons.Default.Refresh, "Yenile", tint = TextMute) }
                 IconButton(onClick = onSettings) { Icon(Icons.Default.Settings, "Ayarlar", tint = TextMute) }
             }
         }
         if (featured.isNotEmpty()) item { Hero(featured, onPlay) }
         item { ResumeRail("Devam Et", continueW, onResume) }
         item { PosterRail("Sana Özel", recommended, onPlay) }
-        item { PosterRail("Favoriler", favorites, onPlay) }
+        item { PosterRail("Daha Sonra İzle", favorites, onPlay) }
         item { PosterRail("Son Eklenenler", clean(state.recentlyAdded), onPlay) }
         item { PosterRail("Yüksek Puanlı · IMDb", clean(state.topRated), onPlay) }
         item { PosterRail("Filmler", clean(state.movies), onPlay) }
@@ -89,7 +88,6 @@ fun HomeScreen(
             if (state.visibleSeries.isNotEmpty())
                 SeriesRail("Diziler", state.visibleSeries.filter { it.cover != null }, onSeries)
         }
-        item { ChannelRail("Canlı TV", state.live.take(20), onPlay) }
     }
 }
 
