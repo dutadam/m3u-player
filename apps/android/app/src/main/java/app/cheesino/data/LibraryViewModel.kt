@@ -99,6 +99,14 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Canlı kanalın geçmiş programını baştan izleme (timeshift) URL'i — yalnız Xtream + arşiv. */
+    // ---- Program hatırlatıcıları ----
+    fun isReminded(ch: Channel, e: EpgEntry) = Reminders.isSet(getApplication(), ch.id, e.start)
+    fun toggleReminder(ch: Channel, e: EpgEntry) {
+        val app = getApplication<Application>()
+        val r = Reminder(ch.id, ch.name, ch.url, ch.logo, e.title, e.start)
+        if (Reminders.isSet(app, ch.id, e.start)) Reminders.remove(app, r) else Reminders.add(app, r)
+    }
+
     fun catchupUrl(channel: Channel, entry: EpgEntry): String? {
         val cl = client ?: return null
         if (!channel.supportsCatchup) return null

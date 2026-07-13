@@ -9,6 +9,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ViewList
@@ -39,7 +41,9 @@ fun GuideScreen(
     epg: Map<String, List<EpgEntry>>,
     onPlay: (Channel) -> Unit,
     onCatchup: (Channel, EpgEntry) -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    onToggleReminder: (Channel, EpgEntry) -> Unit = { _, _ -> },
+    isReminded: (Channel, EpgEntry) -> Boolean = { _, _ -> false }
 ) {
     var q by remember { mutableStateOf("") }
     var grid by remember { mutableStateOf(false) }
@@ -81,7 +85,7 @@ fun GuideScreen(
                         (ch.tvgId?.let { epg[it] }?.any { e -> e.title.lowercase().contains(query) } == true)
                 }
                 if (hits.isEmpty()) item { Text("Sonuç yok.", color = TextMute, modifier = Modifier.padding(16.dp)) }
-                items(hits) { ch -> GuideRow(ch, epg, onPlay, onCatchup, query) }
+                items(hits) { ch -> GuideRow(ch, epg, onPlay, onCatchup, query, onToggleReminder, isReminded) }
             } else {
                 fun hasNow(ch: Channel) = ch.tvgId?.let { epg[it] }?.any { it.isLiveNow } == true
                 // Kategoriler EPG yoğunluğuna göre (alfabetik değil); içinde EPG olanlar üstte.
@@ -90,7 +94,7 @@ fun GuideScreen(
                     .entries.sortedByDescending { (_, chans) -> chans.count { hasNow(it) } }
                 byCat.forEach { (cat, chans) ->
                     item { GuideCategoryHeader(cat, chans.count { hasNow(it) }) }
-                    items(chans) { ch -> GuideRow(ch, epg, onPlay, onCatchup, "") }
+                    items(chans) { ch -> GuideRow(ch, epg, onPlay, onCatchup, "", onToggleReminder, isReminded) }
                 }
             }
         }
@@ -115,7 +119,9 @@ private fun GuideRow(
     epg: Map<String, List<EpgEntry>>,
     onPlay: (Channel) -> Unit,
     onCatchup: (Channel, EpgEntry) -> Unit,
-    matchQuery: String
+    matchQuery: String,
+    onToggleReminder: (Channel, EpgEntry) -> Unit = { _, _ -> },
+    isReminded: (Channel, EpgEntry) -> Boolean = { _, _ -> false }
 ) {
     val list = ch.tvgId?.let { epg[it] } ?: emptyList()
     val now = list.firstOrNull { it.isLiveNow }
@@ -151,6 +157,14 @@ private fun GuideRow(
                 Text("🔎 ${dayHhmm(it.start)} · ${it.title}", color = Accent2, fontSize = 11.sp,
                     fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 3.dp))
+            }
+        }
+        // Sıradaki programa hatırlatıcı kur/kaldır.
+        next?.let { nx ->
+            var on by remember(ch.id, nx.start) { mutableStateOf(isReminded(ch, nx)) }
+            IconButton(onClick = { onToggleReminder(ch, nx); on = !on }) {
+                Icon(if (on) Icons.Default.Notifications else Icons.Default.NotificationsNone,
+                    if (on) "Hatırlatmayı kaldır" else "Hatırlat", tint = if (on) Accent else TextMute)
             }
         }
         // Catchup — arşiv destekliyorsa şu anki programı baştan izle.

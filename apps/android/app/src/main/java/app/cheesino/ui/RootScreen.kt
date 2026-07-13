@@ -181,7 +181,9 @@ fun RootScreen(vm: LibraryViewModel) {
                     playOne(PlayItem("${ch.id}_ts", "${ch.name} · baştan", url, ch.logo, isLive = false))
                 }
             },
-            onClose = { showGuide = false }
+            onClose = { showGuide = false },
+            onToggleReminder = { ch, e -> vm.toggleReminder(ch, e) },
+            isReminded = { ch, e -> vm.isReminded(ch, e) }
         )
     }
 
