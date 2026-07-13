@@ -35,6 +35,7 @@ import coil.compose.AsyncImage
 fun MovieDetailScreen(
     channel: Channel,
     load: suspend (Channel) -> MovieInfo?,
+    omdb: suspend (String, String?) -> app.cheesino.core.OmdbInfo? = { _, _ -> null },
     isFavorite: Boolean,
     rating: Int,
     onFavorite: () -> Unit,
@@ -43,7 +44,11 @@ fun MovieDetailScreen(
     onBack: () -> Unit
 ) {
     var info by remember(channel.id) { mutableStateOf<MovieInfo?>(null) }
-    LaunchedEffect(channel.id) { info = load(channel) }
+    var omdbInfo by remember(channel.id) { mutableStateOf<app.cheesino.core.OmdbInfo?>(null) }
+    LaunchedEffect(channel.id) {
+        val i = load(channel); info = i
+        omdbInfo = omdb(channel.name, i?.releaseDate)
+    }
 
     val cover = info?.cover ?: channel.logo
     Box(Modifier.fillMaxSize().background(Ground)) {
@@ -71,6 +76,9 @@ fun MovieDetailScreen(
                 if (meta.isNotEmpty())
                     Text(meta.joinToString("  ·  "), color = Accent2, fontSize = 13.sp, fontWeight = FontWeight.Medium)
 
+                // Gerçek puanlar (OMDb: IMDb + Rotten Tomatoes).
+                OmdbBadges(omdbInfo, modifier = Modifier.padding(top = 10.dp))
+
                 // Aksiyonlar.
                 Row(Modifier.padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Row(
@@ -93,7 +101,7 @@ fun MovieDetailScreen(
                     }
                 }
 
-                info?.plot?.let {
+                (info?.plot ?: omdbInfo?.plot)?.let {
                     Text(it, color = TextDim, fontSize = 14.sp, lineHeight = 20.sp,
                         modifier = Modifier.padding(top = 16.dp))
                 }

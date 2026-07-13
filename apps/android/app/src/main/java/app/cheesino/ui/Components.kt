@@ -164,6 +164,24 @@ private fun Badge(text: String, bg: Color, modifier: Modifier = Modifier) {
     ) { Text(text, color = Ground, fontSize = 10.sp, fontWeight = FontWeight.Black) }
 }
 
+/** OMDb rozetleri — IMDb (altın), Rotten Tomatoes (taze yeşil / çürük kırmızı), Metascore. */
+@Composable
+fun OmdbBadges(o: app.cheesino.core.OmdbInfo?, modifier: Modifier = Modifier) {
+    if (o == null || !o.hasAny) return
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        o.imdb?.let { RatingPill("IMDb ${"%.1f".format(it)}", Gold, Ground) }
+        o.rotten?.let { RatingPill("🍅 $it%", if (it >= 60) Color(0xFF21D07A) else Color(0xFFFA320A), Color.White) }
+        o.meta?.let { RatingPill("MC $it", Accent2, Ground) }
+    }
+}
+
+@Composable
+private fun RatingPill(text: String, bg: Color, fg: Color) {
+    Box(Modifier.clip(RoundedCornerShape(7.dp)).background(bg).padding(horizontal = 8.dp, vertical = 3.dp)) {
+        Text(text, color = fg, fontSize = 12.sp, fontWeight = FontWeight.Black)
+    }
+}
+
 fun qualityColor(label: String): Color = when (label) {
     "4K" -> Gold
     "FHD" -> QualityFhd

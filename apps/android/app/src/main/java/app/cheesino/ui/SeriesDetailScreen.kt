@@ -47,11 +47,13 @@ fun SeriesDetailScreen(
     onFavorite: () -> Unit,
     onRate: (Int) -> Unit,
     onPlayQueue: (List<PlayItem>, Int) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    omdb: suspend (String, String?) -> app.cheesino.core.OmdbInfo? = { _, _ -> null }
 ) {
     var series by remember(ref.id) { mutableStateOf<Series?>(null) }
     var loading by remember(ref.id) { mutableStateOf(true) }
     var selectedSeason by remember(ref.id) { mutableIntStateOf(0) }
+    var omdbInfo by remember(ref.id) { mutableStateOf<app.cheesino.core.OmdbInfo?>(null) }
 
     LaunchedEffect(ref.id) {
         loading = true
@@ -59,6 +61,7 @@ fun SeriesDetailScreen(
         selectedSeason = series?.seasons?.firstOrNull()?.number ?: 0
         loading = false
     }
+    LaunchedEffect(ref.id) { omdbInfo = omdb(ref.name, null) }
 
     Box(Modifier.fillMaxSize().background(Ground)) {
         val s = series
@@ -69,7 +72,7 @@ fun SeriesDetailScreen(
                 modifier = Modifier.align(Alignment.Center)
             )
             else -> SeriesContent(s, selectedSeason, { selectedSeason = it }, resumeFor, watchedIds,
-                favorite, rating, onFavorite, onRate, onPlayQueue)
+                favorite, rating, onFavorite, onRate, onPlayQueue, omdbInfo)
         }
         IconButton(onClick = onBack, modifier = Modifier.padding(4.dp).align(Alignment.TopStart)) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi)
@@ -88,7 +91,8 @@ private fun SeriesContent(
     rating: Int,
     onFavorite: () -> Unit,
     onRate: (Int) -> Unit,
-    onPlayQueue: (List<PlayItem>, Int) -> Unit
+    onPlayQueue: (List<PlayItem>, Int) -> Unit,
+    omdb: app.cheesino.core.OmdbInfo? = null
 ) {
     val season = s.seasons.firstOrNull { it.number == selectedSeason } ?: s.seasons.first()
     val queue = remember(season, s.name) {
@@ -111,7 +115,8 @@ private fun SeriesContent(
             Header(s, favorite, rating, onFavorite, onRate,
                 resumeEp = season.episodes.getOrNull(resumeIndex.coerceAtLeast(0)),
                 isResume = resumeIndex >= 0,
-                onPlay = { onPlayQueue(queue, resumeIndex.coerceAtLeast(0)) })
+                onPlay = { onPlayQueue(queue, resumeIndex.coerceAtLeast(0)) },
+                omdb = omdb)
         }
         if (s.seasons.size > 1) item { SeasonPicker(s.seasons, selectedSeason, onSelectSeason) }
         itemsIndexed(season.episodes) { i, ep ->
@@ -130,7 +135,8 @@ private fun Header(
     onRate: (Int) -> Unit,
     resumeEp: Episode?,
     isResume: Boolean,
-    onPlay: () -> Unit
+    onPlay: () -> Unit,
+    omdb: app.cheesino.core.OmdbInfo? = null
 ) {
     Column(Modifier.padding(top = 44.dp)) {
         Row(Modifier.padding(horizontal = 16.dp)) {
@@ -143,7 +149,9 @@ private fun Header(
             Column(Modifier.padding(start = 14.dp)) {
                 Text(s.name, color = TextHi, fontWeight = FontWeight.Black, fontSize = 20.sp, maxLines = 2,
                     overflow = TextOverflow.Ellipsis)
-                s.rating?.takeIf { it > 0 }?.let {
+                // Gerçek puanlar (OMDb) varsa onları, yoksa sağlayıcı IMDb puanını göster.
+                if (omdb?.hasAny == true) OmdbBadges(omdb, modifier = Modifier.padding(top = 6.dp))
+                else s.rating?.takeIf { it > 0 }?.let {
                     Text("★ ${"%.1f".format(it)} · IMDb", color = Gold, fontWeight = FontWeight.Bold,
                         fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
                 }

@@ -132,6 +132,7 @@ fun RootScreen(vm: LibraryViewModel) {
                 md != null -> MovieDetailScreen(
                     channel = md,
                     load = { vm.movieInfo(it) },
+                    omdb = { t, y -> vm.omdbRatings(t, y) },
                     isFavorite = md.id in user.favorites,
                     rating = ratingOf(md.id),
                     onFavorite = { vm.toggleFavorite(md.id) },
@@ -149,7 +150,8 @@ fun RootScreen(vm: LibraryViewModel) {
                     onFavorite = { vm.toggleFavorite("series_${sd.id}") },
                     onRate = { vm.setRating("series_${sd.id}", it) },
                     onPlayQueue = { queue, i -> playQueue = queue; playIndex = i },
-                    onBack = { detail = null }
+                    onBack = { detail = null },
+                    omdb = { t, y -> vm.omdbRatings(t, y) }
                 )
                 showMyList -> MyListScreen(state, user, onContent, openSeries, onBack = { showMyList = false })
                 showSearch -> SearchScreen(state, discover.genres, onContent, openSeries, onBack = { showSearch = false })

@@ -274,6 +274,16 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     private val seriesCache = HashMap<Int, Series>()
     private val movieCache = HashMap<String, MovieInfo>()
 
+    // OMDb puan önbelleği — aynı başlığı tekrar sorma.
+    private val omdbCache = HashMap<String, OmdbInfo?>()
+    suspend fun omdbRatings(title: String, year: String? = null): OmdbInfo? {
+        val key = title.trim().lowercase()
+        if (omdbCache.containsKey(key)) return omdbCache[key]
+        val r = runCatching { OmdbClient.ratings(title, year) }.getOrNull()
+        omdbCache[key] = r
+        return r
+    }
+
     /** Dizi detayını (sezon/bölüm) tembel çeker + önbellekler. M3U'da null. */
     suspend fun seriesDetail(ref: SeriesRef): Series? {
         seriesCache[ref.id]?.let { return it }
