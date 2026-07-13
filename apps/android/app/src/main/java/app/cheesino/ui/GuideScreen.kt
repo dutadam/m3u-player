@@ -8,8 +8,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -40,12 +42,18 @@ fun GuideScreen(
     onClose: () -> Unit
 ) {
     var q by remember { mutableStateOf("") }
+    var grid by remember { mutableStateOf(false) }
     val query = q.trim().lowercase()
 
     Column(Modifier.fillMaxSize().background(Ground).statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi) }
-            Text("Rehber", color = TextHi, fontWeight = FontWeight.Black, fontSize = 20.sp)
+            Text("Rehber", color = TextHi, fontWeight = FontWeight.Black, fontSize = 20.sp,
+                modifier = Modifier.weight(1f))
+            IconButton(onClick = { grid = !grid }) {
+                Icon(if (grid) Icons.Default.ViewList else Icons.Default.GridView,
+                    if (grid) "Liste görünümü" else "Zaman çizelgesi", tint = Accent)
+            }
         }
         OutlinedTextField(
             value = q, onValueChange = { q = it }, singleLine = true,
@@ -64,7 +72,8 @@ fun GuideScreen(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
         }
 
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 16.dp)) {
+        if (grid) EpgGrid(channels, epg, query, onPlay, onCatchup)
+        else LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 16.dp)) {
             if (query.length >= 2) {
                 // Kanal adına VE program içeriğine (EPG başlıkları) göre ara.
                 val hits = channels.filter { ch ->
