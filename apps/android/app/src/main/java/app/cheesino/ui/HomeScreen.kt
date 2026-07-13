@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -74,6 +75,11 @@ fun HomeScreen(
             Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 4.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 BrandMark(size = 36.dp)
+                // Arka planda içerik tazeleniyorsa küçük gösterge.
+                if (state.refreshing) CircularProgressIndicator(
+                    modifier = Modifier.padding(start = 10.dp).size(16.dp),
+                    color = Accent, strokeWidth = 2.dp
+                )
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = onSearch) { Icon(Icons.Default.Search, "Ara", tint = TextMute) }
                 IconButton(onClick = onMyList) { Icon(Icons.Default.BookmarkBorder, "Listem", tint = TextMute) }

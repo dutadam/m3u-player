@@ -13,6 +13,7 @@ data class LibraryState(
     val channels: List<Channel> = emptyList(),
     val series: List<SeriesRef> = emptyList(),
     val loading: Boolean = false,
+    val refreshing: Boolean = false,   // arka planda tazeleme (içerik gösterilirken)
     val error: String? = null,
     val hasSource: Boolean = false,
     val parentalOn: Boolean = false,
@@ -47,6 +48,10 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Xtream oturumu — dizi detayı/bölüm çekmek için canlı tutulur (M3U kaynağında null). */
     private var client: XtreamClient? = null
+
+    /** İçerik disk önbelleği — açılışta anında gösterim, ağ arka planda tazeler. */
+    private val contentCache = ContentCache(app)
+    private fun xtKey(c: XtreamCredentials) = "xt:${c.server}:${c.username}"
 
     // ---- Keşif (arka planda hesaplanır; kullanıcı değişiminde DEĞİL, içerik yüklenince yenilenir) ----
     private val _discover = MutableStateFlow(Discover())
@@ -178,39 +183,66 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     fun clearResume(id: String) = mutateUser { u -> u.copy(resume = u.resume - id) }
     fun resumeOf(id: String): ResumeMark? = _user.value.resume[id]
 
+    /** Açılış: önbellek varsa anında göster, sonra ağdan arka planda tazele; yoksa tam yükle. */
     fun restore() {
-        creds.load()?.let { loadXtream(it) }
+        val c = creds.load() ?: return
+        val cached = contentCache.load(xtKey(c))
+        if (cached != null && cached.channels.isNotEmpty()) {
+            client = XtreamClient(c)   // detay (dizi/film) çekimleri için canlı istemci
+            _epg.value = emptyMap()
+            _state.value = LibraryState(channels = cached.channels, series = cached.series,
+                loading = false, refreshing = true, hasSource = true, parentalOn = settings.parentalEnabled)
+            rebuildDiscover()
+            loadXtream(c, background = true)   // içerik ekranda, ağ arka planda güncelliyor
+        } else {
+            loadXtream(c)
+        }
     }
 
-    /** İçeriği yeniden çeker (Xtream kaynağı için). M3U'da kayıtlı url yoksa no-op. */
+    /** Manuel yenileme (ayarlardan). İçerik varsa ekranı boşaltmadan arka planda tazeler. */
     fun reload() {
-        creds.load()?.let { loadXtream(it) }
+        val c = creds.load() ?: return
+        loadXtream(c, background = _state.value.channels.isNotEmpty())
     }
 
-    fun loadXtream(c: XtreamCredentials) {
-        _state.value = _state.value.copy(loading = true, error = null)
+    /**
+     * Xtream içeriğini çeker. [background] true ise (önbellek zaten gösteriliyorken tazeleme)
+     * tam ekran yükleyici yerine "refreshing" göstergesi kullanılır ve hata sessizce yutulur.
+     */
+    fun loadXtream(c: XtreamCredentials, background: Boolean = false) {
+        _state.value =
+            if (background) _state.value.copy(refreshing = true, error = null)
+            else _state.value.copy(loading = true, error = null)
         viewModelScope.launch {
             try {
                 val cl = XtreamClient(c)
                 if (!cl.authenticateActive()) {
-                    _state.value = _state.value.copy(loading = false, error = "Abonelik aktif değil.")
+                    _state.value = _state.value.copy(loading = false, refreshing = false,
+                        error = if (background) null else "Abonelik aktif değil.")
                     return@launch
                 }
                 val live = cl.allLive()
                 val vod = runCatching { cl.allVod() }.getOrDefault(emptyList())
                 val series = runCatching { cl.allSeries() }.getOrDefault(emptyList())
                 if (live.isEmpty() && vod.isEmpty()) {
-                    _state.value = _state.value.copy(loading = false, error = "Sunucuda kanal bulunamadı.")
+                    _state.value = _state.value.copy(loading = false, refreshing = false,
+                        error = if (background) null else "Sunucuda kanal bulunamadı.")
                     return@launch
                 }
                 client = cl
                 creds.save(c)
-                _epg.value = emptyMap()
-                _state.value = LibraryState(channels = live + vod, series = series, loading = false,
-                    hasSource = true, parentalOn = settings.parentalEnabled)
+                val channels = live + vod
+                contentCache.save(xtKey(c), CachedContent(channels, series, null, System.currentTimeMillis()))
+                // Oturum içi yetişkin kilidini koru (arka plan tazelemede yeniden kilitleme).
+                val adult = _state.value.adultUnlocked
+                if (!background) _epg.value = emptyMap()
+                _state.value = LibraryState(channels = channels, series = series, loading = false,
+                    refreshing = false, hasSource = true, parentalOn = settings.parentalEnabled,
+                    adultUnlocked = adult)
                 rebuildDiscover()
             } catch (e: Exception) {
-                _state.value = _state.value.copy(loading = false, error = "Giriş başarısız — sunucu/kullanıcı/şifreyi kontrol edin.")
+                _state.value = _state.value.copy(loading = false, refreshing = false,
+                    error = if (background) null else "Giriş başarısız — sunucu/kullanıcı/şifreyi kontrol edin.")
             }
         }
     }
@@ -261,7 +293,7 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     fun saveMultiView(c: MultiViewConfig) = mvStore.save(c)
 
     fun signOut() {
-        client = null; creds.clear(); seriesCache.clear(); movieCache.clear()
+        client = null; creds.clear(); seriesCache.clear(); movieCache.clear(); contentCache.clearAll()
         _state.value = LibraryState(hasSource = false)
     }
 }
