@@ -59,6 +59,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
@@ -113,6 +114,7 @@ fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEn
     var casting by remember { mutableStateOf(castPlayer?.isCastSessionAvailable == true) }
 
     var buffering by remember { mutableStateOf(true) }
+    var startedOnce by remember(item.id) { mutableStateOf(false) }
     var isPlaying by remember { mutableStateOf(true) }
     var positionMs by remember { mutableStateOf(0L) }
     var durationMs by remember { mutableStateOf(0L) }
@@ -122,7 +124,12 @@ fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEn
     var showTracks by remember { mutableStateOf(false) }
 
     val player = remember(item.id) {
-        ExoPlayer.Builder(context).build().apply {
+        // 4K/yüksek bit hızı için daha büyük buffer → daha az takılma.
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(30_000, 120_000, 2_500, 5_000)
+            .setPrioritizeTimeOverSizeThresholds(true)
+            .build()
+        ExoPlayer.Builder(context).setLoadControl(loadControl).build().apply {
             val url = StreamResolver.candidates(item.url).firstOrNull()?.url ?: item.url
             setMediaItem(MediaItem.fromUri(url))
             if (startAtMs > 0) seekTo(startAtMs)
@@ -145,7 +152,7 @@ fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEn
         val listener = object : Player.Listener {
             override fun onPlaybackStateChanged(state: Int) {
                 buffering = state == Player.STATE_BUFFERING
-                if (state == Player.STATE_READY) attempts = 0
+                if (state == Player.STATE_READY) { attempts = 0; startedOnce = true }
                 if (state == Player.STATE_ENDED && !item.isLive) onEnded()
             }
             override fun onIsPlayingChanged(playing: Boolean) { isPlaying = playing }
@@ -263,8 +270,8 @@ fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEn
             }
         }
 
-        // Marka loader (canlı dışı buffer).
-        if (buffering && !askResume) BrandLoader(Modifier.align(Alignment.Center))
+        // Marka loader — yalnız ilk yüklemede (sardırırken/rebuffer'da gösterme).
+        if (buffering && !askResume && !startedOnce) BrandLoader(modifier = Modifier.align(Alignment.Center))
 
         hud?.let {
             Box(
