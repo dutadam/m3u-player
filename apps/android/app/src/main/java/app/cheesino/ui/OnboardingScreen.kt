@@ -56,7 +56,7 @@ fun OnboardingScreen(state: LibraryState, onXtream: (XtreamCredentials) -> Unit,
             BrandMark(size = 76.dp)
             Spacer(Modifier.height(16.dp))
             Text("cheesino", color = TextHi, fontSize = 32.sp, fontWeight = FontWeight.Black)
-            Text("Premium IPTV oynatıcı", color = Accent2, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            Text("Premium medya oynatıcı", color = Accent2, fontSize = 14.sp, fontWeight = FontWeight.Medium)
             Spacer(Modifier.height(28.dp))
 
             // Form kartı.
@@ -75,14 +75,14 @@ fun OnboardingScreen(state: LibraryState, onXtream: (XtreamCredentials) -> Unit,
                         XtreamCredentials.normalize(server)?.let { onXtream(XtreamCredentials(it, user, pass)) }
                     }
                 } else {
-                    Field("M3U URL", m3u) { m3u = it }
+                    Field("Kaynak bağlantısı (URL)", m3u) { m3u = it }
                     PrimaryButton("Yükle", state.loading) { onM3U(m3u) }
                     Box(
                         Modifier.fillMaxWidth().padding(top = 10.dp).clip(RoundedCornerShape(12.dp))
                             .background(Ground).clickable { filePicker.launch("*/*") }
                             .padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center
-                    ) { Text("veya cihazdan .m3u dosyası seç", color = Accent2, fontWeight = FontWeight.Medium, fontSize = 14.sp) }
+                    ) { Text("veya cihazdan bir dosya seç", color = Accent2, fontWeight = FontWeight.Medium, fontSize = 14.sp) }
                 }
 
                 state.error?.let {
@@ -109,7 +109,7 @@ private fun SegTabs(selected: Int, onSelect: (Int) -> Unit) {
     Row(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Ground).padding(4.dp)
     ) {
-        listOf("Xtream", "M3U URL").forEachIndexed { i, label ->
+        listOf("Sunucu", "Bağlantı").forEachIndexed { i, label ->
             val active = selected == i
             Box(
                 Modifier.weight(1f).clip(RoundedCornerShape(9.dp))

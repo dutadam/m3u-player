@@ -8,21 +8,21 @@ azaltmak için **nötr oynatıcı** konumlandırması ve aşağıdaki hazırlık
 ## 1. App Review Notes (App Store Connect → "Notes for Review" alanına yapıştırın)
 
 ```
-cheesino is a neutral media player. It ships with NO channels, streams, playlists, or content of any kind.
-To use the app, the user must provide their own source (an M3U playlist link, a file, or Xtream Codes
-credentials from a service they subscribe to). The app does not host, aggregate, or recommend any content.
+cheesino is a neutral media player. It ships with NO channels, streams, lists, or content of any kind.
+To use the app, the user must provide their own source (a stream/list URL, a file, or login credentials
+for a streaming service they subscribe to). The app does not host, aggregate, or recommend any content.
 
 HOW TO TEST:
-On the onboarding screen choose the "M3U URL" tab and paste this public, freely-licensed test playlist
-(iptv-org, public-domain community list of legal free-to-air channels):
+On the onboarding screen choose the "Bağlantı" (Link) tab and paste this public, freely-licensed test
+list (a public-domain community list of legal free-to-air channels):
     https://iptv-org.github.io/iptv/index.m3u
-Then open any channel to verify playback, EPG, and multi-view.
+Then open any channel to verify playback, guide, and multi-view.
 
-WHY "Allow Arbitrary Loads" (ATS): Many IPTV providers serve streams over plain HTTP. The exception is
+WHY "Allow Arbitrary Loads" (ATS): Many providers serve streams over plain HTTP. The exception is
 required to play user-provided HTTP streams; the app itself makes no insecure calls to our own services
 (we have none).
 
-Background audio is used so live TV/radio continues when the app is backgrounded.
+Background audio is used so live playback continues when the app is backgrounded.
 No accounts, no ads, no analytics, no third-party SDKs. Credentials are stored in the Keychain.
 ```
 
@@ -55,7 +55,7 @@ Tüm kategoriler için cevap: **Data Not Collected**.
 
 ## 6. Mağaza metni & görseller (do/don't)
 - **Yapma:** Ekran görüntülerinde/metinde telifli kanal logoları, dizi/film afişleri, spor yayını görselleri kullanma.
-- **Yap:** Kendi arayüzünü, jenerik/placeholder içerikle göster. "Kendi IPTV kaynağınızı getirin" mesajını öne çıkar.
+- **Yap:** Kendi arayüzünü, jenerik/placeholder içerikle göster. "Kendi kaynağınızı getirin" mesajını öne çıkar.
 - İsim/anahtar kelimelerde marka adları (beIN, Netflix vb.) kullanma.
 
 ## 7. Kaldırılma riskini azaltma (dağıtım dayanıklılığı)

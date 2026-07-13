@@ -170,7 +170,7 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
 
         Section("Hakkında") {
             Text("cheesino · sürüm 0.1.0", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-            Text("Premium IPTV oynatıcı. İçerik barındırmaz — kendi kaynağını getirirsin. " +
+            Text("Premium medya oynatıcı. İçerik barındırmaz — kendi kaynağını sen eklersin. " +
                 "Kimlik bilgileri cihazda şifreli, telemetri yok.",
                 color = TextMute, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
         }
