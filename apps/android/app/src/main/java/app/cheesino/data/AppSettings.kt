@@ -20,6 +20,16 @@ class AppSettings(context: Context) {
         get() = prefs.getFloat("sub_scale", 0.06f)
         set(v) { prefs.edit().putFloat("sub_scale", v).apply() }
 
+    /** Altyazı yazı rengi (ARGB). Varsayılan beyaz. */
+    var subtitleColor: Int
+        get() = prefs.getInt("sub_color", 0xFFFFFFFF.toInt())
+        set(v) { prefs.edit().putInt("sub_color", v).apply() }
+
+    /** Altyazı arka plan rengi (ARGB). Varsayılan saydam. */
+    var subtitleBg: Int
+        get() = prefs.getInt("sub_bg", 0x00000000)
+        set(v) { prefs.edit().putInt("sub_bg", v).apply() }
+
     private var pinHash: String?
         get() = prefs.getString("pin", null)
         set(v) { prefs.edit().putString("pin", v).apply() }

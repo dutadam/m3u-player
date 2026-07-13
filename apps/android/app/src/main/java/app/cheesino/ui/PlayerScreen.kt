@@ -226,7 +226,14 @@ fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEn
                     this.player = player
                     useController = false
                     resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-                    subtitleView?.setFractionalTextSize(vm.subtitleScale)
+                    subtitleView?.apply {
+                        setFractionalTextSize(vm.subtitleScale)
+                        setStyle(androidx.media3.ui.CaptionStyleCompat(
+                            vm.subtitleColor, vm.subtitleBg, android.graphics.Color.TRANSPARENT,
+                            androidx.media3.ui.CaptionStyleCompat.EDGE_TYPE_OUTLINE,
+                            android.graphics.Color.BLACK, null
+                        ))
+                    }
                 }
             },
             update = { it.player = if (casting) castPlayer else player },

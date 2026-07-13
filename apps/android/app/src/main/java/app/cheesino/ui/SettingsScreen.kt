@@ -1,6 +1,7 @@
 package app.cheesino.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -8,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -30,6 +32,8 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
     var msg by remember { mutableStateOf<String?>(null) }
     var parentalOn by remember { mutableStateOf(vm.parentalEnabled) }
     var subScale by remember { mutableStateOf(vm.subtitleScale) }
+    var subColor by remember { mutableStateOf(vm.subtitleColor) }
+    var subBgOn by remember { mutableStateOf(vm.subtitleBg != 0) }
 
     Column(Modifier.fillMaxSize().background(Ground).statusBarsPadding().verticalScroll(rememberScrollState())) {
         // Başlık
@@ -50,16 +54,37 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
             ) { Text("Kaydet", fontWeight = FontWeight.Bold) }
         }
 
-        Section("Altyazı Boyutu") {
+        Section("Altyazı") {
+            Text("Boyut", color = TextDim, fontSize = 12.sp, modifier = Modifier.padding(bottom = 6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("Küçük" to 0.04f, "Orta" to 0.06f, "Büyük" to 0.09f).forEach { (lbl, sc) ->
                     val active = kotlin.math.abs(subScale - sc) < 0.001f
                     Box(
-                        Modifier.clip(RoundedCornerShape(10.dp)).background(if (active) Accent else Elevated)
+                        Modifier.clip(RoundedCornerShape(10.dp)).background(if (active) Accent else Ground)
                             .clickable { subScale = sc; vm.setSubtitleScale(sc) }
                             .padding(horizontal = 18.dp, vertical = 10.dp)
                     ) { Text(lbl, color = if (active) Ground else TextHi, fontWeight = FontWeight.Bold) }
                 }
+            }
+            Text("Renk", color = TextDim, fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp, bottom = 6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                listOf(0xFFFFFFFF, 0xFFFFD200, 0xFF4FD1C5, 0xFFFF8A00).forEach { argb ->
+                    val c = Color(argb)
+                    val active = subColor == argb.toInt()
+                    Box(
+                        Modifier.size(34.dp).clip(RoundedCornerShape(9.dp)).background(c)
+                            .border(if (active) 3.dp else 1.dp, if (active) Accent else LineSoft, RoundedCornerShape(9.dp))
+                            .clickable { subColor = argb.toInt(); vm.setSubtitleColor(argb.toInt()) }
+                    )
+                }
+            }
+            Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("Arka plan", color = TextHi, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                Switch(checked = subBgOn, onCheckedChange = {
+                    subBgOn = it
+                    val v = if (it) 0xB0000000.toInt() else 0x00000000
+                    vm.setSubtitleBg(v)
+                }, colors = SwitchDefaults.colors(checkedThumbColor = Ground, checkedTrackColor = Accent))
             }
         }
 
@@ -109,13 +134,17 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
                 color = TextDim, fontSize = 13.sp)
             Button(onClick = { vm.clearUserData(); msg = "Veriler temizlendi." },
                 modifier = Modifier.padding(top = 8.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Elevated)
+                colors = ButtonDefaults.buttonColors(containerColor = Ground)
             ) { Text("İzleme Verilerini Temizle", color = Live, fontWeight = FontWeight.Bold) }
         }
 
         Section("Kaynak") {
-            Button(onClick = { vm.signOut(); onSignedOut() }, modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Elevated)
+            Button(onClick = { vm.reload(); msg = "İçerik yenileniyor…" }, modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Accent)
+            ) { Text("İçeriği Yenile", color = Ground, fontWeight = FontWeight.Bold) }
+            Button(onClick = { vm.signOut(); onSignedOut() },
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Ground)
             ) { Text("Çıkış Yap / Kaynağı Değiştir", color = Live, fontWeight = FontWeight.Bold) }
         }
 
@@ -133,10 +162,12 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
 
 @Composable
 private fun Section(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
-        Text(title, color = TextHi, fontWeight = FontWeight.Bold, fontSize = 15.sp,
-            modifier = Modifier.padding(bottom = 8.dp))
-        content()
+    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 7.dp)) {
+        Text(title, color = TextDim, fontWeight = FontWeight.Bold, fontSize = 12.sp,
+            letterSpacing = 1.sp, modifier = Modifier.padding(start = 4.dp, bottom = 6.dp))
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Elevated).padding(14.dp)) {
+            content()
+        }
     }
 }
 

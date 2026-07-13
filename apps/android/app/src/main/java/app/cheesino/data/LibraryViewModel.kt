@@ -81,6 +81,10 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     fun setUserAgent(v: String) { settings.userAgent = v }
     val subtitleScale: Float get() = settings.subtitleScale
     fun setSubtitleScale(v: Float) { settings.subtitleScale = v }
+    val subtitleColor: Int get() = settings.subtitleColor
+    val subtitleBg: Int get() = settings.subtitleBg
+    fun setSubtitleColor(v: Int) { settings.subtitleColor = v }
+    fun setSubtitleBg(v: Int) { settings.subtitleBg = v }
     /** Favori/beğeni/geçmiş/ilerleme temizle. */
     fun clearUserData() { _user.value = UserData(); userStore.save(UserData()) }
     fun setPin(pin: String) { settings.setPin(pin); _state.value = _state.value.copy(parentalOn = true, adultUnlocked = false) }
