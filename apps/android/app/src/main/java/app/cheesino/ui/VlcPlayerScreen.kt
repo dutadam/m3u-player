@@ -48,6 +48,7 @@ import org.videolan.libvlc.util.VLCVideoLayout
 fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEnded: () -> Unit = {}) {
     val context = LocalContext.current
     val activity = context as? Activity
+    val mainHandler = remember { android.os.Handler(android.os.Looper.getMainLooper()) }
 
     val existing = remember(item.id) { if (item.isLive) null else vm.resumeOf(item.id) }
     val startAtMs = remember(item.id) {
@@ -95,7 +96,9 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
                 MediaPlayer.Event.Paused -> isPlaying = false
                 MediaPlayer.Event.TimeChanged -> if (!scrubbing) positionMs = ev.timeChanged
                 MediaPlayer.Event.LengthChanged -> lengthMs = ev.lengthChanged
-                MediaPlayer.Event.EndReached -> if (!item.isLive) onEnded()
+                // onEnded ekranın kapanmasını (player.release) tetikler → VLC callback thread'inde
+                // release deadlock yapar; ana thread'e taşı.
+                MediaPlayer.Event.EndReached -> if (!item.isLive) mainHandler.post { onEnded() }
                 MediaPlayer.Event.EncounteredError -> failed = true
             }
         }
