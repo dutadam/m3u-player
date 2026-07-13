@@ -70,9 +70,13 @@ fun GuideScreen(
                 if (hits.isEmpty()) item { Text("Sonuç yok.", color = TextMute, modifier = Modifier.padding(16.dp)) }
                 items(hits) { ch -> GuideRow(ch, epg, onPlay, onCatchup) }
             } else {
+                fun hasNow(ch: Channel) = ch.tvgId?.let { epg[it] }?.any { it.isLiveNow } == true
+                // Kategoriler EPG yoğunluğuna göre (alfabetik değil); içinde EPG olanlar üstte.
                 val byCat = channels.groupBy { it.group }
+                    .mapValues { (_, chans) -> chans.sortedByDescending { hasNow(it) } }
+                    .entries.sortedByDescending { (_, chans) -> chans.count { hasNow(it) } }
                 byCat.forEach { (cat, chans) ->
-                    item { GuideCategoryHeader(cat) }
+                    item { GuideCategoryHeader(cat, chans.count { hasNow(it) }) }
                     items(chans) { ch -> GuideRow(ch, epg, onPlay, onCatchup) }
                 }
             }
@@ -81,12 +85,14 @@ fun GuideScreen(
 }
 
 @Composable
-private fun GuideCategoryHeader(title: String) {
+private fun GuideCategoryHeader(title: String, liveCount: Int) {
     Row(Modifier.fillMaxWidth().background(Surface).padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(4.dp, 15.dp).clip(RoundedCornerShape(2.dp)).background(Accent))
         Text(title, color = TextHi, fontWeight = FontWeight.Bold, fontSize = 14.sp,
-            modifier = Modifier.padding(start = 8.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            modifier = Modifier.padding(start = 8.dp).weight(1f, fill = false), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (liveCount > 0) Text("$liveCount canlı", color = Accent2, fontSize = 11.sp, fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(start = 8.dp))
     }
 }
 
@@ -108,7 +114,7 @@ private fun GuideRow(
             Text(ch.name, color = TextHi, fontWeight = FontWeight.Bold, fontSize = 14.sp,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (now != null) {
-                Text("Şimdi · ${now.title}", color = Accent, fontSize = 12.sp,
+                Text("${hhmm(now.start)} · ${now.title}", color = Accent, fontSize = 12.sp,
                     maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
                 // ilerleme çubuğu
                 val frac = progress(now)
@@ -121,7 +127,7 @@ private fun GuideRow(
                     modifier = Modifier.padding(top = 2.dp))
             }
             next?.let {
-                Text("Sırada · ${it.title}", color = TextDim, fontSize = 11.sp,
+                Text("${hhmm(it.start)} · ${it.title}", color = TextDim, fontSize = 11.sp,
                     maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
             }
         }
@@ -133,6 +139,9 @@ private fun GuideRow(
         }
     }
 }
+
+private val timeFmt = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+private fun hhmm(epochSec: Long): String = timeFmt.format(java.util.Date(epochSec * 1000))
 
 private fun progress(e: EpgEntry): Float {
     val n = System.currentTimeMillis() / 1000
