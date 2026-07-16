@@ -222,8 +222,25 @@ function play(item){
   const start=(!isVod)?0:((S.resume[item.id]?.pos)||0);
   attach(v,item.url,start,item);
 }
+// MKV/AVI çözümü: konteyneri tarayıcı okuyamaz ama codec'i çoğu zaman çözebilir.
+// ffmpeg (proxy.js algılar) konteyneri ANLIK fMP4'e çevirir — Jellyfin/Stremio yaklaşımı.
+let remux=null; // aktif remux: {url,mode,offset,duration}
+const needsRemux=u=>/\.(mkv|avi|wmv|flv|m2ts|mpg|mpeg)(\?|$)/i.test(u);
+const transcodeFirst=u=>/\.(avi|wmv|flv|mpg|mpeg)(\?|$)/i.test(u); // eski codec'ler: video da çevrilmeli
+async function attachRemux(v,url,startAt,mode){
+  stopEngines(); remux={url,mode,offset:startAt||0,duration:0};
+  showSpin(true);
+  try{const r=await fetch("/probe?url="+encodeURIComponent(url));remux.duration=(await r.json()).duration||0;}catch{}
+  v.src="/remux?url="+encodeURIComponent(url)+"&mode="+mode+(startAt>0?"&start="+Math.floor(startAt):"");
+  v.oncanplay=()=>{showSpin(false);v.play().catch(()=>{});};
+  v.onerror=()=>{ if(mode==="copy") attachRemux(v,url,startAt,"transcode");
+    else {showSpin(false);toast("Bu dosya oynatılamadı (codec desteklenmiyor olabilir).");} };
+}
 function attach(v,url,startAt,item){
-  stopEngines();
+  stopEngines(); remux=null;
+  if(S.ffmpeg && needsRemux(url)){
+    attachRemux(v,url,startAt,transcodeFirst(url)?"transcode":"copy"); return;
+  }
   const cands=candidates(proxied(url)); let i=0;
   showSpin(true);
   function tryNext(){
@@ -250,12 +267,15 @@ function startPlay(v,startAt){ showSpin(false); if(startAt>2)v.currentTime=start
 function showSpin(on){ $("#p-spin").classList.toggle("hidden",!on); }
 function closePlayer(){
   const v=$("#p-video");
-  if(curKey && v.duration>0 && !isNaN(v.duration) && v.currentTime>5){
-    if(v.currentTime < v.duration-30){ S.resume[curKey]={pos:v.currentTime,dur:v.duration,at:Date.now(),
-      name:$("#p-title").textContent}; } else { delete S.resume[curKey]; }
+  // Remux akışında gerçek konum = başlangıç ofseti + video zamanı; süre ffprobe'dan.
+  const dur = remux ? remux.duration : ((!isNaN(v.duration)&&v.duration>0)?v.duration:0);
+  const cur = remux ? remux.offset+v.currentTime : v.currentTime;
+  if(curKey && dur>0 && cur>5){
+    if(cur < dur-30){ S.resume[curKey]={pos:cur,dur,at:Date.now(),name:$("#p-title").textContent}; }
+    else { delete S.resume[curKey]; }
     LS.set("resume",S.resume);
   }
-  stopEngines(); v.pause(); v.removeAttribute("src"); v.load();
+  stopEngines(); remux=null; v.pause(); v.removeAttribute("src"); v.load();
   $("#player").classList.add("hidden"); curKey=null; render();
 }
 
@@ -368,6 +388,11 @@ function settingsView(){
       "Terminalde `node apps/web/proxy.js` çalıştırıp uygulamayı http://localhost:8088 adresinden açın "+
       "— ya da ayrı çalışan proxy adresini aşağıya girin.");
   st.style.marginBottom="8px"; m.appendChild(st);
+  const ff=el("div","muted", S.ffmpeg
+    ? "✅ ffmpeg bulundu — MKV/AVI dahil geniş format desteği aktif (anlık dönüştürme)."
+    : "⚠ ffmpeg yok — MKV/AVI oynatılamaz. Kurulum: Windows `winget install ffmpeg`, "+
+      "macOS `brew install ffmpeg`, Linux `apt install ffmpeg`; sonra proxy.js'i yeniden başlatın.");
+  ff.style.marginBottom="8px"; m.appendChild(ff);
   const px=el("input","field");px.placeholder="Proxy adresi (ör. http://localhost:8088)";px.value=S.proxy;
   px.onchange=()=>{S.proxy=px.value.trim();LS.set("proxy",S.proxy);toast("Proxy kaydedildi");};
   m.appendChild(px);
@@ -420,9 +445,17 @@ document.body.insertAdjacentHTML("beforeend",`
 (function wirePlayer(){
   const v=$("#p-video"),seek=$("#seek");
   $("#p-back").onclick=closePlayer;
-  v.addEventListener("timeupdate",()=>{ if(v.duration){seek.value=(v.currentTime/v.duration)*1000;
-    $("#p-cur").textContent=fmt(v.currentTime);$("#p-dur").textContent=fmt(v.duration);} });
-  seek.addEventListener("input",()=>{ if(v.duration)v.currentTime=(seek.value/1000)*v.duration; });
+  v.addEventListener("timeupdate",()=>{
+    if(remux&&remux.duration){ const cur=remux.offset+v.currentTime;
+      if(!seek.matches(":active"))seek.value=(cur/remux.duration)*1000;
+      $("#p-cur").textContent=fmt(cur);$("#p-dur").textContent=fmt(remux.duration);
+    } else if(v.duration){ seek.value=(v.currentTime/v.duration)*1000;
+      $("#p-cur").textContent=fmt(v.currentTime);$("#p-dur").textContent=fmt(v.duration); }
+  });
+  seek.addEventListener("input",()=>{ if(!remux&&v.duration)v.currentTime=(seek.value/1000)*v.duration; });
+  // Remux akışı pipe olduğu için tarayıcı içinde ileri saramaz; bırakınca o saniyeden yeni akış açılır.
+  seek.addEventListener("change",()=>{ if(remux&&remux.duration){
+    const t=(seek.value/1000)*remux.duration; attachRemux(v,remux.url,t,remux.mode); } });
   v.addEventListener("click",()=>{ v.paused?v.play():v.pause(); });
   document.addEventListener("keydown",e=>{ if($("#player").classList.contains("hidden"))return;
     if(e.key==="Escape")closePlayer(); if(e.key===" "){e.preventDefault();v.paused?v.play():v.pause();} });
@@ -435,6 +468,9 @@ function fmt(s){s=Math.max(0,s|0);const h=s/3600|0,m=(s%3600)/60|0,x=s%60;
   // proxy.js ile mi sunuluyoruz? Öyleyse HTTP/CORS proxy'si otomatik aktif.
   try{ const r=await fetch("/proxy-ping",{cache:"no-store"}); S.autoProxy=(r.status===204||r.ok); }
   catch{ S.autoProxy=false; }
+  // ffmpeg var mı? Varsa MKV/AVI anlık remux ile oynar.
+  try{ const r=await fetch("/ffmpeg-ping",{cache:"no-store"}); S.ffmpeg=(r.status===204); }
+  catch{ S.ffmpeg=false; }
   if(S.src){ S.src.type==="xtream"?loadXtream():(S.src.url&&S.src.url!=="(dosya)"?loadM3Uurl(S.src.url):(S.src=null)); }
   render();
 })();

@@ -18,9 +18,21 @@ const https = require("https");
 const fs = require("fs");
 const path = require("path");
 const { URL } = require("url");
+const { spawn, spawnSync } = require("child_process");
 
 const PORT = process.env.PORT || 8088;
 const ROOT = __dirname;
+
+// ffmpeg varsa MKV/AVI de oynar: konteyner anlık olarak fMP4'e çevrilir
+// (Jellyfin/Stremio'nun yerel sunucularıyla aynı yaklaşım).
+const HAS_FFMPEG = (() => {
+  try { return spawnSync("ffmpeg", ["-version"], { stdio: "ignore" }).status === 0; }
+  catch { return false; }
+})();
+const HAS_FFPROBE = (() => {
+  try { return spawnSync("ffprobe", ["-version"], { stdio: "ignore" }).status === 0; }
+  catch { return false; }
+})();
 const MIME = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css",
   ".png": "image/png", ".svg": "image/svg+xml", ".ico": "image/x-icon",
@@ -72,6 +84,65 @@ const server = http.createServer((req, res) => {
   // Uygulamanın "proxy var mı?" otomatik algısı için.
   if (u.pathname === "/proxy-ping") { cors(res); res.writeHead(204); return res.end(); }
 
+  // ffmpeg var mı? (MKV/AVI desteğinin algısı)
+  if (u.pathname === "/ffmpeg-ping") {
+    cors(res); res.writeHead(HAS_FFMPEG ? 204 : 404); return res.end();
+  }
+
+  // Süre sorgusu — remux akışında seek çubuğu için (ffprobe).
+  if (u.pathname === "/probe") {
+    const target = u.searchParams.get("url");
+    cors(res);
+    if (!target || !HAS_FFPROBE) { res.writeHead(404); return res.end("{}"); }
+    const p = spawn("ffprobe", ["-v", "error", "-show_entries", "format=duration",
+      "-of", "json", target], { stdio: ["ignore", "pipe", "ignore"] });
+    let out = "";
+    p.stdout.on("data", (d) => (out += d));
+    p.on("close", () => {
+      let dur = 0;
+      try { dur = parseFloat(JSON.parse(out).format.duration) || 0; } catch {}
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ duration: dur }));
+    });
+    setTimeout(() => { try { p.kill("SIGKILL"); } catch {} }, 15000);
+    return;
+  }
+
+  /**
+   * MKV/AVI çözümü: /remux?url=...&mode=copy|transcode&start=saniye
+   * - copy: video akışı aynen kopyalanır (H.264/HEVC), ses AAC'ye çevrilir (AC3/DTS
+   *   tarayıcıda yok) → CPU ~sıfır. MKV için varsayılan.
+   * - transcode: video da H.264'e çevrilir (AVI/XviD gibi tarayıcının çözemediği
+   *   codec'ler için) → CPU kullanır.
+   * Çıktı: parçalı (fragmented) MP4, pipe ile anlık akıtılır — dosyanın inmesi beklenmez.
+   */
+  if (u.pathname === "/remux") {
+    const target = u.searchParams.get("url");
+    if (!target) { res.writeHead(400); return res.end("url gerekli"); }
+    if (!HAS_FFMPEG) { cors(res); res.writeHead(501); return res.end("ffmpeg kurulu değil"); }
+    const mode = u.searchParams.get("mode") === "transcode" ? "transcode" : "copy";
+    const start = parseFloat(u.searchParams.get("start") || "0") || 0;
+    const args = ["-hide_banner", "-loglevel", "error"];
+    if (start > 0) args.push("-ss", String(start));
+    args.push("-i", target);
+    if (mode === "copy") args.push("-c:v", "copy");
+    else args.push("-c:v", "libx264", "-preset", "veryfast", "-crf", "23");
+    args.push("-c:a", "aac", "-ac", "2", "-b:a", "192k",
+      "-f", "mp4", "-movflags", "frag_keyframe+empty_moov+default_base_moof", "pipe:1");
+    const ff = spawn("ffmpeg", args, { stdio: ["ignore", "pipe", "pipe"] });
+    cors(res);
+    res.writeHead(200, { "content-type": "video/mp4" });
+    ff.stdout.pipe(res);
+    let err = "";
+    ff.stderr.on("data", (d) => { err += d; if (err.length > 4000) err = err.slice(-4000); });
+    ff.on("close", (code) => {
+      if (code !== 0 && err) console.log("[remux]", mode, "hata:", err.split("\n").slice(-3).join(" | "));
+      try { res.end(); } catch {}
+    });
+    req.on("close", () => { try { ff.kill("SIGKILL"); } catch {} });
+    return;
+  }
+
   if (u.pathname === "/proxy") {
     const target = u.searchParams.get("url");
     if (!target) { res.writeHead(400); return res.end("url parametresi gerekli"); }
@@ -117,4 +188,7 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, () => {
   console.log(`cheesino web hazır → http://localhost:${PORT}`);
   console.log("HTTP yayınlar ve CORS bu sunucu üzerinden otomatik çözülür. Bu adresi internete açmayın.");
+  console.log(HAS_FFMPEG
+    ? "ffmpeg bulundu → MKV/AVI oynatma AKTİF (anlık remux/transcode)."
+    : "ffmpeg bulunamadı → MKV/AVI oynatılamaz. Kurulum: https://ffmpeg.org (winget install ffmpeg / brew install ffmpeg / apt install ffmpeg)");
 });

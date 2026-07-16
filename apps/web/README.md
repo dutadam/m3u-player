@@ -28,8 +28,24 @@ Uygulama, proxy ile açıldığını **otomatik algılar** (`/proxy-ping`) — e
 
 > **Güvenlik:** Proxy'yi internete açmayın; kimlik bilgileri URL'lerden geçer. Yalnız kendi makinenizde kullanın.
 
+## MKV / AVI desteği (ffmpeg ile — otomatik)
+
+Tarayyıcılar MKV/AVI **konteynerini** okuyamaz (içindeki H.264/AAC'yi çoğu zaman çözebildiği halde).
+Jellyfin/Plex/Stremio'nun kullandığı çözümün aynısı entegre edildi: makinede **ffmpeg** kuruluysa
+`proxy.js` bunu algılar ve MKV/AVI istekleri anlık olarak tarayıcının oynatabildiği **parçalı MP4'e**
+çevrilir (`/remux` ucu):
+
+- **MKV** → video akışı aynen kopyalanır (`-c:v copy`, CPU ~sıfır), ses AAC'ye çevrilir (AC3/DTS tarayıcıda yok).
+- **AVI/WMV/FLV** → eski video codec'leri (XviD vb.) H.264'e çevrilir (CPU kullanır).
+- Kopyalama başarısız olursa otomatik transcode'a düşülür; süre/seek `ffprobe` ile sağlanır
+  (çubukta ileri-geri sarma, o saniyeden yeni akış açarak çalışır).
+
+ffmpeg kurulumu: Windows `winget install ffmpeg` · macOS `brew install ffmpeg` · Linux `apt install ffmpeg`.
+Ayarlar ekranı ffmpeg'in algılanıp algılanmadığını gösterir.
+
 ## Sınırlar (dürüst liste)
 
-- Codec: tarayıcı ne oynatıyorsa o — HLS (hls.js), MPEG-TS (mpegts.js), MP4 native. **MKV/AVI çoğu tarayıcıda oynamaz** (bu, native uygulamalardaki VLC motorunun web'de karşılığı olmamasından; webin doğal sınırı).
+- ffmpeg **kurulu değilse** MKV/AVI oynamaz (HLS/TS/MP4 her durumda çalışır).
+- Remux akışında sarma, o konumdan yeni akış açarak yapılır (anlık atlama yerine ~1 sn yeniden başlatma).
 - Dizi bölüm ağacı henüz yok (yakında).
 - Veriler yalnız tarayıcının localStorage'ında tutulur.
