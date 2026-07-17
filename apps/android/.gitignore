@@ -1,0 +1,12 @@
+# Android / Gradle derleme çıktıları ve makineye özel dosyalar
+.gradle/
+.kotlin/
+build/
+app/build/
+captures/
+local.properties
+*.iml
+.idea/
+# İmza anahtarları — asla depoya girmez
+*.jks
+*.keystore
