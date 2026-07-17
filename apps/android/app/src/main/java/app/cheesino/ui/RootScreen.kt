@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -61,6 +62,8 @@ fun RootScreen(vm: LibraryViewModel) {
     val user by vm.user.collectAsStateWithLifecycle()
     val discover by vm.discover.collectAsStateWithLifecycle()
     val isPro by vm.isPro.collectAsStateWithLifecycle()
+    val proPrice by vm.proPrice.collectAsStateWithLifecycle()
+    val activity = LocalContext.current as? android.app.Activity
     var paywallFor by remember { mutableStateOf<app.cheesino.data.ProFeature?>(null) }
     var showPaywall by remember { mutableStateOf(false) }
     // Sekme uygulamaya geri dönüşte/ekran dönmede korunur (ana sayfaya atmasın).
@@ -225,10 +228,13 @@ fun RootScreen(vm: LibraryViewModel) {
     AnimatedVisibility(visible = showPaywall, enter = fadeIn(), exit = fadeOut()) {
         PaywallScreen(
             highlight = paywallFor,
+            priceText = proPrice,
             onUpgrade = {
-                // TODO: gerçek Play Billing satın alma akışı (ürün Play Console'da tanımlanınca).
+                // Play satın alma ekranını aç; sonuç Entitlements üzerinden isPro'yu günceller.
+                activity?.let { vm.purchasePro(it) }
                 showPaywall = false
             },
+            onRestore = { vm.restorePurchases() },
             onClose = { showPaywall = false }
         )
     }

@@ -25,10 +25,17 @@ import app.cheesino.ui.theme.*
 
 /**
  * Pro paywall — Pro avantajlarını gösterir ve satın almayı başlatır.
- * [onUpgrade] gerçek satın alma akışını (ileride Play Billing) tetikler.
+ * [onUpgrade] Play Billing satın alma akışını tetikler; [priceText] ürün yüklenince fiyatı gösterir;
+ * [onRestore] önceki satın alımları geri yükler.
  */
 @Composable
-fun PaywallScreen(highlight: ProFeature? = null, onUpgrade: () -> Unit, onClose: () -> Unit) {
+fun PaywallScreen(
+    highlight: ProFeature? = null,
+    priceText: String? = null,
+    onUpgrade: () -> Unit,
+    onRestore: () -> Unit = {},
+    onClose: () -> Unit
+) {
     Column(
         Modifier.fillMaxSize()
             .background(Brush.verticalGradient(listOf(Ground, Surface, Ground)))
@@ -61,10 +68,18 @@ fun PaywallScreen(highlight: ProFeature? = null, onUpgrade: () -> Unit, onClose:
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Accent)
                     .clickable(onClick = onUpgrade).padding(vertical = 15.dp),
                 contentAlignment = Alignment.Center
-            ) { Text("Pro'ya Geç", color = Ground, fontWeight = FontWeight.Black, fontSize = 16.sp) }
+            ) {
+                Text(
+                    priceText?.let { "Pro'ya Geç · $it" } ?: "Pro'ya Geç",
+                    color = Ground, fontWeight = FontWeight.Black, fontSize = 16.sp
+                )
+            }
 
-            Text("İstediğin zaman iptal edebilirsin.", color = TextMute, fontSize = 12.sp,
-                modifier = Modifier.padding(top = 12.dp, bottom = 24.dp))
+            Text("Satın alımları geri yükle", color = Accent2, fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(top = 14.dp).clickable(onClick = onRestore))
+            Text("Tek seferlik ödeme · kalıcı kilit açma.", color = TextMute, fontSize = 12.sp,
+                modifier = Modifier.padding(top = 10.dp, bottom = 24.dp))
         }
     }
 }

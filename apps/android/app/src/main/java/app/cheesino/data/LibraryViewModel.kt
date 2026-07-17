@@ -5,8 +5,11 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.cheesino.core.*
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 data class LibraryState(
@@ -99,10 +102,23 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Canlı kanalın geçmiş programını baştan izleme (timeshift) URL'i — yalnız Xtream + arşiv. */
-    // ---- Pro yetkilendirme ----
+    // ---- Pro yetkilendirme + Play Billing ----
     private val entitlements = Entitlements(app)
     val isPro: StateFlow<Boolean> = entitlements.isPro
     fun setPro(v: Boolean) = entitlements.setPro(v)
+
+    private val billing = BillingManager(app, entitlements)
+    /** Pro fiyat metni (ör. "₺149,00"); ürün yüklenene kadar null. */
+    val proPrice: StateFlow<String?> = billing.proProduct
+        .map { it?.oneTimePurchaseOfferDetails?.formattedPrice }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    /** Satın alma durum/hata mesajı (UI snackbar/uyarı için). */
+    val billingStatus: StateFlow<String?> = billing.status
+    init { billing.start() }
+    /** Play satın alma ekranını açar (Activity gerekir). */
+    fun purchasePro(activity: android.app.Activity) = billing.purchase(activity)
+    /** Önceki satın alımları geri yükler. */
+    fun restorePurchases() = billing.restore()
 
     // ---- Program hatırlatıcıları ----
     fun isReminded(ch: Channel, e: EpgEntry) = Reminders.isSet(getApplication(), ch.id, e.start)

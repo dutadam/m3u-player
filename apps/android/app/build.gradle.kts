@@ -63,6 +63,9 @@ dependencies {
     // oynatamadığı/kastığı yayınlarda devreye girer). Büyük native kütüphane.
     implementation("org.videolan.android:libvlc-all:3.6.2")
 
+    // Google Play Billing — Pro satın alma (tek seferlik kilit açma)
+    implementation("com.android.billingclient:billing-ktx:7.1.1")
+
     // Ağ + JSON + görsel + kalıcılık
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.1")
