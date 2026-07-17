@@ -1,0 +1,312 @@
+<style>
+/* ============================================================
+   cheesino — tvOS / Apple TV "10-foot" Design Spec
+   Same "Signal" tokens; a different layout law: focus engine,
+   big posters, remote-driven navigation. Dark-committed.
+   ============================================================ */
+:root{
+  /* cheesino paleti · 60-30-10: navy zemin / turuncu yapısal / sarı CTA */
+  --ground:#0B0F19; --surface:#0F172A; --elevated:#172033;
+  --line:#24304A; --line-soft:#172033;
+  --accent:#FF8A00; --accent-2:#FFA733; --accent-glow:rgba(255,138,0,.55);
+  --live:#FF8A00; --live-glow:rgba(255,138,0,.55);
+  --cta:#FFD200; --cta-glow:rgba(255,210,0,.55);
+  --gold:#FFD200; --teal:#FFB25A;
+  --text:#F8FAFC; --dim:#94A0B8; --mute:#5A6784;
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Segoe UI",system-ui,sans-serif;
+  --shadow:0 40px 90px -24px rgba(0,0,0,.8);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+body{background:radial-gradient(1300px 700px at 70% -10%,rgba(255,138,0,.14),transparent 60%),var(--ground);
+  color:var(--text);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+::selection{background:var(--accent);color:#fff}
+
+.masthead{padding:60px 0 22px}
+.brandrow{display:flex;align-items:center;gap:13px}
+.mark{width:44px;height:44px;border-radius:13px;background:linear-gradient(155deg,#1E2A42,#0F172A);
+  display:grid;place-items:center;box-shadow:0 0 40px var(--accent-glow),0 8px 22px rgba(255,138,0,.28);position:relative}
+.mark::after{content:"";position:absolute;inset:0;border-radius:13px;border:1px solid rgba(255,138,0,.32)}
+.mark svg{width:26px;height:26px}
+.brandname{font-size:19px;font-weight:700;letter-spacing:-.3px}
+.brandname small{display:block;font-size:11px;font-weight:600;color:var(--dim)}
+.eyebrow{margin-top:30px;font-size:12px;font-weight:700;letter-spacing:2.4px;text-transform:uppercase;color:var(--accent-2)}
+.headline{margin-top:14px;font-size:clamp(28px,4.6vw,46px);line-height:1.04;font-weight:760;letter-spacing:-1.2px;text-wrap:balance;max-width:18ch}
+.headline em{font-style:normal;color:var(--accent-2)}
+.sub{margin-top:16px;max-width:64ch;font-size:16px;color:var(--dim);line-height:1.6}
+
+.section{padding:44px 0}
+.sec-head{display:flex;align-items:baseline;gap:16px;margin-bottom:8px;flex-wrap:wrap}
+.sec-idx{font-size:13px;font-weight:700;color:var(--mute);letter-spacing:1px;font-variant-numeric:tabular-nums}
+.sec-title{font-size:clamp(20px,2.6vw,27px);font-weight:720;letter-spacing:-.5px}
+.sec-desc{color:var(--dim);max-width:66ch;margin:10px 0 26px;font-size:15px}
+
+/* ===== TV FRAME (16:9) ===== */
+.tv{width:100%;aspect-ratio:16/9;background:#000;border-radius:20px;padding:10px;position:relative;
+  box-shadow:var(--shadow);border:1px solid #23262f}
+.tv::before{content:"";position:absolute;inset:0;border-radius:20px;border:1px solid rgba(255,255,255,.06);pointer-events:none}
+.tvscreen{width:100%;height:100%;border-radius:12px;overflow:hidden;background:var(--ground);position:relative;display:flex;flex-direction:column}
+.tvstand{width:120px;height:10px;background:#16181f;border-radius:0 0 8px 8px;margin:6px auto 0}
+
+/* top nav (tvOS) */
+.tvnav{position:absolute;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;gap:26px;
+  padding:22px 34px;background:linear-gradient(to bottom,rgba(10,11,15,.85),transparent)}
+.tvnav .brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15px}
+.tvnav .brand .m{width:26px;height:26px;border-radius:7px;background:linear-gradient(155deg,#1E2A42,#0F172A);display:grid;place-items:center;box-shadow:0 0 16px var(--accent-glow);border:1px solid rgba(255,138,0,.3)}
+.tvnav .brand .m svg{width:15px;height:15px}
+.tvnav .nav{display:flex;gap:22px;margin-left:14px;font-size:14px;font-weight:600;color:var(--dim)}
+.tvnav .nav .it{padding:5px 2px}
+.tvnav .nav .it.focus{color:#fff}
+.tvnav .nav .it.focus::after{content:"";display:block;height:2px;background:var(--accent);border-radius:2px;margin-top:4px;box-shadow:0 0 10px var(--accent-glow)}
+.tvnav .clock{margin-left:auto;font-size:13px;color:var(--dim);font-variant-numeric:tabular-nums;font-weight:600}
+
+/* hero (cinematic) */
+.tvhero{position:relative;flex:1;background:linear-gradient(115deg,#1b2a49 0%,#2f2140 48%,#0e1420 100%);
+  display:flex;flex-direction:column;justify-content:flex-end;padding:0 34px 30px}
+.tvhero::before{content:"";position:absolute;inset:0;
+  background:radial-gradient(90% 120% at 78% 0%,rgba(76,134,255,.4),transparent 55%),
+             linear-gradient(to top,rgba(10,11,15,.97) 6%,rgba(10,11,15,.25) 46%,transparent 72%),
+             linear-gradient(to right,rgba(10,11,15,.75),transparent 55%)}
+.tvhero-in{position:relative;z-index:2;max-width:60%}
+.tvbadges{display:flex;gap:8px;margin-bottom:12px}
+.live{display:inline-flex;align-items:center;gap:6px;background:var(--live);color:#fff;font-size:12px;font-weight:800;
+  letter-spacing:.6px;padding:4px 10px 4px 7px;border-radius:7px;box-shadow:0 0 18px var(--live-glow)}
+.live i{width:7px;height:7px;border-radius:50%;background:#fff;animation:pulse 1.8s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.q{font-size:11px;font-weight:800;padding:3px 7px;border-radius:5px;color:#0A0B0F}
+.q-fhd{background:#8FD0FF}.q-4k{background:var(--gold)}
+.tvkick{font-size:14px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--accent-2)}
+.tvtitle{font-size:clamp(26px,4vw,46px);font-weight:840;letter-spacing:-1.2px;line-height:1.02;margin:8px 0}
+.tvmeta{font-size:15px;color:var(--dim);display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.tvmeta .score{color:var(--live);font-weight:800;font-variant-numeric:tabular-nums}
+.tvcta{display:flex;gap:12px;margin-top:20px}
+.tvbtn{font-family:inherit;font-weight:700;font-size:15px;border-radius:12px;padding:12px 24px;display:inline-flex;align-items:center;gap:9px;border:none}
+.tvbtn svg{width:17px;height:17px}
+.tvbtn.p{background:var(--cta);color:#0B0F19;box-shadow:0 0 0 4px var(--cta-glow),0 14px 30px -10px rgba(0,0,0,.6)}
+.tvbtn.p svg{fill:#0A0B0F}
+.tvbtn.g{background:rgba(255,255,255,.14);color:#fff;backdrop-filter:blur(6px)}
+.tvbtn.g svg{fill:#fff}
+.focus-note{position:absolute;z-index:5;font-size:11px;font-weight:700;color:var(--accent-2);
+  background:rgba(76,134,255,.12);border:1px solid rgba(76,134,255,.4);padding:4px 9px;border-radius:7px;letter-spacing:.3px}
+
+/* focused rail overlapping hero bottom */
+.tvrail{position:absolute;left:0;right:0;bottom:26px;z-index:3;padding:0 34px}
+.tvrail .rl{font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px;opacity:.9}
+.tvrow{display:flex;gap:18px}
+.poster{flex:0 0 150px;width:150px;height:88px;border-radius:11px;position:relative;overflow:hidden;
+  background:linear-gradient(135deg,#26304a,#161b28);border:1px solid var(--line-soft);
+  display:grid;place-items:center;transition:transform .2s}
+.poster .lg{font-size:19px;font-weight:800;opacity:.9}
+.poster .ov{position:absolute;top:7px;left:7px;display:flex;gap:5px}
+.poster .pb{position:absolute;left:0;right:0;bottom:0;height:4px;background:rgba(255,255,255,.18)}
+.poster .pb i{display:block;height:100%;background:var(--teal)}
+.poster.focus{transform:scale(1.12) translateY(-6px);border-color:var(--accent);
+  box-shadow:0 0 0 3px var(--accent),0 0 34px var(--accent-glow),0 24px 40px -14px rgba(0,0,0,.7);z-index:4}
+.poster.focus::after{content:attr(data-nm);position:absolute;left:0;right:0;top:calc(100% + 9px);
+  font-size:12px;font-weight:600;color:#fff;text-align:center;white-space:nowrap}
+
+/* ===== small TV frames (guide + player) ===== */
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:26px}
+@media(max-width:820px){.duo{grid-template-columns:1fr}}
+.duo .cap{margin-top:14px}
+.duo .cap .k{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent-2);display:block;margin-bottom:5px}
+.duo .cap .t{font-size:15px;font-weight:700}
+.duo .cap .d{font-size:13px;color:var(--dim);margin-top:4px;line-height:1.45;max-width:46ch}
+
+/* guide (tv) */
+.tvguide{flex:1;display:flex;flex-direction:column;padding:20px 22px}
+.tvguide .gh{font-size:16px;font-weight:760;letter-spacing:-.3px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.tvguide .gh .now{font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
+.tg-times{display:grid;grid-template-columns:74px repeat(3,1fr);font-size:10px;font-weight:700;color:var(--mute);
+  border-bottom:1px solid var(--line-soft);padding-bottom:6px;font-variant-numeric:tabular-nums}
+.tg-times div{padding-left:6px}
+.tg-row{display:grid;grid-template-columns:74px 1fr;align-items:stretch;height:34px;margin-top:6px}
+.tg-ch{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--dim);font-weight:600}
+.tg-ch .l{width:22px;height:22px;border-radius:6px;background:var(--elevated);border:1px solid var(--line);display:grid;place-items:center;font-size:8px;font-weight:800}
+.tg-progs{display:flex;gap:5px;position:relative}
+.tg-p{border-radius:7px;background:var(--surface);border:1px solid var(--line-soft);font-size:10px;padding:0 9px;
+  display:flex;align-items:center;overflow:hidden;white-space:nowrap}
+.tg-p.now{background:linear-gradient(180deg,rgba(76,134,255,.16),rgba(76,134,255,.05));color:var(--accent-2)}
+.tg-p.focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent),0 0 20px var(--accent-glow);color:#fff;background:var(--elevated)}
+.tg-nowline{position:absolute;top:-40px;bottom:-6px;width:2px;background:var(--live);z-index:3;box-shadow:0 0 8px var(--live-glow)}
+
+/* player (tv) */
+.tvplayer{flex:1;position:relative;background:linear-gradient(150deg,#1c2740,#241a33 60%,#0d1119)}
+.tvplayer .vg{position:absolute;inset:0;background:linear-gradient(to top,rgba(10,11,15,.92),transparent 55%)}
+.tvp-info{position:absolute;left:26px;right:26px;bottom:24px;z-index:2}
+.tvp-info .nm{font-size:20px;font-weight:800;letter-spacing:-.4px}
+.tvp-info .gr{font-size:13px;color:var(--dim);margin-top:2px}
+.tvp-seek{display:flex;align-items:center;gap:12px;margin-top:14px}
+.tvp-seek .bar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.2);position:relative}
+.tvp-seek .bar i{position:absolute;left:0;top:0;bottom:0;width:62%;background:var(--live);border-radius:3px}
+.tvp-seek .bar i::after{content:"";position:absolute;right:-6px;top:50%;transform:translateY(-50%);width:13px;height:13px;border-radius:50%;background:#fff;box-shadow:0 0 0 4px rgba(255,255,255,.2)}
+.tvp-seek .tm{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.tvp-ctrls{display:flex;gap:16px;margin-top:16px}
+.tvp-ctrls .c{width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.1);display:grid;place-items:center;backdrop-filter:blur(6px)}
+.tvp-ctrls .c svg{width:20px;height:20px;fill:#fff}
+.tvp-ctrls .c.focus{background:#fff;box-shadow:0 0 0 4px rgba(255,255,255,.22),0 0 24px var(--accent-glow)}
+.tvp-ctrls .c.focus svg{fill:#0A0B0F}
+
+/* remote diagram / notes */
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px}
+.note{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px}
+.note .nk{font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--accent-2)}
+.note h4{font-size:15px;font-weight:700;margin:8px 0 7px}
+.note p{font-size:13px;color:var(--dim);line-height:1.55}
+.note code{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--teal);background:rgba(52,224,161,.08);padding:1px 5px;border-radius:4px}
+
+.callout{display:flex;gap:14px;align-items:flex-start;background:linear-gradient(180deg,rgba(76,134,255,.08),transparent);
+  border:1px solid rgba(76,134,255,.28);border-radius:16px;padding:18px 20px;margin-top:8px}
+.callout svg{width:22px;height:22px;fill:var(--accent-2);flex-shrink:0;margin-top:1px}
+.callout p{font-size:14px;color:var(--dim);line-height:1.6}
+.callout b{color:var(--text);font-weight:600}
+
+.footer{padding:44px 0 66px;border-top:1px solid var(--line-soft);margin-top:26px;color:var(--mute);font-size:13px;text-align:center;line-height:1.7}
+.footer b{color:var(--dim);font-weight:600}
+</style>
+
+<div class="wrap">
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="cheesino-logo" viewBox="0 0 376.51 374.89"><path fill="#f89620" d="M181.98,372.11c-2.83,4.24-7.97,2.9-10.4.76-3.39-3.01-2.94-6.73-.44-10.82l71.05-116.31-36.81,1.28c-2.75.1-5.62-.17-7.12-2-1.72-2.1-1.73-5.01-.06-7.96l62.26-110.02c2.5-4.42,5.03-6.6,9.96-5.15,3.82,1.12,5.83,5.95,3.74,10.38l-44.71,94.99,38.05-2.54c2.47-.16,4.95.5,6.08,2.08,1.2,1.69,1.36,3.75.79,6.65l-92.39,138.66Z"/><path fill="#f7951f" d="M369.68,223.92c-17.28.31-30.87-12.15-30.98-28.6-.1-16.58,12.04-29.75,29.59-30.11,3.76-.07,7.93-3.25,7.94-7.63l.16-73.32c.01-5.66-3.78-10.33-7.67-14.02-18.67-17.72-39.8-30.86-63.61-41.01C265.19,12.21,223.44,2.66,180.04.06c-10.55-.63-17.86,3.43-25.71,9.88L52.34,93.73l-44.25,37.29c-4.2,3.54-7.96,8.11-7.97,13.85L0,199.51c-.01,3.31,1.06,5.73,2.88,7.46,4.33,4.13,21.56-1.05,30.21,16.2,4.4,8.79,3.95,18.28-1.12,26.69-5.26,8.71-14.6,13.15-24.77,14.11-3.93.38-7.13,4.54-7.12,8.59l.08,81.11c0,3.29,2.56,6.19,4.3,7.44,2.31,1.65,5.23,1.3,8.3.83l145.44-22.08c4.67-.71,7.03-3.81,7.49-7.34.44-3.33-1.64-8.94-6.54-8.2l-143.79,21.7v-67.5c24.06-4.94,39.14-25.68,35.7-49.97-2.59-18.32-16.71-31.67-35.63-35.33l.08-40.85,345.51-59.26.07,57.47c-14.91,2.09-26.53,11.69-32.52,22.66-7.59,13.91-7.48,29.33-.6,42.21,6.84,12.8,18.71,20.69,33.07,23.25l.02,57.11-112.44,17.2c-5.04.77-8.2,4.49-7.79,8.65.45,4.59,4.48,7.46,9.62,6.69l117.16-17.58c5.2-.78,8.82-3.97,8.83-9.39l.07-68.97c0-3.84-2.69-8.57-6.83-8.49ZM144.22,114.59l-116.03,19.47L163.33,22.68l11.09-7.69c45.46,2.64,89.96,12.77,131.4,31.74,17.6,8.05,33.18,17.73,47.98,31.62l-209.58,36.24Z"/><path fill="#f89620" d="M209.09,37.27c-28.37,0-51.36,10.56-51.36,23.58s23,23.57,51.36,23.57,51.36-10.55,51.36-23.57-23-23.58-51.36-23.58ZM209.15,75.49c-17.71,0-32.07-6.59-32.07-14.72s14.36-14.72,32.07-14.72,32.07,6.59,32.07,14.72-14.36,14.72-32.07,14.72Z"/><path fill="#f7951f" d="M85.28,273.76c-5.21,0-9.47-2.44-12.78-7.32-3.31-4.88-4.96-11.58-4.96-20.1,0-7.77,1.07-15.45,3.23-23.02,2.15-7.57,5.17-14.37,9.06-20.41,3.89-6.04,8.5-10.9,13.83-14.58,5.34-3.68,11.23-5.52,17.68-5.52,4.05,0,7.53,1.57,10.42,4.71,2.89,3.14,4.34,7.36,4.34,12.66v2.36c0,.25-.04.54-.12.87l-16.25,4.34c-.99-2.07-2.15-3.1-3.47-3.1-1.99,0-4.08,1.61-6.27,4.84-2.19,3.23-4.28,7.07-6.27,11.54-1.32,2.98-2.5,6.04-3.54,9.18-1.04,3.15-1.84,6.08-2.42,8.81-.58,2.73-.87,4.96-.87,6.7,0,2.57.37,4.43,1.12,5.58.58,1.08,1.49,1.61,2.73,1.61s2.61-.6,4.09-1.8c1.49-1.2,2.87-2.71,4.16-4.53,1.28-1.82,2.13-3.64,2.54-5.46l14.15,5.71c-4.05,9.27-8.87,16.07-14.46,20.41-5.58,4.34-10.9,6.51-15.95,6.51Z"/><path fill="#f7951f" d="M124.24,273.76c1.07-5.71,2.13-11.35,3.16-16.94,1.03-5.58,2.09-11.15,3.16-16.69,1.16-6.87,2.25-13.32,3.29-19.36,1.03-6.04,2.07-12.04,3.1-17.99,1.03-5.96,2.05-12.2,3.04-18.74l20.1-1.36c-1.41,5.79-2.79,11.83-4.16,18.12-1.37,6.29-2.63,12.41-3.78,18.36l12.28-1.37c.58-2.89,1.14-5.77,1.67-8.62.54-2.85,1.01-5.69,1.43-8.5.41-2.73.93-5.52,1.55-8.38.62-2.85,1.3-5.73,2.05-8.62,2.98-.5,6-.89,9.06-1.18,3.06-.29,6.66-.56,10.8-.81-1.08,3.31-2.15,7.2-3.23,11.66-1.08,4.47-2.11,9.18-3.1,14.15-.99,4.96-1.94,9.91-2.85,14.83-.91,4.92-1.74,9.49-2.48,13.71-.91,5.29-1.78,10.61-2.61,15.95-.83,5.33-1.66,10.78-2.48,16.32l-19.36,2.23c.58-2.48,1.1-4.94,1.55-7.38.45-2.44.89-4.82,1.3-7.13.83-3.97,1.68-8.11,2.54-12.41.87-4.3,1.55-7.98,2.05-11.04l-12.04,1.12c-.33,1.57-.64,3.27-.93,5.09-.29,1.82-.64,3.76-1.05,5.83-.42,2.07-.81,4.08-1.18,6.02-.37,1.94-.73,3.87-1.06,5.77-.41,2.23-.87,4.47-1.36,6.7s-.95,4.47-1.37,6.7l-19.11,3.97Z"/></symbol></svg>
+
+  <header class="masthead">
+    <div class="brandrow">
+      <div class="mark"><svg viewBox="0 0 24 24"><use href="#cheesino-logo" width="24" height="24"/></svg></div>
+      <div class="brandname">cheesino <small>tvOS · Apple TV · Design Spec v0.1</small></div>
+    </div>
+    <div class="eyebrow">Adım 1 · 10-foot arayüz</div>
+    <h1 class="headline">Aynı dil, <em>farklı yasa</em>: uzaktan kumandanın odağı.</h1>
+    <p class="sub">Telefon tasarımının büyütülmüşü değil. Apple TV'de içerik oturma odasından, kumandayla ve iki metre
+      öteden yönetilir. Aynı “Signal” token'ları; büyük posterler, odak-motoru (focus engine) ve sinematik hero.</p>
+  </header>
+
+  <!-- FLAGSHIP TV HOME -->
+  <section class="section">
+    <div class="sec-head"><span class="sec-idx">01</span><h2 class="sec-title">Ana ekran — odaklı hero</h2></div>
+    <p class="sec-desc">Kumanda ile gezinildiğinde odaklanan öğe büyür, yükselir ve turuncu bir glow halkasıyla çevrelenir
+      (Apple'ın focus-engine deseni). Hero, o an öne çıkan canlı yayını sinematik olarak sunar; alttaki ray odaktadır.</p>
+
+    <div class="tv"><div class="tvscreen">
+      <div class="tvnav">
+        <div class="brand"><span class="m"><svg viewBox="0 0 24 24"><use href="#cheesino-logo" width="24" height="24"/></svg></span>cheesino</div>
+        <div class="nav"><span class="it focus">İzle</span><span class="it">Canlı</span><span class="it">Rehber</span><span class="it">Filmler</span><span class="it">Diziler</span><span class="it">Ara</span></div>
+        <div class="clock">20:41</div>
+      </div>
+
+      <div class="tvhero">
+        <div class="tvhero-in">
+          <div class="tvbadges"><span class="live"><i></i>LIVE</span><span class="q q-fhd">FHD</span></div>
+          <div class="tvkick">Şampiyonlar Ligi · Çeyrek Final</div>
+          <div class="tvtitle">Galatasaray — Real Madrid</div>
+          <div class="tvmeta"><span>beIN SPORTS 1</span><span>·</span><span>2. Yarı 67'</span><span>·</span><span class="score">1 – 1</span></div>
+          <div class="tvcta">
+            <span class="tvbtn p"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>İzle</span>
+            <span class="tvbtn g"><svg viewBox="0 0 24 24"><path d="M5 4h4v16H5zM15 4h4v16h-4z"/></svg>Çoklu Ekran</span>
+          </div>
+          <div class="focus-note" style="position:static;display:inline-block;margin-top:16px">◉ “İzle” odakta — sarı CTA glow halkası</div>
+        </div>
+      </div>
+
+      <div class="tvrail">
+        <div class="rl">Canlı · Spor</div>
+        <div class="tvrow">
+          <div class="poster focus" data-nm="beIN SPORTS 2"><span class="lg">bE</span><div class="ov"><span class="live" style="font-size:9px;padding:2px 6px 2px 5px"><i></i>LIVE</span></div></div>
+          <div class="poster"><span class="lg">S+</span><div class="ov"><span class="q q-4k">4K</span></div><div class="pb"><i style="width:40%"></i></div></div>
+          <div class="poster" style="background:linear-gradient(135deg,#2d2340,#181422)"><span class="lg">EX</span></div>
+          <div class="poster" style="background:linear-gradient(135deg,#26424a,#141f1f)"><span class="lg">TR</span></div>
+          <div class="poster" style="background:linear-gradient(135deg,#402a2a,#1f1414)"><span class="lg">TV</span></div>
+        </div>
+      </div>
+    </div></div>
+    <div class="tvstand"></div>
+  </section>
+
+  <!-- GUIDE + PLAYER -->
+  <section class="section">
+    <div class="sec-head"><span class="sec-idx">02</span><h2 class="sec-title">Rehber & oynatıcı</h2></div>
+    <p class="sec-desc">Rehberde odak, program bloğunda gezer — seçilen blok turuncu halkayla belirir; turuncu “şimdi” çizgisi
+      sabit. Oynatıcıda kumanda alt kontrol çubuğunda gezinir; odaklı kontrol beyaza döner.</p>
+
+    <div class="duo">
+      <div>
+        <div class="tv"><div class="tvscreen">
+          <div class="tvguide">
+            <div class="gh">Rehber · Bugün<span class="now">20:41</span></div>
+            <div class="tg-times"><div></div><div>20:00</div><div>20:30</div><div>21:00</div></div>
+            <div style="position:relative">
+              <div class="tg-nowline" style="left:calc(74px + (100% - 74px)*0.28)"></div>
+              <div class="tg-row"><div class="tg-ch"><span class="l">bE</span>beIN 1</div><div class="tg-progs"><div class="tg-p now focus" style="flex:2.4">GS – Real Madrid</div><div class="tg-p" style="flex:1.6">Maç Sonu</div></div></div>
+              <div class="tg-row"><div class="tg-ch"><span class="l">TR</span>TRT 1</div><div class="tg-progs"><div class="tg-p now" style="flex:1.3">Ana Haber</div><div class="tg-p" style="flex:2.7">Teşkilat</div></div></div>
+              <div class="tg-row"><div class="tg-ch"><span class="l">S+</span>Sinema</div><div class="tg-progs"><div class="tg-p now" style="flex:3">Oppenheimer</div><div class="tg-p" style="flex:1">Kısa</div></div></div>
+              <div class="tg-row"><div class="tg-ch"><span class="l">CN</span>CNN</div><div class="tg-progs"><div class="tg-p now" style="flex:1">Bülten</div><div class="tg-p" style="flex:1.5">Ekonomi</div><div class="tg-p" style="flex:1.5">Panorama</div></div></div>
+            </div>
+          </div>
+        </div></div>
+        <div class="cap"><span class="k">Zaman çizelgeli rehber</span><div class="t">Odak program bloğunda gezer</div>
+          <div class="d">Sol/sağ = zaman, yukarı/aşağı = kanal. Seçili blok turuncu halka; catchup için geçmiş bloklar da seçilebilir.</div></div>
+      </div>
+
+      <div>
+        <div class="tv"><div class="tvscreen">
+          <div class="tvplayer">
+            <div class="vg"></div>
+            <div class="tvbadges" style="position:absolute;top:22px;left:26px;z-index:2"><span class="live"><i></i>CANLI</span><span class="q q-fhd">FHD</span></div>
+            <div class="tvp-info">
+              <div class="nm">beIN SPORTS 1</div>
+              <div class="gr">Şampiyonlar Ligi · Galatasaray — Real Madrid · 1–1</div>
+              <div class="tvp-seek"><span class="tm">67:12</span><div class="bar"><i></i></div><span class="tm">CANLI</span></div>
+              <div class="tvp-ctrls">
+                <div class="c"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zM9.5 12 18 6v12z"/></svg></div>
+                <div class="c focus"><svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg></div>
+                <div class="c"><svg viewBox="0 0 24 24"><path d="M16 6h2v12h-2zM6 6l8.5 6L6 18z"/></svg></div>
+                <div class="c"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-9.3-9A5.3 5.3 0 0 1 12 6a5.3 5.3 0 0 1 9.3 6C19 16.5 12 21 12 21z"/></svg></div>
+                <div class="c"><svg viewBox="0 0 24 24"><path d="M4 4h16v12H4zM4 20h6v-2H4z"/></svg></div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+        <div class="cap"><span class="k">Oynatıcı</span><div class="t">Kontrol çubuğunda odak</div>
+          <div class="d">Kumanda aşağı çekilince kontroller belirir; odaklı kontrol beyaza döner. Native AVPlayer + AirPlay yerine cihazın kendisi.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DESIGN LAWS -->
+  <section class="section">
+    <div class="sec-head"><span class="sec-idx">03</span><h2 class="sec-title">10-foot yasaları</h2></div>
+    <div class="notes">
+      <div class="note"><div class="nk">Odak</div><h4>Focus engine, hover değil</h4>
+        <p>İşaretçi yok. Her odaklanabilir öğe büyür (<code>scale 1.12</code>), yükselir ve turuncu glow halkası alır.
+          Odak durumu SwiftUI'de <code>.focusable()</code> + <code>@FocusState</code> ile yönetilir.</p></div>
+      <div class="note"><div class="nk">Ölçek</div><h4>Büyük tipografi, geniş boşluk</h4>
+        <p>Metin ve dokunma hedefleri iki metreden okunacak boyutta. Hero başlığı <code>840</code> ağırlıkta;
+          gövde ≥13pt eşdeğeri. Kenar boşlukları telefondan belirgin geniş.</p></div>
+      <div class="note"><div class="nk">Navigasyon</div><h4>D-pad mantığı</h4>
+        <p>Üst menü yatay; raylar yatay; rehber ızgarası iki eksenli. Her ekranda “ilk odak” tanımlı — kullanıcı
+          kumandayı eline aldığında nereye gideceği belli.</p></div>
+      <div class="note"><div class="nk">Top Shelf</div><h4>Ana ekran vitrini</h4>
+        <p>tvOS ana ekranında uygulama ikonu seçiliyken üstte “Devam Et” ve canlı öne çıkanlar (Top Shelf extension).
+          Uygulamaya girmeden içerik görünür.</p></div>
+      <div class="note"><div class="nk">Çoklu Ekran</div><h4>Asıl güç büyük ekranda</h4>
+        <p>2–4 maç yan yana + canlı skor şeridi, oturma odasında en çok burada anlam kazanır. Odak, aktif ses
+          kaynağını da belirler.</p></div>
+      <div class="note"><div class="nk">Paylaşım</div><h4>Aynı kod, aynı çekirdek</h4>
+        <p>iOS ile tek SwiftUI kod tabanı + ortak <code>Core</code> (Xtream/EPG). Yalnız görünüm katmanı platforma
+          göre ayrışır — mantık tekrar yazılmaz.</p></div>
+    </div>
+
+    <div class="callout" style="margin-top:22px">
+      <svg viewBox="0 0 24 24"><path d="M12 2 4 6v6c0 5 3.4 9.4 8 10 4.6-.6 8-5 8-10V6l-8-4zm0 6a2 2 0 0 1 2 2c0 .7-.4 1.3-1 1.7V14h-2v-2.3c-.6-.4-1-1-1-1.7a2 2 0 0 1 2-2z"/></svg>
+      <p><b>Uyum notu:</b> Apple TV'de de aynı nötr konumlandırma geçerli — hiçbir kanal gömülü değil, kullanıcı kendi
+        Xtream/M3U kaynağını getirir. Top Shelf yalnız kullanıcının kendi içeriğini gösterir.</p>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <b>cheesino — tvOS Görsel Şartname v0.2</b><br>
+    iOS şartnamesiyle aynı token seti; 10-foot düzen kuralları. Sonraki adım: Faz 1 Core modülü (M3U/Xtream/EPG) — Swift.
+  </footer>
+
+</div>

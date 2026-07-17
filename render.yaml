@@ -1,0 +1,16 @@
+# cheesino web — Render.com tek-tık dağıtımı (Blueprint).
+# Render → New → Blueprint → bu repoyu seç. Ücretsiz plan.
+# Dağıtım sonrası verilen HTTPS URL'yi ?k=ANAHTAR ile aç (aşağıda).
+services:
+  - type: web
+    name: cheesino-web
+    runtime: docker
+    dockerfilePath: ./apps/web/Dockerfile
+    dockerContext: .
+    plan: free
+    autoDeploy: false
+    envVars:
+      # Public relay olmasın diye erişim anahtarı. Dağıtımda kendin bir değer gir
+      # (ör. uzun rastgele bir metin). Uygulamayı https://SERVIS.onrender.com/?k=DEGER ile aç.
+      - key: PROXY_TOKEN
+        sync: false

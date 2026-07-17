@@ -1,0 +1,13 @@
+#EXTM3U url-tvg="http://example.com/epg.xml"
+#EXTINF:-1 tvg-id="beinsports1.tr" tvg-logo="http://logo/bein1.png" group-title="Spor",beIN SPORTS 1 FHD
+http://portal.example.com:8080/live/user/pass/1001.m3u8
+#EXTINF:-1 tvg-id="trt1.tr" tvg-logo="http://logo/trt1.png" group-title="Ulusal",TRT 1 HD
+http://portal.example.com:8080/live/user/pass/1002.ts
+#EXTINF:-1 tvg-id="" tvg-logo="" group-title="Filmler",Dune Part Two 4K
+http://portal.example.com:8080/movie/user/pass/2001.mkv
+#EXTINF:-1 group-title="Diziler",Breaking Bad S01E02 Cat's in the Bag
+http://portal.example.com:8080/series/user/pass/3002.mp4
+#EXTINF:-1 group-title="Diziler",Kurulus Osman Sezon 5 Bölüm 12
+http://portal.example.com:8080/series/user/pass/3112.mkv
+#EXTINF:-1 tvg-id="cnn.us" group-title="",CNN International
+https://secure.example.com/live/user/pass/1500.m3u8

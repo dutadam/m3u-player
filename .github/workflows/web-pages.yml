@@ -1,0 +1,40 @@
+name: cheesino web → GitHub Pages
+
+# apps/web'i statik olarak GitHub Pages'e yayınlar → herhangi bir cihazdan URL ile açılır.
+# Kurulmuş uygulama gibi test edilebilir (HTTPS kaynaklar + iptv-org demo çalışır;
+# düz HTTP kaynaklar için yerel proxy.js gerekir).
+on:
+  push:
+    branches: [ main ]
+    paths: [ "apps/web/**", ".github/workflows/web-pages.yml" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sayfayı hazırla
+        run: |
+          mkdir -p _site
+          cp apps/web/index.html _site/index.html
+          # 404'ler index'e düşsün (SPA)
+          cp apps/web/index.html _site/404.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deploy
+        uses: actions/deploy-pages@v4

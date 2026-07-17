@@ -1,0 +1,43 @@
+# XcodeGen yapılandırması — dağınık Swift dosyalarını buildable bir Xcode projesine dönüştürür.
+# Kurulum:  brew install xcodegen  →  cd apps/apple && xcodegen generate  →  open Cheesino.xcodeproj
+# (Alternatif: Xcode'da elle Multiplatform App projesi açıp bu dosyaları + paketleri eklemek.)
+
+name: Cheesino
+options:
+  bundleIdPrefix: app.cheesino
+  deploymentTarget:
+    iOS: "16.0"
+    tvOS: "16.0"
+
+packages:
+  Core:
+    path: Packages/Core
+  Design:
+    path: Packages/Design
+  # VLCKit — Xtream MKV/AVI/TS oynatma için. Xcode UI'dan manuel eklenir (doğru ürün adını
+  # seçerek), çünkü SPM ürün adı paket sürümüne göre değişebiliyor. Bkz. BUILD.md §6.
+
+targets:
+  Cheesino:
+    type: application
+    supportedDestinations: [iOS, macCatalyst, tvOS]   # iOS + Mac (Catalyst) + tvOS (VLC yerine AVPlayer; TVVLCKit ayrı)
+    sources:
+      - path: App
+        excludes:
+          - "Info.plist"          # INFOPLIST_FILE olarak kullanılır, kaynak/resource olarak kopyalanmasın
+    dependencies:
+      - package: Core
+      - package: Design
+      # VLCKit: Xcode → File → Add Package Dependencies (BUILD.md §6). Kod #if canImport ile hazır.
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.cheesino.app
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: App/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SWIFT_VERSION: "5.9"
+        # TARGETED_DEVICE_FAMILY supportedDestinations'tan türetilir (iPhone/iPad/TV)
+        # İmzalama: gerçek cihaz/TestFlight için kendi Team ID'nizi girin
+        # DEVELOPMENT_TEAM: XXXXXXXXXX
