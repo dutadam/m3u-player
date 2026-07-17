@@ -124,8 +124,10 @@ const S = {
   fav: LS.get("fav",[]),
   resume: LS.get("resume",{}),
   tab:"home", loading:false, err:null, query:"",
-  view:null                            // null | {type:'series'|'movie', item}
+  view:null,                           // null | {type:'series'|'movie', item}
+  tok:new URLSearchParams(location.search).get("k")||""  // public dağıtımda erişim anahtarı
 };
+const kSuffix = ()=> S.tok ? "&k="+encodeURIComponent(S.tok) : "";
 
 //// ---------- Yardımcılar ----------
 const $ = (s,r=document)=>r.querySelector(s);
@@ -135,7 +137,7 @@ const esc = s => (s||"").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;
 // tanımlanmış bir proxy varsa tüm istekler /proxy?url=... üzerinden geçer.
 const proxied = u => {
   const base = S.proxy ? S.proxy.replace(/\/$/,"") : (S.autoProxy ? "" : null);
-  return base===null ? u : base+"/proxy?url="+encodeURIComponent(u);
+  return base===null ? u : base+"/proxy?url="+encodeURIComponent(u)+kSuffix();
 };
 function toast(msg){const t=el("div","toast",msg);document.body.appendChild(t);setTimeout(()=>t.remove(),2600);}
 function detectQuality(name){const u=(name||"").toUpperCase();
@@ -176,8 +178,10 @@ async function loadXtream(){
   }catch(e){ S.loading=false; S.err=corsHint(e); render(); }
 }
 function corsHint(e){
-  return (e.message||"Bağlantı hatası")+" — Tarayıcı CORS/karışık-içerik engeli olabilir. "+
-    "Ayarlar'dan bir proxy tanımlayın ya da sunucunuz HTTPS ise onu kullanın.";
+  const m=e.message||"Bağlantı hatası";
+  if(/403/.test(m)) return "Erişim anahtarı eksik/yanlış — adresi ?k=ANAHTAR ile açın (online dağıtım).";
+  return m+" — Tarayıcı CORS/karışık-içerik engeli olabilir. "+
+    "Proxy'yi çalıştırın (node apps/web/proxy.js) ya da online dağıtımdaki URL'yi kullanın.";
 }
 
 //// ---------- M3U ----------
@@ -231,8 +235,8 @@ const transcodeFirst=u=>/\.(avi|wmv|flv|mpg|mpeg)(\?|$)/i.test(u); // eski codec
 async function attachRemux(v,url,startAt,mode){
   stopEngines(); remux={url,mode,offset:startAt||0,duration:0};
   showSpin(true);
-  try{const r=await fetch("/probe?url="+encodeURIComponent(url));remux.duration=(await r.json()).duration||0;}catch{}
-  v.src="/remux?url="+encodeURIComponent(url)+"&mode="+mode+(startAt>0?"&start="+Math.floor(startAt):"");
+  try{const r=await fetch("/probe?url="+encodeURIComponent(url)+kSuffix());remux.duration=(await r.json()).duration||0;}catch{}
+  v.src="/remux?url="+encodeURIComponent(url)+"&mode="+mode+(startAt>0?"&start="+Math.floor(startAt):"")+kSuffix();
   v.oncanplay=()=>{showSpin(false);v.play().catch(()=>{});};
   v.onerror=()=>{ if(mode==="copy") attachRemux(v,url,startAt,"transcode");
     else {showSpin(false);toast("Bu dosya oynatılamadı (codec desteklenmiyor olabilir).");} };

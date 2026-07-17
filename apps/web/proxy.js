@@ -21,7 +21,12 @@ const { URL } = require("url");
 const { spawn, spawnSync } = require("child_process");
 
 const PORT = process.env.PORT || 8088;
+const HOST = process.env.HOST || "0.0.0.0";
 const ROOT = __dirname;
+// İnternete açık dağıtım için opsiyonel erişim anahtarı. Ayarlandıysa /proxy /remux /probe
+// uçları ?k=TOKEN ister; yerelde (localhost) boş bırakılır → açık.
+const TOKEN = process.env.PROXY_TOKEN || "";
+function authed(u) { return !TOKEN || u.searchParams.get("k") === TOKEN; }
 
 // ffmpeg varsa MKV/AVI de oynar: konteyner anlık olarak fMP4'e çevrilir
 // (Jellyfin/Stremio'nun yerel sunucularıyla aynı yaklaşım).
@@ -65,8 +70,9 @@ function fetchUrl(target, headers, maxRedirect, cb) {
 
 /** m3u8 içindeki segment/alt-manifest/anahtar adreslerini proxy'ye çevir. */
 function rewriteM3u8(text, baseUrl) {
+  const kq = TOKEN ? "&k=" + encodeURIComponent(TOKEN) : "";
   const prox = (v) => {
-    try { return "/proxy?url=" + encodeURIComponent(new URL(v, baseUrl).href); }
+    try { return "/proxy?url=" + encodeURIComponent(new URL(v, baseUrl).href) + kq; }
     catch { return v; }
   };
   return text.split(/\r?\n/).map((line) => {
@@ -93,6 +99,7 @@ const server = http.createServer((req, res) => {
   if (u.pathname === "/probe") {
     const target = u.searchParams.get("url");
     cors(res);
+    if (!authed(u)) { res.writeHead(403); return res.end("{}"); }
     if (!target || !HAS_FFPROBE) { res.writeHead(404); return res.end("{}"); }
     const p = spawn("ffprobe", ["-v", "error", "-show_entries", "format=duration",
       "-of", "json", target], { stdio: ["ignore", "pipe", "ignore"] });
@@ -118,8 +125,10 @@ const server = http.createServer((req, res) => {
    */
   if (u.pathname === "/remux") {
     const target = u.searchParams.get("url");
+    cors(res);
+    if (!authed(u)) { res.writeHead(403); return res.end("yetki yok"); }
     if (!target) { res.writeHead(400); return res.end("url gerekli"); }
-    if (!HAS_FFMPEG) { cors(res); res.writeHead(501); return res.end("ffmpeg kurulu değil"); }
+    if (!HAS_FFMPEG) { res.writeHead(501); return res.end("ffmpeg kurulu değil"); }
     const mode = u.searchParams.get("mode") === "transcode" ? "transcode" : "copy";
     const start = parseFloat(u.searchParams.get("start") || "0") || 0;
     const args = ["-hide_banner", "-loglevel", "error"];
@@ -145,6 +154,7 @@ const server = http.createServer((req, res) => {
 
   if (u.pathname === "/proxy") {
     const target = u.searchParams.get("url");
+    if (!authed(u)) { cors(res); res.writeHead(403); return res.end("yetki yok"); }
     if (!target) { res.writeHead(400); return res.end("url parametresi gerekli"); }
     const fwd = { "user-agent": req.headers["user-agent"] || "cheesino-web/1.0" };
     if (req.headers.range) fwd.range = req.headers.range;
@@ -185,9 +195,11 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, HOST, () => {
   console.log(`cheesino web hazır → http://localhost:${PORT}`);
-  console.log("HTTP yayınlar ve CORS bu sunucu üzerinden otomatik çözülür. Bu adresi internete açmayın.");
+  console.log(TOKEN
+    ? "Erişim anahtarı AKTİF → uygulamayı ?k=ANAHTAR ile açın (public dağıtım için)."
+    : "HTTP yayınlar ve CORS bu sunucu üzerinden otomatik çözülür. Bu adresi internete açmayın.");
   console.log(HAS_FFMPEG
     ? "ffmpeg bulundu → MKV/AVI oynatma AKTİF (anlık remux/transcode)."
     : "ffmpeg bulunamadı → MKV/AVI oynatılamaz. Kurulum: https://ffmpeg.org (winget install ffmpeg / brew install ffmpeg / apt install ffmpeg)");
