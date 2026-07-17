@@ -2,14 +2,21 @@
 
 PC için kurulumsuz oynatıcı — tek HTML + küçük bir yerel sunucu/proxy.
 
-## Çalıştırma
+## En kolay test (3 yol)
 
+**1) Hemen dene (kurulum yok):** GitHub Pages'e yayınlanan URL'yi telefondan/PC'den aç,
+Onboarding'de **"Demo içerikle dene"**ye bas → ücretsiz kanallarla anında çalışır.
+*(HTTPS kaynaklar ve demo çalışır; düz HTTP kaynaklar için 2. yol gerekir.)*
+
+**2) Tam güç (kendi kaynağın · HTTP dahil):** Tek komut —
 ```bash
-node apps/web/proxy.js
-# → http://localhost:8088
+./apps/web/start.sh          # macOS/Linux (tarayıcıyı da açar)
+apps\web\start.bat           # Windows (çift tıkla)
+# ya da elle:  node apps/web/proxy.js  →  http://localhost:8088
 ```
+Yalnız **Node** gerekir. **ffmpeg** de kuruluysa MKV/AVI otomatik açılır.
 
-Tarayıcıda `http://localhost:8088` açın. Kaynağınızı ekleyin (Sunucu veya Bağlantı sekmesi), izlemeye başlayın.
+**3) Sadece bir kaynak dene:** proxy'yi çalıştır, `http://localhost:8088` aç, Sunucu/Bağlantı ile ekle.
 
 ## HTTP / HTTPS sorunu nasıl çözülüyor?
 

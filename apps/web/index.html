@@ -123,7 +123,8 @@ const S = {
   live:[], vod:[], series:[],
   fav: LS.get("fav",[]),
   resume: LS.get("resume",{}),
-  tab:"home", loading:false, err:null, query:""
+  tab:"home", loading:false, err:null, query:"",
+  view:null                            // null | {type:'series'|'movie', item}
 };
 
 //// ---------- Yardımcılar ----------
@@ -290,8 +291,12 @@ function poster(item,wide){
   if(item.rating>0){const b=el("div","badge gold","★ "+item.rating.toFixed(1));art.appendChild(b);}
   else if(q){const b=el("div","badge",q);art.appendChild(b);}
   d.appendChild(art); d.appendChild(el("div","t",item.name));
-  d.onclick=()=>{ if(item.kind==="series"){toast("Dizi bölümleri yakında — şimdilik canlı/film oynatılıyor.");}
-    else play(item); };
+  // İçerik dokunuşu: dizi/film → detay sayfası, canlı → doğrudan oynat (uygulamayla aynı akış).
+  d.onclick=()=>{
+    if(item.kind==="series"){S.view={type:"series",item};render();}
+    else if(item.kind==="vod"){S.view={type:"movie",item};render();}
+    else play(item);
+  };
   return d;
 }
 function rail(title,items,wide){
@@ -315,6 +320,115 @@ function catGrid(items){
   cats.forEach(c=>{const b=el("button","chip",c);b.onclick=()=>{active=c;[...chips.children].forEach(x=>x.classList.remove("on"));b.classList.add("on");fill();};chips.appendChild(b);});
   all.onclick=()=>{active=null;[...chips.children].forEach(x=>x.classList.remove("on"));all.classList.add("on");fill();};
   wrap.appendChild(chips); wrap.appendChild(grid); fill(); return wrap;
+}
+
+//// ---------- Detay sayfaları (dizi bölümleri + film) ----------
+let playQueue=[],playIdx=-1;
+function playFromQueue(i){ if(i<0||i>=playQueue.length)return; playIdx=i; play(playQueue[i]); }
+
+const OMDB_KEY="3558eb32", omdbCache={};
+async function omdb(title){
+  const t=(title||"").replace(/\((\d{4})\)/g," ")
+    .replace(/\b(4K|UHD|FHD|FULL ?HD|HD|SD|HEVC|H\.?26[45]|X26[45]|2160P|1080P|720P|HDR|DUAL|MULTI|TR|EN|DUBLAJ|ALTYAZI)\b/gi," ")
+    .replace(/[\[\](){}|:]/g," ").replace(/\s+/g," ").trim();
+  if(!t)return null; if(omdbCache[t]!==undefined)return omdbCache[t];
+  try{
+    const r=await fetch(`https://www.omdbapi.com/?apikey=${OMDB_KEY}&t=${encodeURIComponent(t)}`);
+    const j=await r.json();
+    if(j.Response==="False"){omdbCache[t]=null;return null;}
+    const rt=(j.Ratings||[]).find(x=>x.Source==="Rotten Tomatoes");
+    const o={imdb:parseFloat(j.imdbRating)||null,rotten:rt?parseInt(rt.Value):null,plot:j.Plot&&j.Plot!=="N/A"?j.Plot:null};
+    omdbCache[t]=o; return o;
+  }catch{return null;}
+}
+function omdbPills(o){
+  const out=[]; const pill=(txt,bg,fg)=>{const p=el("span",null,txt);
+    p.style.cssText=`background:${bg};color:${fg};font-weight:900;font-size:12px;padding:3px 8px;border-radius:7px`;return p;};
+  if(o.imdb)out.push(pill("IMDb "+o.imdb.toFixed(1),"var(--gold)","#0B0F19"));
+  if(o.rotten!=null)out.push(pill("🍅 "+o.rotten+"%",o.rotten>=60?"#21D07A":"#FA320A","#fff"));
+  return out;
+}
+function favButton(item){
+  const b=el("button","icon-btn");
+  b.style.width="44px";b.style.height="44px";b.style.fontSize="20px";
+  const paint=()=>{const on=S.fav.includes(item.id);b.textContent=on?"★":"☆";b.style.color=on?"var(--gold)":"var(--dim)";};
+  b.onclick=()=>{toggleFav(item.id);paint();}; paint(); return b;
+}
+function detailHead(container,item,cover){
+  const head=el("div"); head.style.cssText="display:flex;gap:18px;margin:18px 0;flex-wrap:wrap";
+  const art=el("div");
+  art.style.cssText=`flex:0 0 150px;height:225px;border-radius:14px;border:1px solid var(--line);background:var(--card) center/cover no-repeat`;
+  if(cover)art.style.backgroundImage=`url("${esc(cover)}")`;
+  const meta=el("div"); meta.style.cssText="flex:1;min-width:260px";
+  const h=el("h1",null,item.name); h.style.cssText="margin:0 0 8px;font-size:24px"; meta.appendChild(h);
+  const badges=el("div"); badges.style.cssText="display:flex;gap:8px;margin:6px 0;align-items:center"; meta.appendChild(badges);
+  omdb(item.name).then(o=>{ if(o) badges.append(...omdbPills(o)); });
+  head.append(art,meta); container.appendChild(head);
+  return {art,meta,badges};
+}
+async function movieDetailView(container,item){
+  const {art,meta}=detailHead(container,item,item.logo);
+  const sub=el("div","muted",""); meta.appendChild(sub);
+  const plot=el("div","muted",""); plot.style.cssText="margin-top:8px;max-width:640px;line-height:1.5"; meta.appendChild(plot);
+  const row=el("div"); row.style.cssText="display:flex;gap:10px;margin-top:14px;align-items:center";
+  const pb=el("button","play-btn"); pb.innerHTML="▶ Oynat"; pb.onclick=()=>{playQueue=[item];playFromQueue(0);};
+  row.append(pb,favButton(item)); meta.appendChild(row);
+  if(S.src.type==="xtream"&&item.sid){
+    try{
+      const d=await api("get_vod_info",{vod_id:item.sid}); const i=d?.info||{};
+      sub.textContent=[i.genre,(i.releasedate||i.release_date||"").slice(0,4),i.duration].filter(Boolean).join("  ·  ");
+      if(i.plot||i.description)plot.textContent=i.plot||i.description;
+      const img=i.movie_image||i.cover_big; if(img)art.style.backgroundImage=`url("${esc(img)}")`;
+    }catch{}
+  }
+}
+async function seriesDetailView(container,item){
+  const loading=el("div","empty","Bölümler yükleniyor…"); container.appendChild(loading);
+  let data=null;
+  try{ data=await api("get_series_info",{series_id:item.sid}); }catch{}
+  loading.remove();
+  const info=data?.info||{};
+  const {meta}=detailHead(container,item,info.cover||item.logo);
+  if(info.genre)meta.appendChild(el("div","muted",info.genre));
+  if(info.plot){const p=el("div","muted",info.plot);p.style.cssText="margin-top:8px;max-width:640px;line-height:1.5";meta.appendChild(p);}
+  const fr=el("div");fr.style.cssText="margin-top:12px";fr.appendChild(favButton(item));meta.appendChild(fr);
+  const eps=data?.episodes||{};
+  const seasons=Object.keys(eps).sort((a,b)=>(+a)-(+b));
+  if(!seasons.length){container.appendChild(el("div","empty","Bölüm bilgisi alınamadı."));return;}
+  let cur=seasons[0];
+  const chips=el("div","cats"); const list=el("div");
+  function paint(){
+    list.innerHTML="";
+    const arr=eps[cur]||[];
+    // Sezonun kuyruğu — bölüm bitince otomatik sonraki.
+    playQueue=arr.map(e=>({id:"ep_"+e.id,sid:e.id,name:item.name+" — "+(e.title||("Bölüm "+e.episode_num)),
+      url:xSeries(e.id,e.container_extension||"mp4"),kind:"vod",logo:info.cover||item.logo}));
+    arr.forEach((e,i)=>{
+      const row=el("div");
+      row.style.cssText="display:flex;align-items:center;gap:12px;padding:10px;border-radius:12px;cursor:pointer";
+      row.onmouseenter=()=>row.style.background="var(--elevated)";
+      row.onmouseleave=()=>row.style.background="";
+      const th=el("div");
+      th.style.cssText="flex:0 0 100px;height:58px;border-radius:8px;border:1px solid var(--line);background:var(--card) center/cover no-repeat";
+      const ti=e.info&&e.info.movie_image; if(ti)th.style.backgroundImage=`url("${esc(ti)}")`;
+      const t=el("div"); t.style.flex="1";
+      t.appendChild(el("div",null,`${e.episode_num}. ${e.title||("Bölüm "+e.episode_num)}`)).style.cssText="font-weight:600;font-size:14px";
+      const r=S.resume["ep_"+e.id];
+      if(r&&r.dur){const pr=el("div");pr.style.cssText="height:3px;background:var(--line);border-radius:2px;margin-top:6px;max-width:200px";
+        const f=el("div");f.style.cssText=`height:3px;background:var(--accent);border-radius:2px;width:${Math.min(100,r.pos/r.dur*100)}%`;
+        pr.appendChild(f);t.appendChild(pr);}
+      const pl=el("div",null,"▶");pl.style.color="var(--accent)";
+      row.append(th,t,pl);
+      row.onclick=()=>playFromQueue(i);
+      list.appendChild(row);
+    });
+  }
+  seasons.forEach(sn=>{
+    const b=el("button","chip"+(sn===cur?" on":""),"Sezon "+sn);
+    b.onclick=()=>{cur=sn;[...chips.children].forEach(x=>x.classList.remove("on"));b.classList.add("on");paint();};
+    chips.appendChild(b);
+  });
+  container.append(chips,list); paint();
 }
 
 function homeView(){
@@ -373,7 +487,14 @@ function onboarding(){
   tb1.onclick=()=>{tab="xtream";tb1.classList.add("on");tb2.classList.remove("on");paint();};
   tb2.onclick=()=>{tab="m3u";tb2.classList.add("on");tb1.classList.remove("on");paint();};
   paint();
-  card.appendChild(el("div","muted",""));
+  // Kaynağı olmayan / hızlı test için: iptv-org topluluk listesi (ücretsiz, yasal FTA kanallar).
+  const demo=el("button","primary","🎬 Demo içerikle dene · ücretsiz kanallar");
+  demo.style.cssText="margin-top:12px;background:var(--elevated);color:var(--hi)";
+  demo.onclick=()=>{
+    const u="https://iptv-org.github.io/iptv/index.m3u";
+    S.src={type:"m3u",url:u}; LS.set("src",S.src); loadM3Uurl(u);
+  };
+  card.appendChild(demo);
   const note=el("div","muted","cheesino içerik barındırmaz — kendi kaynağını sen eklersin. Veriler yalnız bu tarayıcıda saklanır.");
   note.style.marginTop="18px"; card.appendChild(note);
   c.appendChild(card); return c;
@@ -414,16 +535,26 @@ function render(){
   h.innerHTML=`<div class="brand"><span class="dot">🧀</span>cheesino</div>`;
   const tabs=[["home","Ana Sayfa"],["live","Canlı"],["movies","Filmler"],["series","Diziler"]];
   const navEl=el("nav");
-  tabs.forEach(([k,l])=>{const b=el("button",S.tab===k?"on":"",l);b.onclick=()=>{S.tab=k;render();};navEl.appendChild(b);});
+  tabs.forEach(([k,l])=>{const b=el("button",S.tab===k&&!S.view?"on":"",l);
+    b.onclick=()=>{S.tab=k;S.view=null;render();};navEl.appendChild(b);});
   h.appendChild(navEl); h.appendChild(el("div","grow"));
   const sb=el("div","search-box");const si=el("input");si.placeholder="Ara…";si.value=S.query;
-  si.oninput=e=>{S.query=e.target.value;if(["live","movies","series"].includes(S.tab))render();};
+  si.oninput=e=>{S.query=e.target.value;if(["live","movies","series"].includes(S.tab)&&!S.view)render();};
   sb.innerHTML="🔍"; sb.appendChild(si); h.appendChild(sb);
-  const set=el("button","icon-btn","⚙"); set.onclick=()=>{S.tab="settings";render();}; h.appendChild(set);
+  const set=el("button","icon-btn","⚙"); set.onclick=()=>{S.tab="settings";S.view=null;render();}; h.appendChild(set);
   app.appendChild(h);
 
   const main=el("main");
-  if(S.tab==="home")main.appendChild(homeView());
+  if(S.view){
+    // Detay sayfası (dizi bölümleri / film) — geri oku üstte.
+    const back=el("button","icon-btn","←"); back.onclick=()=>{S.view=null;render();};
+    const bar=el("div"); bar.style.cssText="display:flex;align-items:center;gap:10px;margin-top:6px";
+    bar.appendChild(back); main.appendChild(bar);
+    const cont=el("div"); main.appendChild(cont);
+    if(S.view.type==="series")seriesDetailView(cont,S.view.item);
+    else movieDetailView(cont,S.view.item);
+  }
+  else if(S.tab==="home")main.appendChild(homeView());
   else if(S.tab==="live")main.appendChild(catGrid(S.live));
   else if(S.tab==="movies")main.appendChild(catGrid(S.vod));
   else if(S.tab==="series")main.appendChild(catGrid(S.series));
@@ -457,6 +588,13 @@ document.body.insertAdjacentHTML("beforeend",`
   seek.addEventListener("change",()=>{ if(remux&&remux.duration){
     const t=(seek.value/1000)*remux.duration; attachRemux(v,remux.url,t,remux.mode); } });
   v.addEventListener("click",()=>{ v.paused?v.play():v.pause(); });
+  // Bölüm bitince otomatik sonraki (dizi kuyruğu).
+  v.addEventListener("ended",()=>{
+    if(playIdx>=0 && playIdx<playQueue.length-1){
+      if(curKey){delete S.resume[curKey];LS.set("resume",S.resume);}
+      playFromQueue(playIdx+1); toast("Sonraki bölüm ▶");
+    }
+  });
   document.addEventListener("keydown",e=>{ if($("#player").classList.contains("hidden"))return;
     if(e.key==="Escape")closePlayer(); if(e.key===" "){e.preventDefault();v.paused?v.play():v.pause();} });
 })();
