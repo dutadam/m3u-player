@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- Arka planda ağ akışı sürerken CPU/Wi-Fi uyanık kalsın -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Program hatırlatıcı bildirimleri + yeniden başlatmada yeniden kurma -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
@@ -47,6 +49,16 @@
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Arka plan oynatma servisi — MediaSession + bildirim/kilit ekranı kontrolleri -->
+        <service
+            android:name=".playback.PlaybackService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
 
         <!-- Program hatırlatıcı — alarm tetikleyince bildirim gösterir -->
         <receiver android:name=".data.ReminderReceiver" android:exported="false" />

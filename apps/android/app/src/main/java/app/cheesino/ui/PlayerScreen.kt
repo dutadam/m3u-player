@@ -2,10 +2,12 @@ package app.cheesino.ui
 
 import android.app.Activity
 import android.app.PictureInPictureParams
+import android.content.ComponentName
 import android.content.Context
 import android.media.AudioManager
 import android.os.Build
 import android.view.WindowManager
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.animation.AnimatedVisibility
@@ -60,9 +62,8 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
-import androidx.media3.exoplayer.DefaultLoadControl
-import androidx.media3.exoplayer.DefaultRenderersFactory
-import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import androidx.mediarouter.app.MediaRouteButton
@@ -73,6 +74,7 @@ import app.cheesino.core.MediaKind
 import app.cheesino.core.StreamResolver
 import app.cheesino.data.LibraryViewModel
 import app.cheesino.data.ResumeMark
+import app.cheesino.playback.PlaybackService
 import app.cheesino.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
@@ -97,8 +99,42 @@ fun Channel.toPlayItem() = PlayItem(
 
 private const val SEEK_STEP_MS = 10_000L
 
+/**
+ * Oynatıcı girişi — arka plan servisine (PlaybackService) bir MediaController ile bağlanır.
+ * Bağlantı kurulana kadar marka loader gösterir; kurulunca gerçek oynatıcıyı çizer.
+ * Oynatıcının kendisi servise ait olduğu için ekran kapanınca/arka plana alınınca ses sürebilir.
+ */
 @Composable
 fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEnded: () -> Unit = {},
+                 onFallback: (() -> Unit)? = null) {
+    val controller = rememberMediaController()
+    if (controller == null) {
+        Box(Modifier.fillMaxSize().background(Color.Black)) { BrandLoader(modifier = Modifier.align(Alignment.Center)) }
+    } else {
+        PlayerScreenContent(controller, item, vm, onClose, onEnded, onFallback)
+    }
+}
+
+/** Arka plan oynatma servisine bağlanan MediaController'ı hazırlar; hazır olunca döndürür. */
+@Composable
+private fun rememberMediaController(): MediaController? {
+    val context = LocalContext.current
+    var controller by remember { mutableStateOf<MediaController?>(null) }
+    DisposableEffect(Unit) {
+        val token = SessionToken(context, ComponentName(context, PlaybackService::class.java))
+        val future = MediaController.Builder(context, token).buildAsync()
+        future.addListener({ runCatching { controller = future.get() } }, ContextCompat.getMainExecutor(context))
+        onDispose {
+            MediaController.releaseFuture(future)
+            controller = null
+        }
+    }
+    return controller
+}
+
+@Composable
+private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: LibraryViewModel,
+                 onClose: () -> Unit, onEnded: () -> Unit = {},
                  onFallback: (() -> Unit)? = null) {
     val context = LocalContext.current
     val activity = context as? Activity
@@ -134,22 +170,13 @@ fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEn
     ) }
     val resizeLabels = remember { listOf("Sığdır", "Yakınlaştır", "Kapla") }
 
-    val player = remember(item.id) {
-        // 4K/yüksek bit hızı için daha büyük buffer → daha az takılma.
-        val loadControl = DefaultLoadControl.Builder()
-            .setBufferDurationsMs(50_000, 240_000, 2_500, 5_000)
-            .setBackBuffer(30_000, true)
-            .setPrioritizeTimeOverSizeThresholds(true)
-            .build()
-        // Bir donanım kod çözücü açılamaz/yetişemezse ikincil kod çözücüye düş.
-        val renderers = DefaultRenderersFactory(context).setEnableDecoderFallback(true)
-        ExoPlayer.Builder(context, renderers).setLoadControl(loadControl).build().apply {
-            val url = StreamResolver.candidates(item.url).firstOrNull()?.url ?: item.url
-            setMediaItem(MediaItem.fromUri(url))
-            if (startAtMs > 0) seekTo(startAtMs)
-            prepare()
-            playWhenReady = !askResume
-        }
+    // Oynatıcı servise ait; burada yalnız bu öğe için medyayı kur (buffer/kod çözücü ayarları
+    // serviste). Öğe değişince yeniden kur.
+    LaunchedEffect(item.id) {
+        val url = StreamResolver.candidates(item.url).firstOrNull()?.url ?: item.url
+        player.setMediaItem(MediaItem.fromUri(url))
+        player.prepare()
+        player.playWhenReady = !askResume
     }
 
     fun saveNow() {
@@ -182,7 +209,9 @@ fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEn
             }
         }
         player.addListener(listener)
-        onDispose { saveNow(); player.removeListener(listener); player.release() }
+        // Oynatıcı servise ait — burada RELEASE ETME. Ekrandan çıkınca oynatmayı durdur
+        // (kullanıcı kapattı); controller bağlantısı rememberMediaController'da bırakılır.
+        onDispose { saveNow(); player.removeListener(listener); player.stop(); player.clearMediaItems() }
     }
 
     // Ekranı açık tut + tam ekran (sistem çubuklarını gizle).
@@ -419,7 +448,7 @@ private fun GestureZone(modifier: Modifier, onVerticalDrag: (Float) -> Unit) {
 }
 
 @Composable
-private fun TrackDialog(player: ExoPlayer, onDismiss: () -> Unit) {
+private fun TrackDialog(player: Player, onDismiss: () -> Unit) {
     val tracks = player.currentTracks
     val audio = tracks.groups.filter { it.type == C.TRACK_TYPE_AUDIO && it.isSupported }
     val text = tracks.groups.filter { it.type == C.TRACK_TYPE_TEXT && it.isSupported }
