@@ -17,6 +17,8 @@ const http = require("http");
 const https = require("https");
 const fs = require("fs");
 const path = require("path");
+const dns = require("dns");
+const net = require("net");
 const { URL } = require("url");
 const { spawn, spawnSync } = require("child_process");
 
@@ -27,6 +29,58 @@ const ROOT = __dirname;
 // uçları ?k=TOKEN ister; yerelde (localhost) boş bırakılır → açık.
 const TOKEN = process.env.PROXY_TOKEN || "";
 function authed(u) { return !TOKEN || u.searchParams.get("k") === TOKEN; }
+
+// ---- Üretim sertleştirmesi ----
+// SSRF: public dağıtımda (token varsa) iç/özel IP'lere istek engellenir; yerelde (LAN kaynağı
+// için) açık. PROXY_BLOCK_PRIVATE=1/0 ile elle geçilebilir.
+const BLOCK_PRIVATE = process.env.PROXY_BLOCK_PRIVATE != null
+  ? process.env.PROXY_BLOCK_PRIVATE === "1" : !!TOKEN;
+const MAX_UPSTREAMS = parseInt(process.env.PROXY_MAX_CONN || "300", 10);   // eşzamanlı upstream tavanı
+const RATE_MAX = parseInt(process.env.PROXY_RATE || "240", 10);            // IP başına / dakika
+let activeUpstreams = 0;
+const rate = new Map();  // ip -> {n, reset}
+
+function clientIp(req) {
+  return (req.headers["x-forwarded-for"] || "").split(",")[0].trim()
+    || req.socket.remoteAddress || "?";
+}
+function rateOk(ip) {
+  const now = Date.now(); let r = rate.get(ip);
+  if (!r || now > r.reset) { r = { n: 0, reset: now + 60000 }; rate.set(ip, r); }
+  return ++r.n <= RATE_MAX;
+}
+setInterval(() => { const now = Date.now(); for (const [ip, r] of rate) if (now > r.reset) rate.delete(ip); }, 120000).unref();
+
+/** Bir IP özel/dahili/ayrılmış mı? (SSRF koruması) */
+function isPrivateIp(ip) {
+  if (!ip) return true;
+  if (ip.startsWith("::ffff:")) ip = ip.slice(7);      // IPv4-mapped IPv6
+  if (net.isIPv4(ip)) {
+    const p = ip.split(".").map(Number);
+    if (p[0] === 10 || p[0] === 127 || p[0] === 0) return true;
+    if (p[0] === 172 && p[1] >= 16 && p[1] <= 31) return true;
+    if (p[0] === 192 && p[1] === 168) return true;
+    if (p[0] === 169 && p[1] === 254) return true;      // link-local + bulut metadata
+    if (p[0] === 100 && p[1] >= 64 && p[1] <= 127) return true; // CGNAT
+    if (p[0] >= 224) return true;                        // multicast + reserved
+    return false;
+  }
+  const l = ip.toLowerCase();
+  if (l === "::1" || l === "::") return true;
+  if (l.startsWith("fe80") || l.startsWith("fc") || l.startsWith("fd")) return true; // link-local + ULA
+  return false;
+}
+/** Host'u çözüp tüm IP'lerini kontrol et; biri özelse reddet (DNS rebinding'e karşı). */
+function ssrfCheck(hostname, cb) {
+  if (!BLOCK_PRIVATE) return cb(null);
+  if (net.isIP(hostname)) return cb(isPrivateIp(hostname) ? new Error("özel IP engellendi") : null);
+  dns.lookup(hostname, { all: true }, (err, addrs) => {
+    if (err) return cb(err);
+    if (addrs.some(a => isPrivateIp(a.address))) return cb(new Error("özel IP engellendi"));
+    cb(null);
+  });
+}
+function log(o) { try { process.stdout.write(JSON.stringify({ t: new Date().toISOString(), ...o }) + "\n"); } catch {} }
 
 // ffmpeg varsa MKV/AVI de oynar: konteyner anlık olarak fMP4'e çevrilir
 // (Jellyfin/Stremio'nun yerel sunucularıyla aynı yaklaşım).
@@ -55,17 +109,21 @@ function fetchUrl(target, headers, maxRedirect, cb) {
   let u;
   try { u = new URL(target); } catch (e) { return cb(e); }
   if (u.protocol !== "http:" && u.protocol !== "https:") return cb(new Error("yalnız http/https"));
-  const mod = u.protocol === "https:" ? https : http;
-  const req = mod.request(u, { method: "GET", headers, timeout: 20000 }, (res) => {
-    if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location && maxRedirect > 0) {
-      res.resume();
-      return fetchUrl(new URL(res.headers.location, u).href, headers, maxRedirect - 1, cb);
-    }
-    cb(null, res, u.href);
+  // SSRF: hedef host özel/dahili IP'ye çözülüyorsa reddet.
+  ssrfCheck(u.hostname, (err) => {
+    if (err) return cb(err);
+    const mod = u.protocol === "https:" ? https : http;
+    const req = mod.request(u, { method: "GET", headers, timeout: 20000 }, (res) => {
+      if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location && maxRedirect > 0) {
+        res.resume();
+        return fetchUrl(new URL(res.headers.location, u).href, headers, maxRedirect - 1, cb);
+      }
+      cb(null, res, u.href);
+    });
+    req.on("timeout", () => req.destroy(new Error("zaman aşımı")));
+    req.on("error", (e) => cb(e));
+    req.end();
   });
-  req.on("timeout", () => req.destroy(new Error("zaman aşımı")));
-  req.on("error", (e) => cb(e));
-  req.end();
 }
 
 /** m3u8 içindeki segment/alt-manifest/anahtar adreslerini proxy'ye çevir. */
@@ -87,8 +145,19 @@ const server = http.createServer((req, res) => {
 
   if (req.method === "OPTIONS") { cors(res); res.writeHead(204); return res.end(); }
 
+  // Sağlık kontrolü (load balancer / autoscaler).
+  if (u.pathname === "/health") {
+    cors(res); res.writeHead(200, { "content-type": "application/json" });
+    return res.end(JSON.stringify({ ok: true, ffmpeg: HAS_FFMPEG, active: activeUpstreams }));
+  }
+
   // Uygulamanın "proxy var mı?" otomatik algısı için.
   if (u.pathname === "/proxy-ping") { cors(res); res.writeHead(204); return res.end(); }
+
+  // Pahalı uçlarda IP başına oran sınırı.
+  if ((u.pathname === "/proxy" || u.pathname === "/remux" || u.pathname === "/probe") && !rateOk(clientIp(req))) {
+    cors(res); res.writeHead(429); return res.end("çok fazla istek");
+  }
 
   // ffmpeg var mı? (MKV/AVI desteğinin algısı)
   if (u.pathname === "/ffmpeg-ping") {
@@ -156,10 +225,15 @@ const server = http.createServer((req, res) => {
     const target = u.searchParams.get("url");
     if (!authed(u)) { cors(res); res.writeHead(403); return res.end("yetki yok"); }
     if (!target) { res.writeHead(400); return res.end("url parametresi gerekli"); }
+    if (activeUpstreams >= MAX_UPSTREAMS) { cors(res); res.writeHead(503); return res.end("meşgul"); }
+    activeUpstreams++;
+    let released = false;
+    const release = () => { if (!released) { released = true; activeUpstreams--; } };
+    res.on("close", release); res.on("finish", release);
     const fwd = { "user-agent": req.headers["user-agent"] || "cheesino-web/1.0" };
     if (req.headers.range) fwd.range = req.headers.range;
     fetchUrl(target, fwd, 5, (err, up, finalUrl) => {
-      if (err) { cors(res); res.writeHead(502); return res.end("Upstream hata: " + err.message); }
+      if (err) { cors(res); res.writeHead(502); res.end("Upstream hata: " + err.message); return release(); }
       cors(res);
       const ct = up.headers["content-type"] || "";
       const isM3u8 = /mpegurl/i.test(ct) || /\.m3u8(\?|$)/i.test(finalUrl);
@@ -203,4 +277,19 @@ server.listen(PORT, HOST, () => {
   console.log(HAS_FFMPEG
     ? "ffmpeg bulundu → MKV/AVI oynatma AKTİF (anlık remux/transcode)."
     : "ffmpeg bulunamadı → MKV/AVI oynatılamaz. Kurulum: https://ffmpeg.org (winget install ffmpeg / brew install ffmpeg / apt install ffmpeg)");
+  log({ ev: "listen", port: PORT, host: HOST, ffmpeg: HAS_FFMPEG, blockPrivate: BLOCK_PRIVATE, tokenGate: !!TOKEN });
 });
+server.requestTimeout = 0;          // uzun canlı akışlar kesilmesin
+server.headersTimeout = 30000;
+
+// Zarif kapanış (autoscaler/deploy SIGTERM).
+let shuttingDown = false;
+function shutdown(sig) {
+  if (shuttingDown) return; shuttingDown = true;
+  log({ ev: "shutdown", sig });
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(0), 8000).unref();
+}
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("uncaughtException", (e) => log({ ev: "uncaught", err: String(e && e.message || e) }));
