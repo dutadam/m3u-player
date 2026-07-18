@@ -159,7 +159,10 @@ fun RootScreen(vm: LibraryViewModel) {
                     onRate = { vm.setRating("series_${sd.id}", it) },
                     onPlayQueue = { queue, i -> playQueue = queue; playIndex = i },
                     onBack = { detail = null },
-                    omdb = { t, y -> vm.omdbRatings(t, y) }
+                    omdb = { t, y -> vm.omdbRatings(t, y) },
+                    downloadStateFor = { key -> downloads.firstOrNull { it.request.id == key }?.state },
+                    onDownloadEpisode = { item -> vm.download(item.id, item.url, item.title) },
+                    onRemoveDownload = { vm.removeDownload(it) }
                 )
                 showMyList -> MyListScreen(state, user, onContent, openSeries, onBack = { showMyList = false })
                 showSearch -> SearchScreen(state, discover.genres, onContent, openSeries, onBack = { showSearch = false })

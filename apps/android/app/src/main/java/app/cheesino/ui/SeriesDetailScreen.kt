@@ -12,6 +12,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.DownloadDone
+import androidx.compose.material.icons.filled.Downloading
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material.icons.filled.ThumbUp
@@ -28,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.media3.exoplayer.offline.Download
 import app.cheesino.core.Episode
 import app.cheesino.core.Season
 import app.cheesino.core.Series
@@ -48,7 +52,10 @@ fun SeriesDetailScreen(
     onRate: (Int) -> Unit,
     onPlayQueue: (List<PlayItem>, Int) -> Unit,
     onBack: () -> Unit,
-    omdb: suspend (String, String?) -> app.cheesino.core.OmdbInfo? = { _, _ -> null }
+    omdb: suspend (String, String?) -> app.cheesino.core.OmdbInfo? = { _, _ -> null },
+    downloadStateFor: (String) -> Int? = { null },
+    onDownloadEpisode: (PlayItem) -> Unit = {},
+    onRemoveDownload: (String) -> Unit = {}
 ) {
     var series by remember(ref.id) { mutableStateOf<Series?>(null) }
     var loading by remember(ref.id) { mutableStateOf(true) }
@@ -72,7 +79,8 @@ fun SeriesDetailScreen(
                 modifier = Modifier.align(Alignment.Center)
             )
             else -> SeriesContent(s, selectedSeason, { selectedSeason = it }, resumeFor, watchedIds,
-                favorite, rating, onFavorite, onRate, onPlayQueue, omdbInfo)
+                favorite, rating, onFavorite, onRate, onPlayQueue, omdbInfo,
+                downloadStateFor, onDownloadEpisode, onRemoveDownload)
         }
         IconButton(onClick = onBack, modifier = Modifier.padding(4.dp).align(Alignment.TopStart)) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi)
@@ -92,7 +100,10 @@ private fun SeriesContent(
     onFavorite: () -> Unit,
     onRate: (Int) -> Unit,
     onPlayQueue: (List<PlayItem>, Int) -> Unit,
-    omdb: app.cheesino.core.OmdbInfo? = null
+    omdb: app.cheesino.core.OmdbInfo? = null,
+    downloadStateFor: (String) -> Int? = { null },
+    onDownloadEpisode: (PlayItem) -> Unit = {},
+    onRemoveDownload: (String) -> Unit = {}
 ) {
     val season = s.seasons.firstOrNull { it.number == selectedSeason } ?: s.seasons.first()
     val queue = remember(season, s.name) {
@@ -121,7 +132,13 @@ private fun SeriesContent(
         if (s.seasons.size > 1) item { SeasonPicker(s.seasons, selectedSeason, onSelectSeason) }
         itemsIndexed(season.episodes) { i, ep ->
             val key = "ep_${ep.id}"
-            EpisodeRow(ep, resumeFor(key), key in watchedIds) { onPlayQueue(queue, i) }
+            EpisodeRow(
+                ep, resumeFor(key), key in watchedIds,
+                downloadState = downloadStateFor(key),
+                onDownload = { onDownloadEpisode(queue[i]) },
+                onRemoveDownload = { onRemoveDownload(key) },
+                onPlay = { onPlayQueue(queue, i) }
+            )
         }
     }
 }
@@ -209,7 +226,13 @@ private fun SeasonPicker(seasons: List<Season>, selected: Int, onSelect: (Int) -
 }
 
 @Composable
-private fun EpisodeRow(ep: Episode, resume: ResumeMark?, watched: Boolean, onPlay: () -> Unit) {
+private fun EpisodeRow(
+    ep: Episode, resume: ResumeMark?, watched: Boolean,
+    downloadState: Int? = null,
+    onDownload: () -> Unit = {},
+    onRemoveDownload: () -> Unit = {},
+    onPlay: () -> Unit
+) {
     Row(
         Modifier.fillMaxWidth().clickable(onClick = onPlay).padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -229,6 +252,15 @@ private fun EpisodeRow(ep: Episode, resume: ResumeMark?, watched: Boolean, onPla
                 overflow = TextOverflow.Ellipsis)
             if (watched && resume == null)
                 Text("İzlendi", color = Accent2, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp))
+        }
+        // Çevrimdışı indirme — duruma göre indir / iniyor / indirildi.
+        when (downloadState) {
+            Download.STATE_COMPLETED ->
+                IconButton(onClick = onRemoveDownload) { Icon(Icons.Default.DownloadDone, "İndirildi", tint = Accent) }
+            Download.STATE_DOWNLOADING, Download.STATE_QUEUED, Download.STATE_RESTARTING ->
+                IconButton(onClick = onRemoveDownload) { Icon(Icons.Default.Downloading, "İniyor", tint = Accent2) }
+            else ->
+                IconButton(onClick = onDownload) { Icon(Icons.Default.Download, "İndir", tint = TextDim) }
         }
         Icon(Icons.Default.PlayArrow, "Oynat", tint = Accent)
     }
