@@ -6,6 +6,7 @@ import androidx.media3.common.C
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 
@@ -32,7 +33,11 @@ class PlaybackService : MediaSessionService() {
             .build()
         // Donanım kod çözücü açılamazsa ikincil kod çözücüye düş.
         val renderers = DefaultRenderersFactory(this).setEnableDecoderFallback(true)
+        // İndirilmiş içerik disk cache'inden (çevrimdışı) oynasın; canlı/akış içerik yazılmadan
+        // upstream'e geçer (salt-okunur cache — canlı yayını cache'lemeyiz).
+        val mediaSourceFactory = DefaultMediaSourceFactory(Downloads.cacheDataSourceFactory(this))
         val player = ExoPlayer.Builder(this, renderers)
+            .setMediaSourceFactory(mediaSourceFactory)
             .setLoadControl(loadControl)
             // Ses odağını motor yönetsin (arama/başka uygulama gelince duraklat/kıs).
             .setAudioAttributes(AudioAttributes.DEFAULT, /* handleAudioFocus = */ true)

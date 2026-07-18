@@ -120,6 +120,15 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     /** Önceki satın alımları geri yükler. */
     fun restorePurchases() = billing.restore()
 
+    // ---- Çevrimdışı indirmeler ----
+    private val downloadsRepo = DownloadsRepository(app)
+    val downloads: StateFlow<List<androidx.media3.exoplayer.offline.Download>> = downloadsRepo.downloads
+    fun download(id: String, url: String, title: String) = downloadsRepo.enqueue(id, url, title)
+    fun removeDownload(id: String) = downloadsRepo.remove(id)
+    fun refreshDownloads() = downloadsRepo.refresh()
+    fun downloadState(id: String): Int? = downloadsRepo.stateOf(id)
+    fun isDownloaded(id: String): Boolean = downloadsRepo.isCompleted(id)
+
     // ---- Program hatırlatıcıları ----
     fun isReminded(ch: Channel, e: EpgEntry) = Reminders.isSet(getApplication(), ch.id, e.start)
     fun toggleReminder(ch: Channel, e: EpgEntry) {

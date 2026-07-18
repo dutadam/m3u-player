@@ -27,7 +27,8 @@ import app.cheesino.data.LibraryViewModel
 import app.cheesino.ui.theme.*
 
 @Composable
-fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () -> Unit, onUpgrade: () -> Unit = {}) {
+fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () -> Unit,
+                   onUpgrade: () -> Unit = {}, onOpenDownloads: () -> Unit = {}) {
     val isPro by vm.isPro.collectAsStateWithLifecycle()
     var ua by remember { mutableStateOf(vm.userAgent) }
     var pin by remember { mutableStateOf("") }
@@ -164,6 +165,14 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
                     colors = ButtonDefaults.buttonColors(containerColor = Accent)
                 ) { Text("PIN Belirle", fontWeight = FontWeight.Bold) }
             }
+        }
+
+        Section("İndirilenler") {
+            Text("Filmleri çevrimdışı izlemek için indir; buradan yönet.",
+                color = TextDim, fontSize = 13.sp)
+            Button(onClick = onOpenDownloads, modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Ground)
+            ) { Text("İndirilenleri Aç", color = Accent, fontWeight = FontWeight.Bold) }
         }
 
         Section("Veriler") {

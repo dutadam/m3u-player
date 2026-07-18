@@ -63,9 +63,11 @@ fun RootScreen(vm: LibraryViewModel) {
     val discover by vm.discover.collectAsStateWithLifecycle()
     val isPro by vm.isPro.collectAsStateWithLifecycle()
     val proPrice by vm.proPrice.collectAsStateWithLifecycle()
+    val downloads by vm.downloads.collectAsStateWithLifecycle()
     val activity = LocalContext.current as? android.app.Activity
     var paywallFor by remember { mutableStateOf<app.cheesino.data.ProFeature?>(null) }
     var showPaywall by remember { mutableStateOf(false) }
+    var showDownloads by remember { mutableStateOf(false) }
     // Sekme uygulamaya geri dönüşte/ekran dönmede korunur (ana sayfaya atmasın).
     var tabOrdinal by rememberSaveable { mutableIntStateOf(0) }
     val tab = Tab.entries[tabOrdinal]
@@ -141,7 +143,10 @@ fun RootScreen(vm: LibraryViewModel) {
                     onFavorite = { vm.toggleFavorite(md.id) },
                     onRate = { vm.setRating(md.id, it) },
                     onPlay = { movieDetail = null; playChannel(md) },
-                    onBack = { movieDetail = null }
+                    onBack = { movieDetail = null },
+                    downloadState = downloads.firstOrNull { it.request.id == md.id }?.state,
+                    onDownload = { vm.download(md.id, md.url, md.name) },
+                    onRemoveDownload = { vm.removeDownload(md.id) }
                 )
                 sd != null -> SeriesDetailScreen(
                     ref = sd,
@@ -221,7 +226,19 @@ fun RootScreen(vm: LibraryViewModel) {
     // Ayarlar — overlay (fade).
     AnimatedVisibility(visible = showSettings, enter = fadeIn(), exit = fadeOut()) {
         SettingsScreen(vm, onClose = { showSettings = false }, onSignedOut = { showSettings = false },
-            onUpgrade = { showSettings = false; paywallFor = null; showPaywall = true })
+            onUpgrade = { showSettings = false; paywallFor = null; showPaywall = true },
+            onOpenDownloads = { showSettings = false; showDownloads = true })
+    }
+
+    // İndirilenler — overlay (fade).
+    AnimatedVisibility(visible = showDownloads, enter = fadeIn(), exit = fadeOut()) {
+        DownloadsScreen(
+            downloads = downloads,
+            onPlay = { item -> showDownloads = false; playQueue = listOf(item); playIndex = 0 },
+            onRemove = { vm.removeDownload(it) },
+            onRefresh = { vm.refreshDownloads() },
+            onClose = { showDownloads = false }
+        )
     }
 
     // Pro paywall — overlay (fade).
@@ -258,12 +275,15 @@ fun RootScreen(vm: LibraryViewModel) {
 @Composable
 private fun PlayerHost(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEnded: () -> Unit) {
     val engine = vm.playerEngine
-    var useVlc by remember(item.id) { mutableStateOf(engine == 2 || (engine == 0 && !item.isLive)) }
+    // İndirilmiş öğe disk cache'inden ExoPlayer ile oynar (çevrimdışı) — VLC cache'i okumaz.
+    val downloaded = remember(item.id) { vm.isDownloaded(item.id) }
+    var useVlc by remember(item.id) { mutableStateOf(!downloaded && (engine == 2 || (engine == 0 && !item.isLive))) }
     if (useVlc) {
         VlcPlayerScreen(item, vm, onClose, onEnded)
     } else {
         PlayerScreen(item, vm, onClose, onEnded,
-            onFallback = if (engine == 0) ({ useVlc = true }) else null)
+            // Çevrimdışı öğede VLC'ye düşme (kaynak URL'i offline erişilemez).
+            onFallback = if (!downloaded && engine == 0) ({ useVlc = true }) else null)
     }
 }
 

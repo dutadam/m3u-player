@@ -10,6 +10,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.DownloadDone
+import androidx.compose.material.icons.filled.Downloading
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material.icons.filled.ThumbUp
@@ -41,7 +44,10 @@ fun MovieDetailScreen(
     onFavorite: () -> Unit,
     onRate: (Int) -> Unit,
     onPlay: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    downloadState: Int? = null,
+    onDownload: () -> Unit = {},
+    onRemoveDownload: () -> Unit = {}
 ) {
     var info by remember(channel.id) { mutableStateOf<MovieInfo?>(null) }
     var omdbInfo by remember(channel.id) { mutableStateOf<app.cheesino.core.OmdbInfo?>(null) }
@@ -98,6 +104,23 @@ fun MovieDetailScreen(
                     }
                     IconButton(onClick = { onRate(if (rating == -1) 0 else -1) }) {
                         Icon(Icons.Default.ThumbDown, "Beğenme", tint = if (rating == -1) Live else TextDim)
+                    }
+                    // Çevrimdışı indirme — duruma göre indir / iniyor / indirildi.
+                    when (downloadState) {
+                        androidx.media3.exoplayer.offline.Download.STATE_COMPLETED ->
+                            IconButton(onClick = onRemoveDownload) {
+                                Icon(Icons.Default.DownloadDone, "İndirildi — kaldır", tint = Accent)
+                            }
+                        androidx.media3.exoplayer.offline.Download.STATE_DOWNLOADING,
+                        androidx.media3.exoplayer.offline.Download.STATE_QUEUED,
+                        androidx.media3.exoplayer.offline.Download.STATE_RESTARTING ->
+                            IconButton(onClick = onRemoveDownload) {
+                                Icon(Icons.Default.Downloading, "İniyor — iptal", tint = Accent2)
+                            }
+                        else ->
+                            IconButton(onClick = onDownload) {
+                                Icon(Icons.Default.Download, "Çevrimdışı indir", tint = TextDim)
+                            }
                     }
                 }
 
