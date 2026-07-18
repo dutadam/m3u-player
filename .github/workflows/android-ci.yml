@@ -1,0 +1,45 @@
+name: Android CI
+
+# apps/android her değiştiğinde APK'yı derler → "derleniyor" garantisini kalıcılaştırır.
+on:
+  push:
+    branches: [ main, "claude/**" ]
+    paths: [ "apps/android/**", ".github/workflows/android-ci.yml" ]
+  pull_request:
+    paths: [ "apps/android/**", ".github/workflows/android-ci.yml" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/android
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JDK 17 kur
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Android SDK kur
+        uses: android-actions/setup-android@v3
+
+      - name: gradlew çalıştırılabilir yap
+        run: chmod +x gradlew
+
+      - name: Debug APK derle
+        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
+
+      - name: APK'yı yükle (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: cheesino-debug-apk
+          path: apps/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
