@@ -29,5 +29,5 @@ enum class ProFeature(val title: String, val desc: String) {
     MULTI_VIEW("Çoklu Ekran", "2–6 yayını aynı anda izle"),
     EPG_GRID("Zaman Çizelgesi", "Çok kanallı rehber ızgarası"),
     MULTI_SOURCE("Sınırsız Kaynak", "Birden çok kaynağı kaydet ve geçiş yap"),
-    RECORDING("Kayıt", "Canlı yayını kaydet (yakında)")
+    RECORDING("Kayıt", "Canlı yayını kaydet ve sonra izle")
 }
