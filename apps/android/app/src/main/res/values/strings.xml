@@ -2,4 +2,5 @@
 <resources>
     <string name="app_name">cheesino</string>
     <string name="download_channel_name">İndirmeler</string>
+    <string name="record_channel_name">Kayıt</string>
 </resources>

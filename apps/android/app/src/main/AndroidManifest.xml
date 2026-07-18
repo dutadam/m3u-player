@@ -73,6 +73,12 @@
             </intent-filter>
         </service>
 
+        <!-- Canlı yayın kaydı servisi (ön plan, veri senkron) -->
+        <service
+            android:name=".playback.RecordingService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
         <!-- Program hatırlatıcı — alarm tetikleyince bildirim gösterir -->
         <receiver android:name=".data.ReminderReceiver" android:exported="false" />
         <!-- Yeniden başlatmada hatırlatıcıları yeniden kur -->

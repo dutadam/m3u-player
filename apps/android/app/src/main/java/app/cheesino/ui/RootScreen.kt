@@ -64,10 +64,13 @@ fun RootScreen(vm: LibraryViewModel) {
     val isPro by vm.isPro.collectAsStateWithLifecycle()
     val proPrice by vm.proPrice.collectAsStateWithLifecycle()
     val downloads by vm.downloads.collectAsStateWithLifecycle()
+    val recordings by vm.recordings.collectAsStateWithLifecycle()
+    val recordingActive by vm.recordingActive.collectAsStateWithLifecycle()
     val activity = LocalContext.current as? android.app.Activity
     var paywallFor by remember { mutableStateOf<app.cheesino.data.ProFeature?>(null) }
     var showPaywall by remember { mutableStateOf(false) }
     var showDownloads by remember { mutableStateOf(false) }
+    var showRecordings by remember { mutableStateOf(false) }
     // Sekme uygulamaya geri dönüşte/ekran dönmede korunur (ana sayfaya atmasın).
     var tabOrdinal by rememberSaveable { mutableIntStateOf(0) }
     val tab = Tab.entries[tabOrdinal]
@@ -230,7 +233,8 @@ fun RootScreen(vm: LibraryViewModel) {
     AnimatedVisibility(visible = showSettings, enter = fadeIn(), exit = fadeOut()) {
         SettingsScreen(vm, onClose = { showSettings = false }, onSignedOut = { showSettings = false },
             onUpgrade = { showSettings = false; paywallFor = null; showPaywall = true },
-            onOpenDownloads = { showSettings = false; showDownloads = true })
+            onOpenDownloads = { showSettings = false; showDownloads = true },
+            onOpenRecordings = { showSettings = false; showRecordings = true })
     }
 
     // İndirilenler — overlay (fade).
@@ -241,6 +245,19 @@ fun RootScreen(vm: LibraryViewModel) {
             onRemove = { vm.removeDownload(it) },
             onRefresh = { vm.refreshDownloads() },
             onClose = { showDownloads = false }
+        )
+    }
+
+    // Kayıtlar — overlay (fade).
+    AnimatedVisibility(visible = showRecordings, enter = fadeIn(), exit = fadeOut()) {
+        RecordingsScreen(
+            recordings = recordings,
+            active = recordingActive,
+            onPlay = { item -> showRecordings = false; playQueue = listOf(item); playIndex = 0 },
+            onDelete = { vm.deleteRecording(it) },
+            onStopActive = { vm.stopRecording() },
+            onRefresh = { vm.refreshRecordings() },
+            onClose = { showRecordings = false }
         )
     }
 

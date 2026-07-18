@@ -30,8 +30,10 @@ import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.PictureInPictureAlt
+import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay10
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -76,6 +78,7 @@ import app.cheesino.data.LibraryViewModel
 import app.cheesino.data.ResumeMark
 import app.cheesino.playback.PlaybackService
 import app.cheesino.ui.theme.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -138,6 +141,9 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
                  onFallback: (() -> Unit)? = null) {
     val context = LocalContext.current
     val activity = context as? Activity
+    // Canlı kayıt (DVR) — tek eşzamanlı kayıt; bu kanal kaydediliyor mu?
+    val recording by vm.recordingActive.collectAsStateWithLifecycle()
+    val recordingThis = item.isLive && recording?.title == item.title
     val audio = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
     val maxVol = remember { audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1) }
 
@@ -361,6 +367,18 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
                             controlsVisible = false
                             runCatching { activity?.enterPictureInPictureMode(PictureInPictureParams.Builder().build()) }
                         }) { Icon(Icons.Default.PictureInPictureAlt, "Küçük ekran", tint = Color.White) }
+                    }
+                    // Canlı kayıt (DVR) — yalnız canlı yayında.
+                    if (item.isLive) {
+                        IconButton(onClick = {
+                            if (recordingThis) { vm.stopRecording(); hud = "Kayıt durduruldu" }
+                            else if (recording == null) { vm.startRecording(item.url, item.title); hud = "● Kaydediliyor" }
+                            else { hud = "Zaten kayıt var" }
+                            controlsVisible = true
+                        }) {
+                            Icon(if (recordingThis) Icons.Default.Stop else Icons.Default.FiberManualRecord,
+                                "Kaydet", tint = if (recordingThis) Live else Color.White)
+                        }
                     }
                     IconButton(onClick = {
                         resizeIdx = (resizeIdx + 1) % resizeModes.size

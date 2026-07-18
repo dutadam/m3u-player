@@ -28,7 +28,8 @@ import app.cheesino.ui.theme.*
 
 @Composable
 fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () -> Unit,
-                   onUpgrade: () -> Unit = {}, onOpenDownloads: () -> Unit = {}) {
+                   onUpgrade: () -> Unit = {}, onOpenDownloads: () -> Unit = {},
+                   onOpenRecordings: () -> Unit = {}) {
     val isPro by vm.isPro.collectAsStateWithLifecycle()
     var ua by remember { mutableStateOf(vm.userAgent) }
     var pin by remember { mutableStateOf("") }
@@ -173,6 +174,14 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
             Button(onClick = onOpenDownloads, modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Ground)
             ) { Text("İndirilenleri Aç", color = Accent, fontWeight = FontWeight.Bold) }
+        }
+
+        Section("Kayıtlar") {
+            Text("Canlı yayını oynatıcıdan kaydet; kayıtları buradan izle/sil.",
+                color = TextDim, fontSize = 13.sp)
+            Button(onClick = onOpenRecordings, modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Ground)
+            ) { Text("Kayıtları Aç", color = Accent, fontWeight = FontWeight.Bold) }
         }
 
         Section("Veriler") {

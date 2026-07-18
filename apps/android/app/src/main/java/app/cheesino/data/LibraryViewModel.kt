@@ -129,6 +129,15 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     fun downloadState(id: String): Int? = downloadsRepo.stateOf(id)
     fun isDownloaded(id: String): Boolean = downloadsRepo.isCompleted(id)
 
+    // ---- Canlı kayıt (DVR) ----
+    private val recordingsRepo = RecordingsRepository(app)
+    val recordingActive: StateFlow<app.cheesino.playback.ActiveRecording?> = recordingsRepo.active
+    val recordings: StateFlow<List<java.io.File>> = recordingsRepo.recordings
+    fun startRecording(url: String, title: String) = recordingsRepo.start(url, title)
+    fun stopRecording() = recordingsRepo.stop()
+    fun refreshRecordings() = recordingsRepo.refresh()
+    fun deleteRecording(file: java.io.File) = recordingsRepo.delete(file)
+
     // ---- Program hatırlatıcıları ----
     fun isReminded(ch: Channel, e: EpgEntry) = Reminders.isSet(getApplication(), ch.id, e.start)
     fun toggleReminder(ch: Channel, e: EpgEntry) {
