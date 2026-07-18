@@ -24,9 +24,10 @@ import java.util.concurrent.TimeUnit
 data class ActiveRecording(val title: String, val path: String, val startedAt: Long)
 
 /**
- * Canlı yayın kaydı — yayının bayt akışını doğrudan bir dosyaya (`.ts`) yazar. Doğrudan
- * MPEG-TS / progressive yayınlar için gerçek DVR (çoğu Xtream `.ts` canlı akışı böyle). HLS
- * (`.m3u8`) canlı yayın segment muxing gerektirir → kapsam dışı (kullanıcıya bildirilir).
+ * Canlı yayın kaydı — iki kol:
+ *  - Doğrudan MPEG-TS / progressive: yayının bayt akışını dosyaya (`.ts`) döker.
+ *  - HLS (`.m3u8`): [HlsRecorder] ile playlist izlenir, segmentler (AES-128 çözülerek) tek
+ *    `.ts` dosyasına eklenir. (fMP4/CMAF segmentli HLS kapsam dışı.)
  *
  * Ön plan servisidir: uygulama arka planda/kapalıyken de kaydı sürdürür; bildirimde "Durdur".
  */
@@ -78,23 +79,30 @@ class RecordingService : Service() {
         ServiceCompat.startForeground(this, NOTIF_ID, buildNotification(title), fgType)
 
         stop = false
+        val isHls = url.substringBefore('?').lowercase().endsWith(".m3u8") || url.contains(".m3u8")
         worker = Thread {
             val client = OkHttpClient.Builder()
                 .connectTimeout(20, TimeUnit.SECONDS)
                 .readTimeout(0, TimeUnit.SECONDS)   // canlı akış → okuma zaman aşımı yok
                 .build()
             try {
-                client.newCall(Request.Builder().url(url).build()).execute().use { resp ->
-                    val body = resp.body ?: return@use
-                    body.byteStream().use { input ->
-                        file.outputStream().use { output ->
-                            val buf = ByteArray(64 * 1024)
-                            while (!stop) {
-                                val n = input.read(buf)
-                                if (n < 0) break
-                                output.write(buf, 0, n)
+                if (isHls) {
+                    // HLS: playlist'i izleyip segmentleri tek .ts dosyasına ekle (AES-128 çözerek).
+                    HlsRecorder.record(client, url, file) { stop }
+                } else {
+                    // Doğrudan TS/progressive: bayt akışını dosyaya dök.
+                    client.newCall(Request.Builder().url(url).build()).execute().use { resp ->
+                        val body = resp.body ?: return@use
+                        body.byteStream().use { input ->
+                            file.outputStream().use { output ->
+                                val buf = ByteArray(64 * 1024)
+                                while (!stop) {
+                                    val n = input.read(buf)
+                                    if (n < 0) break
+                                    output.write(buf, 0, n)
+                                }
+                                output.flush()
                             }
-                            output.flush()
                         }
                     }
                 }
