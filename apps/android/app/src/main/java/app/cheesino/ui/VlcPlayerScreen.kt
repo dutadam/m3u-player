@@ -4,19 +4,31 @@ import android.app.Activity
 import android.content.Context
 import android.net.Uri
 import android.view.WindowManager
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.Audiotrack
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FiberManualRecord
+import androidx.compose.material.icons.filled.Forward10
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Replay10
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -27,16 +39,20 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.cheesino.data.LibraryViewModel
 import app.cheesino.data.ResumeMark
 import app.cheesino.ui.theme.*
@@ -73,8 +89,13 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
     var failed by remember(item.id) { mutableStateOf(false) }
     var speed by remember(item.id) { mutableStateOf(1f) }
     var arIdx by remember(item.id) { mutableStateOf(0) }
+    var locked by remember { mutableStateOf(false) }
     var hud by remember { mutableStateOf<String?>(null) }
     val ratios = remember { listOf<Pair<String, String?>>("Oto" to null, "16:9" to "16:9", "4:3" to "4:3") }
+
+    // Canlı kayıt (DVR) — tek eşzamanlı kayıt; bu yayın kaydediliyor mu?
+    val recording by vm.recordingActive.collectAsStateWithLifecycle()
+    val recordingThis = item.isLive && recording?.title == item.title
 
     val audioMgr = remember { context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager }
     val maxVol = remember { audioMgr.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC).coerceAtLeast(1) }
@@ -155,11 +176,11 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
 
     Box(
         Modifier.fillMaxSize().background(Color.Black)
-            .pointerInput(item.id) {
+            .pointerInput(item.id, locked) {
                 detectTapGestures(
-                    onTap = { controlsVisible = !controlsVisible },
+                    onTap = { controlsVisible = if (locked) true else !controlsVisible },
                     onDoubleTap = { off ->
-                        if (!item.isLive && lengthMs > 0) {
+                        if (!locked && !item.isLive && lengthMs > 0) {
                             val fwd = off.x > size.width / 2
                             val np = (mediaPlayer.time + if (fwd) 10_000 else -10_000).coerceIn(0, lengthMs)
                             mediaPlayer.time = np; positionMs = np
@@ -168,7 +189,8 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
                     }
                 )
             }
-            .pointerInput(item.id) {
+            .pointerInput(item.id, locked) {
+                if (locked) return@pointerInput
                 var leftSide = false
                 var startBright = 0f
                 var startVol = 0
@@ -218,77 +240,117 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
                 modifier = Modifier.padding(top = 4.dp))
         }
 
-        if (controlsVisible) {
-            // Üst bar — geri + başlık + VLC rozeti.
-            Row(Modifier.align(Alignment.TopStart).fillMaxWidth().statusBarsPadding()
-                .background(Color.Black.copy(alpha = 0.35f)).padding(horizontal = 6.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { saveNow(); onClose() }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Kapat", tint = Color.White)
-                }
-                Text(item.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                Text("VLC", color = Ground, fontSize = 10.sp, fontWeight = FontWeight.Black,
-                    modifier = Modifier.padding(end = 4.dp)
-                        .background(Accent, RoundedCornerShape(6.dp)).padding(horizontal = 6.dp, vertical = 2.dp))
-                if (!item.isLive && lengthMs > 0) {
-                    Text("${speed}x", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp,
-                        modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable {
-                            speed = when (speed) { 1f -> 1.25f; 1.25f -> 1.5f; 1.5f -> 2f; 2f -> 0.5f; else -> 1f }
-                            runCatching { mediaPlayer.rate = speed }
-                            controlsVisible = true
-                        }.padding(horizontal = 8.dp, vertical = 6.dp))
-                }
-                Text(ratios[arIdx].first, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp,
-                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable {
-                        arIdx = (arIdx + 1) % ratios.size
-                        runCatching { mediaPlayer.setAspectRatio(ratios[arIdx].second); mediaPlayer.scale = 0f }
-                        hud = "En-boy · ${ratios[arIdx].first}"; controlsVisible = true
-                    }.padding(horizontal = 8.dp, vertical = 6.dp))
-                IconButton(onClick = { showAudio = true }) {
-                    Icon(Icons.Default.Audiotrack, "Ses parçası", tint = Color.White)
-                }
-                IconButton(onClick = { showSubs = true }) {
-                    Icon(Icons.Default.Subtitles, "Altyazı", tint = Color.White)
-                }
-            }
-
-            // Orta — oynat/duraklat.
-            IconButton(
-                onClick = {
-                    if (isPlaying) mediaPlayer.pause() else mediaPlayer.play()
-                    controlsVisible = true
-                },
-                modifier = Modifier.align(Alignment.Center).size(64.dp)
-                    .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(32.dp))
-            ) {
-                Icon(if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, "Oynat/Duraklat",
-                    tint = Color.White, modifier = Modifier.size(38.dp))
-            }
-
-            // Alt — ara çubuğu (yalnız VOD).
-            if (!item.isLive && lengthMs > 0) {
-                Column(Modifier.align(Alignment.BottomStart).fillMaxWidth()
-                    .background(Color.Black.copy(alpha = 0.35f)).navigationBarsPadding()
-                    .padding(horizontal = 12.dp, vertical = 8.dp)) {
-                    val frac = if (scrubbing) scrubValue
-                        else (positionMs.toFloat() / lengthMs).coerceIn(0f, 1f)
-                    Slider(
-                        value = frac,
-                        onValueChange = { scrubbing = true; scrubValue = it },
-                        onValueChangeFinished = {
-                            mediaPlayer.time = (scrubValue * lengthMs).toLong()
-                            positionMs = (scrubValue * lengthMs).toLong()
-                            scrubbing = false
-                        },
-                        colors = SliderDefaults.colors(thumbColor = Accent, activeTrackColor = Accent)
-                    )
-                    Row(Modifier.fillMaxWidth()) {
-                        Text(fmtTime(if (scrubbing) (scrubValue * lengthMs).toLong() else positionMs),
-                            color = Color.White, fontSize = 12.sp)
-                        Spacer(Modifier.weight(1f))
-                        Text(fmtTime(lengthMs), color = Color.White, fontSize = 12.sp)
+        // Tam kontroller — kilitli değilken. Üstte yalnız Geri + Kilit; her şey altta (ExoPlayer ile aynı düzen).
+        AnimatedVisibility(visible = controlsVisible && !locked, enter = fadeIn(), exit = fadeOut()) {
+            Box(Modifier.fillMaxSize().background(
+                Brush.verticalGradient(
+                    0f to Color.Black.copy(alpha = 0.55f),
+                    0.25f to Color.Black.copy(alpha = 0.15f),
+                    0.7f to Color.Black.copy(alpha = 0.15f),
+                    1f to Color.Black.copy(alpha = 0.75f)
+                )
+            )) {
+                // Üst bar: Geri (sol) + başlık + VLC rozeti + Kilit (sağ).
+                Row(
+                    Modifier.align(Alignment.TopStart).fillMaxWidth().statusBarsPadding().padding(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = { saveNow(); onClose() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Kapat", tint = Color.White)
                     }
+                    Text(item.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    Text("VLC", color = Ground, fontSize = 10.sp, fontWeight = FontWeight.Black,
+                        modifier = Modifier.padding(end = 4.dp)
+                            .background(Accent, RoundedCornerShape(6.dp)).padding(horizontal = 6.dp, vertical = 2.dp))
+                    IconButton(onClick = { locked = true; hud = "🔒 Kilitli"; controlsVisible = true }) {
+                        Icon(Icons.Default.Lock, "Kilitle", tint = Color.White)
+                    }
+                }
+
+                // Merkez oynat/duraklat + ±10 — büyük dokunma hedefleri.
+                Row(Modifier.align(Alignment.Center), verticalAlignment = Alignment.CenterVertically) {
+                    if (!item.isLive && lengthMs > 0) VlcCircleBtn(Icons.Default.Replay10, 52.dp) {
+                        val np = (mediaPlayer.time - 10_000).coerceIn(0, lengthMs)
+                        mediaPlayer.time = np; positionMs = np; hud = "«  -10 sn"; controlsVisible = true
+                    }
+                    Spacer(Modifier.width(40.dp))
+                    VlcCircleBtn(if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, 78.dp) {
+                        if (isPlaying) mediaPlayer.pause() else mediaPlayer.play()
+                        controlsVisible = true
+                    }
+                    Spacer(Modifier.width(40.dp))
+                    if (!item.isLive && lengthMs > 0) VlcCircleBtn(Icons.Default.Forward10, 52.dp) {
+                        val np = (mediaPlayer.time + 10_000).coerceIn(0, lengthMs)
+                        mediaPlayer.time = np; positionMs = np; hud = "»  +10 sn"; controlsVisible = true
+                    }
+                }
+
+                // Alt: kayan kontrol şeridi + seekbar/canlı — hepsi parmak bölgesinde.
+                Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().navigationBarsPadding()
+                    .padding(horizontal = 12.dp, vertical = 8.dp)) {
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        VlcCtrlChip(Icons.Default.AspectRatio, ratios[arIdx].first) {
+                            arIdx = (arIdx + 1) % ratios.size
+                            runCatching { mediaPlayer.setAspectRatio(ratios[arIdx].second); mediaPlayer.scale = 0f }
+                            hud = "En-boy · ${ratios[arIdx].first}"; controlsVisible = true
+                        }
+                        if (!item.isLive && lengthMs > 0) VlcCtrlChip(Icons.Default.Speed, "${speed}×") {
+                            speed = when (speed) { 1f -> 1.25f; 1.25f -> 1.5f; 1.5f -> 2f; 2f -> 0.75f; else -> 1f }
+                            runCatching { mediaPlayer.rate = speed }; hud = "Hız ${speed}×"; controlsVisible = true
+                        }
+                        VlcCtrlChip(Icons.Default.Audiotrack, "Ses") { showAudio = true }
+                        VlcCtrlChip(Icons.Default.Subtitles, "Altyazı") { showSubs = true }
+                        if (item.isLive) VlcCtrlChip(
+                            if (recordingThis) Icons.Default.Stop else Icons.Default.FiberManualRecord,
+                            if (recordingThis) "Durdur" else "Kaydet",
+                            tint = if (recordingThis) Live else Color.White
+                        ) {
+                            if (recordingThis) { vm.stopRecording(); hud = "Kayıt durduruldu" }
+                            else if (recording == null) { vm.startRecording(item.url, item.title); hud = "● Kaydediliyor" }
+                            else { hud = "Zaten kayıt var" }
+                            controlsVisible = true
+                        }
+                    }
+                    if (item.isLive) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(8.dp).clip(RoundedCornerShape(4.dp)).background(Live))
+                            Text(" CANLI", color = Live, fontWeight = FontWeight.Black, fontSize = 13.sp)
+                        }
+                    } else if (lengthMs > 0) {
+                        val frac = if (scrubbing) scrubValue
+                            else (positionMs.toFloat() / lengthMs).coerceIn(0f, 1f)
+                        Slider(
+                            value = frac,
+                            onValueChange = { scrubbing = true; scrubValue = it; controlsVisible = true },
+                            onValueChangeFinished = {
+                                mediaPlayer.time = (scrubValue * lengthMs).toLong()
+                                positionMs = (scrubValue * lengthMs).toLong()
+                                scrubbing = false
+                            },
+                            colors = SliderDefaults.colors(thumbColor = Accent, activeTrackColor = Accent,
+                                inactiveTrackColor = Color.White.copy(alpha = 0.3f))
+                        )
+                        Row(Modifier.fillMaxWidth()) {
+                            Text(fmtTime(if (scrubbing) (scrubValue * lengthMs).toLong() else positionMs),
+                                color = Color.White, fontSize = 12.sp)
+                            Spacer(Modifier.weight(1f))
+                            Text(fmtTime(lengthMs), color = Color.White, fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Kilitliyken: yalnız kilit-aç butonu (kazara dokunuş korunur).
+        AnimatedVisibility(visible = controlsVisible && locked, enter = fadeIn(), exit = fadeOut()) {
+            Box(Modifier.fillMaxSize()) {
+                Box(Modifier.align(Alignment.Center)) {
+                    VlcCircleBtn(Icons.Default.LockOpen, 56.dp) { locked = false; hud = "🔓 Kilit açıldı"; controlsVisible = true }
                 }
             }
         }
@@ -341,6 +403,29 @@ private fun SubtitleSheet(mediaPlayer: MediaPlayer, onClose: () -> Unit) {
             if (tracks.none { it.id >= 0 }) Text("Bu yayında altyazı yok.", color = TextMute, fontSize = 12.sp,
                 modifier = Modifier.padding(vertical = 8.dp))
         }
+    }
+}
+
+/** Yuvarlak transport butonu (oynat/duraklat, ±10, kilit-aç). */
+@Composable
+private fun VlcCircleBtn(icon: ImageVector, size: Dp, onClick: () -> Unit) {
+    Box(
+        Modifier.size(size).clip(RoundedCornerShape(size / 2)).background(Color.Black.copy(alpha = 0.4f))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) { Icon(icon, null, tint = Color.White, modifier = Modifier.size(size * 0.55f)) }
+}
+
+/** Alt kontrol şeridi pill'i — ikon + etiket, yarı saydam cam yüzey. */
+@Composable
+private fun VlcCtrlChip(icon: ImageVector, label: String, tint: Color = Color.White, onClick: () -> Unit) {
+    Row(
+        Modifier.clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = 0.12f))
+            .clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, label, tint = tint, modifier = Modifier.size(18.dp))
+        Text(label, color = tint, fontSize = 12.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(start = 6.dp))
     }
 }
 

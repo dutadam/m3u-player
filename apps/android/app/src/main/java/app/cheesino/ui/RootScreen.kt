@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -56,6 +57,7 @@ import app.cheesino.ui.theme.Glass
 import app.cheesino.ui.theme.GlassBorder
 import app.cheesino.ui.theme.Ground
 import app.cheesino.ui.theme.LineSoft
+import app.cheesino.ui.theme.TextHi
 import app.cheesino.ui.theme.TextMute
 
 private enum class Tab(val label: String, val icon: ImageVector) {
@@ -199,7 +201,8 @@ fun RootScreen(vm: LibraryViewModel) {
 
                         // CANLI — üstte TV · Rehber · Spor · Çoklu segmenti.
                         Tab.LIVE -> Column(Modifier.fillMaxSize()) {
-                            SegmentBar(listOf("Kanallar", "Rehber", "Spor", "Çoklu"), liveSeg) { liveSeg = it }
+                            HubHeader("Canlı")
+                            PillTabs(listOf("Kanallar", "Rehber", "Spor", "Çoklu"), liveSeg) { liveSeg = it }
                             when (liveSeg) {
                                 0 -> LiveScreen(state, epg, playChannel,
                                     onGuide = { liveSeg = 1 },
@@ -225,12 +228,13 @@ fun RootScreen(vm: LibraryViewModel) {
                             }
                         }
 
-                        // KATALOG — üstte Filmler/Diziler + arama, altında Kategori/Mood filtresi.
+                        // KATALOG — başlık + Filmler/Diziler segmenti + arama, altında Kategori/Mood filtresi.
                         Tab.CATALOG -> Column(Modifier.fillMaxSize()) {
-                            SegmentBar(listOf("Filmler", "Diziler"), catSeg, onSearch = { showSearch = true }) { catSeg = it; catGenre = 0 }
+                            HubHeader("Katalog", onSearch = { showSearch = true })
+                            PillTabs(listOf("Filmler", "Diziler"), catSeg) { catSeg = it; catGenre = 0 }
                             val genreItems = remember(discover.genres) { listOf("Tümü") + discover.genres.take(14) }
                             if (genreItems.size > 1)
-                                SegmentBar(genreItems, catGenre.coerceIn(0, genreItems.lastIndex), topInset = false) { catGenre = it }
+                                GenreChips(genreItems, catGenre.coerceIn(0, genreItems.lastIndex)) { catGenre = it }
                             val g = genreItems.getOrNull(catGenre)?.takeIf { catGenre > 0 }
                             when {
                                 g == null && catSeg == 0 -> MoviesScreen(state, discover.movieRails, onContent)
@@ -246,7 +250,8 @@ fun RootScreen(vm: LibraryViewModel) {
 
                         // KİTAPLIĞIM — İndirilenler · Kayıtlar · Listem.
                         Tab.LIBRARY -> Column(Modifier.fillMaxSize()) {
-                            SegmentBar(listOf("İndirilenler", "Kayıtlar", "Listem"), libSeg) { libSeg = it }
+                            HubHeader("Kitaplığım")
+                            PillTabs(listOf("İndirilenler", "Kayıtlar", "Listem"), libSeg) { libSeg = it }
                             when (libSeg) {
                                 0 -> DownloadsScreen(downloads = downloads, onPlay = { playOne(it) },
                                     onRemove = { vm.removeDownload(it) }, onRefresh = { vm.refreshDownloads() }, onClose = {}, embedded = true)
@@ -355,34 +360,67 @@ private fun FilteredSeriesGrid(items: List<SeriesRef>, onTap: (SeriesRef) -> Uni
     }
 }
 
-/** Sekme-içi segment çubuğu — aktif segment accent pill; opsiyonel sağda arama ikonu (Katalog). */
+/** Hub başlığı — büyük başlık + opsiyonel arama ikonu; sekmeler bunun altında yer alır. */
 @Composable
-private fun SegmentBar(items: List<String>, selected: Int, onSearch: (() -> Unit)? = null,
-                      topInset: Boolean = true, onSelect: (Int) -> Unit) {
+private fun HubHeader(title: String, onSearch: (() -> Unit)? = null) {
     Row(
-        Modifier.fillMaxWidth().then(if (topInset) Modifier.statusBarsPadding() else Modifier)
-            .padding(start = 14.dp, end = 4.dp, top = if (topInset) 8.dp else 2.dp, bottom = 6.dp),
+        Modifier.fillMaxWidth().statusBarsPadding().padding(start = 18.dp, end = 6.dp, top = 12.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            Modifier.weight(1f).horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items.forEachIndexed { i, label ->
-                val on = i == selected
-                Text(
-                    label,
-                    color = if (on) Ground else TextMute,
-                    fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
-                    fontSize = 13.sp,
-                    modifier = Modifier.clip(RoundedCornerShape(18.dp))
-                        .background(if (on) Accent else Glass)
-                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onSelect(i) }
-                        .padding(horizontal = 14.dp, vertical = 8.dp)
-                )
-            }
+        Text(title, color = TextHi, fontWeight = FontWeight.Black, fontSize = 24.sp, modifier = Modifier.weight(1f))
+        if (onSearch != null) IconButton(onClick = onSearch) { Icon(Icons.Default.Search, "Ara", tint = TextHi) }
+    }
+}
+
+/** Birincil segmentli kontrol — tek cam kapsül içinde eşit genişlikli sekmeler; aktif accent pill. */
+@Composable
+private fun PillTabs(items: List<String>, selected: Int, onSelect: (Int) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+            .clip(RoundedCornerShape(22.dp)).background(Glass)
+            .border(1.dp, GlassBorder, RoundedCornerShape(22.dp)).padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        items.forEachIndexed { i, label ->
+            val on = i == selected
+            Text(
+                label,
+                color = if (on) Ground else TextMute,
+                fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
+                fontSize = 13.sp,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                modifier = Modifier.weight(1f).clip(RoundedCornerShape(18.dp))
+                    .background(if (on) Accent else Color.Transparent)
+                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onSelect(i) }
+                    .padding(vertical = 9.dp)
+            )
         }
-        if (onSearch != null) IconButton(onClick = onSearch) { Icon(Icons.Default.Search, "Ara", tint = TextMute) }
+    }
+}
+
+/** İkincil kategori/mood filtresi — yatay kayan hafif çerçeveli küçük çipler. */
+@Composable
+private fun GenreChips(items: List<String>, selected: Int, onSelect: (Int) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
+            .padding(start = 16.dp, end = 12.dp, bottom = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items.forEachIndexed { i, label ->
+            val on = i == selected
+            Text(
+                label,
+                color = if (on) Accent else TextMute,
+                fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
+                fontSize = 12.sp,
+                modifier = Modifier.clip(RoundedCornerShape(14.dp))
+                    .then(if (on) Modifier.background(Accent.copy(alpha = 0.16f)) else Modifier)
+                    .border(1.dp, if (on) Accent else GlassBorder, RoundedCornerShape(14.dp))
+                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onSelect(i) }
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+            )
+        }
     }
 }
 
