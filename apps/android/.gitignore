@@ -7,6 +7,8 @@ captures/
 local.properties
 *.iml
 .idea/
-# İmza anahtarları — asla depoya girmez
+# İmza anahtarları — asla depoya girmez (YAYIN anahtarları)
 *.jks
 *.keystore
+# İstisna: ortak sabit DEBUG anahtarı (Firebase/Google Sign-In için kararlı SHA-1). Debug'a özel.
+!app/debug.keystore

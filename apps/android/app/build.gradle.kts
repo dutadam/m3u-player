@@ -17,6 +17,16 @@ android {
         versionName = "0.1.0"
     }
 
+    signingConfigs {
+        // Ortak sabit debug anahtarı — CI ve yerel aynı SHA-1 ile imzalar → Google Sign-In
+        // (Firebase) her yerde aynı. YALNIZ DEBUG; yayın anahtarı değil.
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
     buildTypes {
         release {
             isMinifyEnabled = false
