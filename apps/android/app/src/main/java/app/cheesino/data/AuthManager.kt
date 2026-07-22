@@ -3,7 +3,8 @@ package app.cheesino.data
 import android.content.Context
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import androidx.credentials.exceptions.NoCredentialException
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
@@ -45,16 +46,18 @@ class AuthManager(context: Context) {
         val webId = webClientId(context)
             ?: return Result.failure(IllegalStateException("Google giriş henüz yapılandırılmadı (konsolda etkinleştir)."))
         return try {
-            val option = GetGoogleIdOption.Builder()
-                .setServerClientId(webId)
-                .setFilterByAuthorizedAccounts(false)
-                .build()
+            // "Sign in with Google" hesap seçici akışı — düğmeye basınca her zaman hesap listesi
+            // açar. (GetGoogleIdOption/One Tap, yetkili hesap yoksa "Cannot find a matching
+            // credential: 16" verir; bu akış o hatayı yaşamaz.)
+            val option = GetSignInWithGoogleOption.Builder(webId).build()
             val request = GetCredentialRequest.Builder().addCredentialOption(option).build()
             val result = CredentialManager.create(context).getCredential(context, request)
             val googleCred = GoogleIdTokenCredential.createFrom(result.credential.data)
             val firebaseCred = GoogleAuthProvider.getCredential(googleCred.idToken, null)
             auth.signInWithCredential(firebaseCred).await()
             Result.success(Unit)
+        } catch (e: NoCredentialException) {
+            Result.failure(IllegalStateException("Cihazda Google hesabı bulunamadı. Ayarlar'dan bir Google hesabı ekleyip tekrar deneyin."))
         } catch (e: Exception) {
             Result.failure(e)
         }
