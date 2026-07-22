@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import app.cheesino.core.Channel
 import app.cheesino.core.SeriesRef
-import app.cheesino.core.baseTitle
+import app.cheesino.core.railKey
 import app.cheesino.data.LibraryState
 import app.cheesino.data.Recommender
 import app.cheesino.data.ResumeMark
@@ -60,8 +60,8 @@ fun HomeScreen(
 ) {
     fun clean(list: List<Channel>): List<Channel> {
         val seen = HashSet<String>()
-        // Aynı filmin 4K/FHD/HD/HEVC gibi varyantları tek posterde toplanır.
-        return list.filter { it.logo != null && seen.add(baseTitle(it.name)) }
+        // Aynı filmin 4K/FHD/HD/HEVC ve yıl varyantları ("Film 2023" ↔ "Film") tek posterde toplanır.
+        return list.filter { it.logo != null && seen.add(railKey(it.name)) }
     }
 
     // Bunların hepsi ucuz (filter) — ağır iş (öneri/raylar) arka planda önceden hesaplandı.

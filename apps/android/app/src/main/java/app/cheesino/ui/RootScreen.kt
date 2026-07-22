@@ -224,13 +224,13 @@ fun RootScreen(vm: LibraryViewModel) {
                                 2 -> SportsScreen(channels = state.live, epg = epg, onPlay = playChannel, onClose = { liveSeg = 0 }, embedded = true)
                                 else -> MultiViewScreen(channels = state.live,
                                     initial = remember { vm.loadMultiView() },
-                                    onSave = { vm.saveMultiView(it) }, onClose = { liveSeg = 0 })
+                                    onSave = { vm.saveMultiView(it) })
                             }
                         }
 
                         // KATALOG — başlık + Filmler/Diziler segmenti + arama, altında Kategori/Mood filtresi.
                         Tab.CATALOG -> Column(Modifier.fillMaxSize()) {
-                            HubHeader("Katalog", onSearch = { showSearch = true })
+                            HubHeader("Katalog")
                             PillTabs(listOf("Filmler", "Diziler"), catSeg) { catSeg = it; catGenre = 0 }
                             val genreItems = remember(discover.genres) { listOf("Tümü") + discover.genres.take(14) }
                             if (genreItems.size > 1)

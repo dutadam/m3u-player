@@ -15,3 +15,13 @@ fun baseTitle(name: String): String =
         .replace(Regex("\\s+"), " ")
         .trim()
         .lowercase()
+
+private val TRAILING_YEAR = Regex("\\b(19|20)\\d{2}\\b")
+
+/**
+ * Vitrin/ray tekilleştirme anahtarı — [baseTitle]'a ek olarak yıl etiketini de atar
+ * ("Film 2023" ↔ "Film"). YALNIZ görüntü rayları için; global katalog dedup'unda kullanma
+ * (yoksa "Blade Runner" ile "Blade Runner 2049" birleşip biri gizlenir).
+ */
+fun railKey(name: String): String =
+    baseTitle(name).replace(TRAILING_YEAR, " ").replace(Regex("\\s+"), " ").trim()

@@ -44,8 +44,7 @@ private val LAYOUTS = listOf(
 fun MultiViewScreen(
     channels: List<Channel>,
     initial: MultiViewConfig,
-    onSave: (MultiViewConfig) -> Unit,
-    onClose: () -> Unit
+    onSave: (MultiViewConfig) -> Unit
 ) {
     var rows by remember { mutableIntStateOf(initial.rows) }
     var cols by remember { mutableIntStateOf(initial.cols) }
@@ -59,12 +58,11 @@ fun MultiViewScreen(
 
     fun persist() = onSave(MultiViewConfig(rows, cols, slots.toList()))
 
-    Column(Modifier.fillMaxSize().background(Color.Black).statusBarsPadding()) {
-        // Üst bar — kapat + düzen seçici.
-        Row(Modifier.fillMaxWidth().background(Ground).padding(8.dp),
+    Column(Modifier.fillMaxSize().background(Color.Black)) {
+        // Düzen seçici — 2 / 4 / 6. (Segment çubuğu zaten üstte; ayrı başlık/geri gerekmez.)
+        Row(Modifier.fillMaxWidth().background(Ground).padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi) }
-            Text("Çoklu Ekran", color = TextHi, fontWeight = FontWeight.Black, fontSize = 18.sp,
+            Text("Ekran düzeni", color = TextMute, fontWeight = FontWeight.Medium, fontSize = 13.sp,
                 modifier = Modifier.weight(1f))
             LAYOUTS.forEach { (label, r, c) ->
                 val on = r == rows && c == cols
