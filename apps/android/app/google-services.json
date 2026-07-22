@@ -12,7 +12,20 @@
           "package_name": "app.cheesino"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "747524207456-5ikndr4pmc6bvh2vknethp41kle7gpt0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "app.cheesino",
+            "certificate_hash": "2d087e0fffe614ece66765e38077d964d1f714e9"
+          }
+        },
+        {
+          "client_id": "747524207456-bnlp7l3iih5emfnk43eqocap5ussj31r.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAVueU4_q4Ah6f_1UhDKGHNhdvWMPJR_js"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "747524207456-bnlp7l3iih5emfnk43eqocap5ussj31r.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
