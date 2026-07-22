@@ -207,6 +207,44 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
         val next = block(_user.value)
         _user.value = next
         userStore.save(next)
+        pushSync()   // giriş varsa buluta yansıt
+    }
+
+    // ---- Hesap (Google giriş) + cihazlar arası senkron ----
+    private val authManager = AuthManager(app)
+    private val syncRepo = SyncRepository()
+    val authUser: StateFlow<AuthUser?> = authManager.user
+    fun isAuthConfigured(context: android.content.Context) = authManager.isConfigured(context)
+
+    fun signIn(activity: android.app.Activity) {
+        viewModelScope.launch {
+            authManager.signInWithGoogle(activity)
+            pullAndMerge()
+        }
+    }
+    fun signOutAccount() = authManager.signOut()
+
+    /** Yerel veriyi buluta yaz (giriş varsa). */
+    private fun pushSync() {
+        val uid = authManager.currentUid() ?: return
+        viewModelScope.launch { syncRepo.push(uid, _user.value) }
+    }
+
+    /** Girişte buluttaki favori/beğeni/beğenmeme'yi yerelle birleştir (union) ve geri yaz. */
+    private fun pullAndMerge() {
+        val uid = authManager.currentUid() ?: return
+        viewModelScope.launch {
+            syncRepo.pull(uid)?.let { r ->
+                val merged = _user.value.copy(
+                    favorites = _user.value.favorites + r.favorites,
+                    likes = _user.value.likes + r.likes,
+                    dislikes = _user.value.dislikes + r.dislikes
+                )
+                _user.value = merged
+                userStore.save(merged)
+                syncRepo.push(uid, merged)
+            }
+        }
     }
 
     fun isFavorite(id: String) = id in _user.value.favorites

@@ -31,6 +31,9 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
                    onUpgrade: () -> Unit = {}, onOpenDownloads: () -> Unit = {},
                    onOpenRecordings: () -> Unit = {}, embedded: Boolean = false) {
     val isPro by vm.isPro.collectAsStateWithLifecycle()
+    val account by vm.authUser.collectAsStateWithLifecycle()
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val activity = ctx as? android.app.Activity
     var ua by remember { mutableStateOf(vm.userAgent) }
     var pin by remember { mutableStateOf("") }
     var pin2 by remember { mutableStateOf("") }
@@ -46,6 +49,28 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
         Row(Modifier.fillMaxWidth().padding(if (embedded) 16.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
             if (!embedded) IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi) }
             Text(if (embedded) "Hesap" else "Ayarlar", color = TextHi, fontWeight = FontWeight.Black, fontSize = 20.sp)
+        }
+
+        Section("Hesap") {
+            val a = account
+            if (a != null) {
+                Text(a.name ?: a.email ?: "Giriş yapıldı", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                a.email?.let { Text(it, color = TextMute, fontSize = 12.sp) }
+                Text("Favori ve beğeniler cihazlar arası senkron.", color = TextDim, fontSize = 12.sp,
+                    modifier = Modifier.padding(top = 4.dp))
+                Button(onClick = { vm.signOutAccount() }, modifier = Modifier.padding(top = 8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Ground)
+                ) { Text("Çıkış Yap", color = Live, fontWeight = FontWeight.Bold) }
+            } else {
+                Text("Google ile giriş yap → favori/beğeni tüm cihazlarında aynı olsun.",
+                    color = TextDim, fontSize = 13.sp)
+                Button(onClick = { activity?.let { vm.signIn(it) } }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Accent)
+                ) { Text("Google ile Giriş", color = Ground, fontWeight = FontWeight.Bold) }
+                if (!vm.isAuthConfigured(ctx))
+                    Text("Google girişi konsolda etkinleştirilince aktif olur.",
+                        color = TextMute, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
+            }
         }
 
         Section(if (isPro) "cheesino Pro · Aktif" else "cheesino Pro") {
