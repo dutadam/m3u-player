@@ -45,6 +45,10 @@ class RecordingService : Service() {
         /** UI için: şu an kaydedilen yayın (yoksa null). */
         val active: StateFlow<ActiveRecording?> = _active.asStateFlow()
 
+        private val _status = MutableStateFlow<String?>(null)
+        /** Son kayıt durum/hata mesajı (UI'da göster — 0 MB nedenini görmek için). */
+        val status: StateFlow<String?> = _status.asStateFlow()
+
         /** Kayıt dizini (uygulamaya özel, izin gerektirmez). */
         fun dir(context: Context): File =
             File(context.applicationContext.filesDir, "recordings").apply { mkdirs() }
@@ -85,7 +89,10 @@ class RecordingService : Service() {
         ServiceCompat.startForeground(this, NOTIF_ID, buildNotification(title), fgType)
 
         stop = false
-        val isHls = url.substringBefore('?').lowercase().endsWith(".m3u8") || url.contains(".m3u8")
+        // Oynatıcıyla aynı aday-URL çözümünü kullan (http→https, .m3u8 ek) — ham URL çalışmıyorsa.
+        val streamUrl = app.cheesino.core.StreamResolver.candidates(url).firstOrNull()?.url ?: url
+        val isHls = streamUrl.substringBefore('?').lowercase().endsWith(".m3u8") || streamUrl.contains(".m3u8")
+        _status.value = "Bağlanıyor…"
         worker = Thread {
             val client = OkHttpClient.Builder()
                 .connectTimeout(20, TimeUnit.SECONDS)
@@ -97,26 +104,36 @@ class RecordingService : Service() {
             try {
                 if (isHls) {
                     // HLS: playlist'i izleyip segmentleri tek .ts dosyasına ekle (AES-128 çözerek).
-                    HlsRecorder.record(client, url, file) { stop }
+                    _status.value = "HLS kaydı…"
+                    HlsRecorder.record(client, streamUrl, file) { stop }
+                    if (file.length() == 0L && !stop)
+                        _status.value = "HLS segmentleri alınamadı (kaynak engelli/fMP4 olabilir)."
                 } else {
                     // Doğrudan TS/progressive: bayt akışını dosyaya dök.
-                    client.newCall(Request.Builder().url(url).build()).execute().use { resp ->
-                        val body = resp.body ?: return@use
+                    client.newCall(Request.Builder().url(streamUrl).build()).execute().use { resp ->
+                        if (!resp.isSuccessful) {
+                            _status.value = "Sunucu reddetti (HTTP ${resp.code})."
+                            return@use
+                        }
+                        val body = resp.body ?: run { _status.value = "Boş yanıt."; return@use }
+                        var total = 0L
                         body.byteStream().use { input ->
                             file.outputStream().use { output ->
                                 val buf = ByteArray(64 * 1024)
                                 while (!stop) {
                                     val n = input.read(buf)
                                     if (n < 0) break
-                                    output.write(buf, 0, n)
+                                    output.write(buf, 0, n); total += n
+                                    if (total > 0) _status.value = null   // akış başladı, mesaj temiz
                                 }
                                 output.flush()
                             }
                         }
+                        if (total == 0L) _status.value = "Veri gelmedi (kaynak boş/engelli)."
                     }
                 }
-            } catch (_: Exception) {
-                // Ağ/kesinti — dosya o ana kadar yazılanı korur.
+            } catch (e: Exception) {
+                _status.value = "Kayıt hatası: ${e.message ?: "bilinmeyen"}"
             } finally {
                 finishAndStop()
             }

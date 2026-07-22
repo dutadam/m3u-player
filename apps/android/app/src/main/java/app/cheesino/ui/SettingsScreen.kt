@@ -32,6 +32,7 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
                    onOpenRecordings: () -> Unit = {}, embedded: Boolean = false) {
     val isPro by vm.isPro.collectAsStateWithLifecycle()
     val account by vm.authUser.collectAsStateWithLifecycle()
+    val authStatus by vm.authStatus.collectAsStateWithLifecycle()
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val activity = ctx as? android.app.Activity
     var ua by remember { mutableStateOf(vm.userAgent) }
@@ -70,6 +71,10 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
                 if (!vm.isAuthConfigured(ctx))
                     Text("Google girişi konsolda etkinleştirilince aktif olur.",
                         color = TextMute, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
+            }
+            authStatus?.let {
+                Text(it, color = if (it.contains("başarısız")) Live else Accent2,
+                    fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
             }
         }
 

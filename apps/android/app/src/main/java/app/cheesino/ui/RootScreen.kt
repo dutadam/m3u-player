@@ -76,6 +76,7 @@ fun RootScreen(vm: LibraryViewModel) {
     val downloads by vm.downloads.collectAsStateWithLifecycle()
     val recordings by vm.recordings.collectAsStateWithLifecycle()
     val recordingActive by vm.recordingActive.collectAsStateWithLifecycle()
+    val recordingStatus by vm.recordingStatus.collectAsStateWithLifecycle()
     val activity = LocalContext.current as? android.app.Activity
     var paywallFor by remember { mutableStateOf<app.cheesino.data.ProFeature?>(null) }
     var showPaywall by remember { mutableStateOf(false) }
@@ -251,7 +252,8 @@ fun RootScreen(vm: LibraryViewModel) {
                                     onRemove = { vm.removeDownload(it) }, onRefresh = { vm.refreshDownloads() }, onClose = {}, embedded = true)
                                 1 -> RecordingsScreen(recordings = recordings, active = recordingActive,
                                     onPlay = { playOne(it) }, onDelete = { vm.deleteRecording(it) },
-                                    onStopActive = { vm.stopRecording() }, onRefresh = { vm.refreshRecordings() }, onClose = {}, embedded = true)
+                                    onStopActive = { vm.stopRecording() }, onRefresh = { vm.refreshRecordings() },
+                                    onClose = {}, embedded = true, status = recordingStatus)
                                 else -> MyListScreen(state, user, onContent, openSeries, onBack = {}, embedded = true)
                             }
                         }

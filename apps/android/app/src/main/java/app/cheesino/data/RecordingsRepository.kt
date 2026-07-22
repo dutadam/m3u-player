@@ -20,6 +20,9 @@ class RecordingsRepository(context: Context) {
     /** Şu an kaydedilen yayın (yoksa null). */
     val active: StateFlow<ActiveRecording?> = RecordingService.active
 
+    /** Son kayıt durum/hata mesajı. */
+    val status: StateFlow<String?> = RecordingService.status
+
     private val _files = MutableStateFlow<List<File>>(emptyList())
     val recordings: StateFlow<List<File>> = _files.asStateFlow()
 

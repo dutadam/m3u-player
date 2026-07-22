@@ -41,7 +41,8 @@ fun RecordingsScreen(
     onStopActive: () -> Unit,
     onRefresh: () -> Unit,
     onClose: () -> Unit,
-    embedded: Boolean = false
+    embedded: Boolean = false,
+    status: String? = null
 ) {
     LaunchedEffect(Unit) { while (true) { onRefresh(); delay(1500) } }
 
@@ -68,6 +69,11 @@ fun RecordingsScreen(
             }
         }
 
+        status?.let {
+            val err = listOf("hata", "reddetti", "gelmedi", "alınamadı", "Boş").any { k -> it.contains(k) }
+            Text(it, color = if (err) Live else Accent2, fontSize = 12.sp,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp))
+        }
         if (recordings.isEmpty() && active == null) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Henüz kayıt yok.\nCanlı yayında oynatıcıdan ● Kaydet'e dokun.",

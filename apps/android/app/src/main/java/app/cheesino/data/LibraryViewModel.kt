@@ -141,6 +141,7 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     // ---- Canlı kayıt (DVR) ----
     private val recordingsRepo = RecordingsRepository(app)
     val recordingActive: StateFlow<app.cheesino.playback.ActiveRecording?> = recordingsRepo.active
+    val recordingStatus: StateFlow<String?> = recordingsRepo.status
     val recordings: StateFlow<List<java.io.File>> = recordingsRepo.recordings
     fun startRecording(url: String, title: String) = recordingsRepo.start(url, title)
     fun stopRecording() = recordingsRepo.stop()
@@ -214,12 +215,17 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     private val authManager = AuthManager(app)
     private val syncRepo = SyncRepository()
     val authUser: StateFlow<AuthUser?> = authManager.user
+    private val _authStatus = MutableStateFlow<String?>(null)
+    val authStatus: StateFlow<String?> = _authStatus
     fun isAuthConfigured(context: android.content.Context) = authManager.isConfigured(context)
 
     fun signIn(activity: android.app.Activity) {
         viewModelScope.launch {
-            authManager.signInWithGoogle(activity)
-            pullAndMerge()
+            _authStatus.value = "Giriş yapılıyor…"
+            val r = authManager.signInWithGoogle(activity)
+            _authStatus.value = if (r.isSuccess) null
+                else "Giriş başarısız: ${r.exceptionOrNull()?.message ?: "iptal edildi / hata"}"
+            if (r.isSuccess) pullAndMerge()
         }
     }
     fun signOutAccount() = authManager.signOut()
