@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BookmarkBorder
@@ -52,7 +54,9 @@ fun HomeScreen(
     onPlay: (Channel) -> Unit,
     onSeries: (SeriesRef) -> Unit,
     onResume: (ResumeMark) -> Unit,
-    onSearch: () -> Unit
+    onSearch: () -> Unit,
+    genres: List<String> = emptyList(),
+    onGenre: (String) -> Unit = {}
 ) {
     fun clean(list: List<Channel>): List<Channel> {
         val seen = HashSet<String>()
@@ -83,6 +87,8 @@ fun HomeScreen(
             }
         }
         if (featured.isNotEmpty()) item { Hero(featured, onPlay) }
+        // Hero altı hızlı tür filtresi → Katalog'a yönlendirir.
+        if (genres.isNotEmpty()) item { GenreChipRow(genres, onGenre) }
         // Öncelikli raylar üstte.
         item { ResumeRail("Devam Et", continueW, onResume) }
         item { PosterRail("Sana Özel", recommended, onPlay) }
@@ -97,6 +103,23 @@ fun HomeScreen(
         item {
             if (state.visibleSeries.isNotEmpty())
                 SeriesRail("Tüm Diziler", state.visibleSeries.filter { it.cover != null }, onSeries)
+        }
+    }
+}
+
+/** Hero altı hızlı tür çipleri — dokununca Katalog'da o kategoriyi açar. */
+@Composable
+private fun GenreChipRow(genres: List<String>, onGenre: (String) -> Unit) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(genres.take(14)) { g ->
+            Text(
+                g, color = TextHi, fontSize = 13.sp, fontWeight = FontWeight.Medium,
+                modifier = Modifier.clip(RoundedCornerShape(16.dp)).background(Elevated)
+                    .clickable { onGenre(g) }.padding(horizontal = 14.dp, vertical = 8.dp)
+            )
         }
     }
 }

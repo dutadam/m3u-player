@@ -178,7 +178,13 @@ fun RootScreen(vm: LibraryViewModel) {
                     when (t) {
                         Tab.HOME -> HomeScreen(state, user, discover.recommended, discover.movieRails, discover.seriesRails,
                             onContent, openSeries, resumePlay,
-                            onSearch = { showSearch = true })
+                            onSearch = { showSearch = true },
+                            genres = discover.genres,
+                            onGenre = { g ->
+                                tabOrdinal = Tab.CATALOG.ordinal; catSeg = 0
+                                val gi = discover.genres.take(14).indexOf(g)
+                                catGenre = if (gi >= 0) gi + 1 else 0
+                            })
 
                         // CANLI — üstte TV · Rehber · Spor · Çoklu segmenti.
                         Tab.LIVE -> Column(Modifier.fillMaxSize()) {
