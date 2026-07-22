@@ -3,6 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -75,6 +76,15 @@ dependencies {
 
     // Google Play Billing — Pro satın alma (tek seferlik kilit açma)
     implementation("com.android.billingclient:billing-ktx:7.1.1")
+
+    // Firebase — hesap (Auth) + cihazlar arası senkron (Firestore)
+    implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-firestore")
+    // Google ile giriş (Credential Manager + Google ID) — TV dahil modern akış
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 
     // Ağ + JSON + görsel + kalıcılık
     implementation("com.squareup.okhttp3:okhttp:4.12.0")

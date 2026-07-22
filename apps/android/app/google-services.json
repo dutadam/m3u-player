@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "747524207456",
+    "project_id": "cheesino",
+    "storage_bucket": "cheesino.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:747524207456:android:819609f2b364086ada6405",
+        "android_client_info": {
+          "package_name": "app.cheesino"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAVueU4_q4Ah6f_1UhDKGHNhdvWMPJR_js"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
