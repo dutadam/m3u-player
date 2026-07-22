@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -116,6 +117,20 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
             ResumeMark(item.id, item.title, item.url, item.poster, positionMs, lengthMs,
                 System.currentTimeMillis(), item.isSeries, item.seriesId, item.seriesName)
         )
+    }
+
+    // Hata ekranından "tekrar dene" — mevcut oynatıcıyı yeniden hazırla (release etmeden).
+    fun reload() {
+        runCatching {
+            val u = app.cheesino.core.StreamResolver.candidates(item.url).firstOrNull()?.url ?: item.url
+            val m = Media(libVlc, Uri.parse(u)).apply {
+                setHWDecoderEnabled(true, false)
+                addOption(":network-caching=$cacheMs")
+            }
+            mediaPlayer.media = m; m.release()
+            failed = false; buffering = true
+            mediaPlayer.play()
+        }
     }
 
     DisposableEffect(item.id) {
@@ -234,10 +249,25 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
 
         if (buffering && !failed) BrandLoader(modifier = Modifier.align(Alignment.Center))
 
-        if (failed) Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Yayın açılamadı.", color = TextHi, fontWeight = FontWeight.Bold)
+        if (failed) Column(Modifier.align(Alignment.Center).padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("Yayın açılamadı.", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Text("Kaynak veya bağlantı sorunlu olabilir.", color = TextMute, fontSize = 12.sp,
                 modifier = Modifier.padding(top = 4.dp))
+            if (recording != null) {
+                Text(
+                    "Bir kayıt sürüyor. Çoğu sağlayıcı aynı anda tek bağlantıya izin verir — " +
+                        "kaydı durdurmadan ikinci yayın açılmayabilir.",
+                    color = Accent2, fontSize = 12.sp,
+                    modifier = Modifier.padding(top = 10.dp), textAlign = TextAlign.Center
+                )
+                Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    FailBtn("Kaydı durdur ve dene", Live) { vm.stopRecording(); reload() }
+                    FailBtn("Tekrar dene", Accent) { reload() }
+                }
+            } else {
+                FailBtn("Tekrar dene", Accent, Modifier.padding(top = 12.dp)) { reload() }
+            }
         }
 
         // Tam kontroller — kilitli değilken. Üstte yalnız Geri + Kilit; her şey altta (ExoPlayer ile aynı düzen).
@@ -404,6 +434,14 @@ private fun SubtitleSheet(mediaPlayer: MediaPlayer, onClose: () -> Unit) {
                 modifier = Modifier.padding(vertical = 8.dp))
         }
     }
+}
+
+/** Hata ekranı aksiyon butonu. */
+@Composable
+private fun FailBtn(label: String, color: Color, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Text(label, color = Ground, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+        modifier = modifier.clip(RoundedCornerShape(20.dp)).background(color)
+            .clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 10.dp))
 }
 
 /** Yuvarlak transport butonu (oynat/duraklat, ±10, kilit-aç). */
