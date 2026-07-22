@@ -93,7 +93,7 @@ fun HomeScreen(
         item { ResumeRail("Devam Et", continueW, onResume) }
         item { PosterRail("Sana Özel", recommended, onPlay) }
         item { PosterRail("Daha Sonra İzle", favorites, onPlay) }
-        item { RankedRail("Bu Hafta Top 10", clean(state.topRated), onPlay) }
+        item { RankedRail("Yüksek Puanlı · Top 10", clean(state.topRated), onPlay) }
         item { PosterRail("Son Eklenenler", clean(state.recentlyAdded), onPlay) }
         // Dinamik tür/senaryo rayları — film ve dizi karışık.
         movieRails.take(6).forEach { (title, list) -> item { PosterRail(title, clean(list), onPlay) } }
@@ -132,30 +132,46 @@ private fun Hero(items: List<Channel>, onPlay: (Channel) -> Unit) {
         if (items.size > 1) while (true) { delay(6000); idx = (idx + 1) % items.size }
     }
     val item = items[idx % items.size]
+    // Dikey (2:3) büyük hero — ekranı neredeyse kaplar, poster kırpılmaz.
     Box(
-        Modifier.fillMaxWidth().height(210.dp).padding(horizontal = 16.dp, vertical = 6.dp)
-            .clip(RoundedCornerShape(16.dp)).background(Elevated)
+        Modifier.fillMaxWidth().aspectRatio(2f / 3f).padding(horizontal = 12.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(22.dp)).background(Elevated)
             .clickable { onPlay(item) }
     ) {
         item.logo?.let {
-            // Posteri üst-merkezden kırparak tüm hero'yu doldur (yan bulanık şeritler yok).
             AsyncImage(it, item.name, Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop, alignment = Alignment.TopCenter)
         }
-        // Alt + yan karartma → başlık okunur, kenarlar yumuşar.
+        // Güçlü alt degrade → başlık/buton okunur.
         Box(Modifier.fillMaxSize().background(
-            Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.15f), Color.Transparent, Color.Black.copy(alpha = 0.9f)))
+            Brush.verticalGradient(0f to Color.Transparent, 0.55f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.94f))
         ))
-        Column(Modifier.align(Alignment.BottomStart).padding(16.dp)) {
-            Text(item.name, color = Color.White, fontWeight = FontWeight.Black, fontSize = 20.sp,
-                maxLines = 2, overflow = TextOverflow.Ellipsis)
+        // Sayfa noktaları (üstte).
+        if (items.size > 1) Row(
+            Modifier.align(Alignment.TopCenter).padding(top = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            items.forEachIndexed { i, _ ->
+                Box(Modifier.height(4.dp).width(if (i == idx) 16.dp else 4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(if (i == idx) Accent else Color.White.copy(alpha = 0.4f)))
+            }
+        }
+        Column(Modifier.align(Alignment.BottomStart).padding(20.dp)) {
+            Text(item.name, color = Color.White, fontWeight = FontWeight.Black, fontSize = 26.sp,
+                maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 28.sp)
+            item.rating?.takeIf { it > 0 }?.let {
+                Text("★ ${"%.1f".format(it)}", color = Gold, fontWeight = FontWeight.Bold, fontSize = 14.sp,
+                    modifier = Modifier.padding(top = 4.dp))
+            }
             Row(
-                Modifier.padding(top = 8.dp).clip(RoundedCornerShape(10.dp)).background(Accent)
-                    .clickable { onPlay(item) }.padding(horizontal = 16.dp, vertical = 8.dp),
+                Modifier.padding(top = 12.dp).fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Accent)
+                    .clickable { onPlay(item) }.padding(vertical = 13.dp),
+                horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(Icons.Default.PlayArrow, null, tint = Ground)
-                Text("Oynat", color = Ground, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 4.dp))
+                Text("Oynat", color = Ground, fontWeight = FontWeight.Black, fontSize = 16.sp, modifier = Modifier.padding(start = 6.dp))
             }
         }
     }

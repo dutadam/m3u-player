@@ -59,20 +59,14 @@ fun LiveScreen(
     var q by remember { mutableStateOf("") }
     val query = q.trim().lowercase()
     val byCat = remember(state.live) { state.live.groupBy { it.group } }
+    // Rehber/Spor/Çoklu artık üst segment çubuğunda — burada yalnız liste/grid görünüm toggle'ı.
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically) {
-            Text("Canlı", color = TextHi, fontWeight = FontWeight.Black, fontSize = 22.sp,
-                modifier = Modifier.weight(1f))
-            IconButton(onClick = onSports) { Icon(Icons.Default.SportsSoccer, "Spor Merkezi", tint = Accent) }
+            Spacer(Modifier.weight(1f))
             IconButton(onClick = { listMode = !listMode }) {
                 Icon(if (listMode) Icons.Default.ViewModule else Icons.Default.ViewList,
-                    "Görünüm", tint = Accent)
-            }
-            IconButton(onClick = onMulti) { Icon(Icons.Default.GridView, "Çoklu ekran", tint = Accent) }
-            TextButton(onClick = onGuide) {
-                Icon(Icons.Default.CalendarMonth, null, tint = Accent)
-                Text(" Rehber", color = Accent, fontWeight = FontWeight.Bold)
+                    if (listMode) "Izgara görünüm" else "Liste görünüm", tint = Accent)
             }
         }
         SearchField("Kanal ara…", q) { q = it }

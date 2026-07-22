@@ -100,11 +100,8 @@ private fun RankedCard(rank: Int, name: String, poster: String?, onTap: () -> Un
         verticalAlignment = Alignment.Bottom
     ) {
         Text(
-            "$rank", fontSize = 74.sp, fontWeight = FontWeight.Black, color = Accent,
-            style = androidx.compose.ui.text.TextStyle(
-                drawStyle = androidx.compose.ui.graphics.drawscope.Stroke(width = 7f)
-            ),
-            modifier = Modifier.padding(end = 2.dp).offset(y = 6.dp)
+            "$rank", fontSize = 86.sp, fontWeight = FontWeight.Black, color = Accent,
+            modifier = Modifier.padding(end = 6.dp)
         )
         Box(Modifier.size(104.dp, 156.dp).clip(RoundedCornerShape(12.dp)).background(Elevated)) {
             if (poster != null) AsyncImage(poster, name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
