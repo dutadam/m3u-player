@@ -344,9 +344,16 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
             ) { Text(it, color = TextHi, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
         }
 
-        // Kontrol katmanı.
+        // Kontrol katmanı — video ortada net kalsın diye düz karartma yerine üst+alt degrade.
         AnimatedVisibility(visible = controlsVisible, enter = fadeIn(), exit = fadeOut()) {
-            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.35f))) {
+            Box(Modifier.fillMaxSize().background(
+                Brush.verticalGradient(
+                    0f to Color.Black.copy(alpha = 0.55f),
+                    0.25f to Color.Black.copy(alpha = 0.15f),
+                    0.7f to Color.Black.copy(alpha = 0.15f),
+                    1f to Color.Black.copy(alpha = 0.7f)
+                )
+            )) {
                 // Üst bar.
                 Row(
                     Modifier.align(Alignment.TopStart).fillMaxWidth().statusBarsPadding().padding(6.dp),
@@ -391,20 +398,20 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
                     }
                 }
 
-                // Merkez oynat/duraklat + ±10.
+                // Merkez oynat/duraklat + ±10 — büyük dokunma hedefleri, ferah aralık.
                 Row(Modifier.align(Alignment.Center), verticalAlignment = Alignment.CenterVertically) {
-                    if (!item.isLive) CircleBtn(Icons.Default.Replay10, 44.dp) {
-                        player.seekTo((player.currentPosition - SEEK_STEP_MS).coerceAtLeast(0))
+                    if (!item.isLive) CircleBtn(Icons.Default.Replay10, 52.dp) {
+                        player.seekTo((player.currentPosition - SEEK_STEP_MS).coerceAtLeast(0)); hud = "⏪ 10 sn"
                     }
-                    Spacer(Modifier.width(28.dp))
-                    CircleBtn(if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, 64.dp) {
+                    Spacer(Modifier.width(40.dp))
+                    CircleBtn(if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, 78.dp) {
                         if (isPlaying) player.pause() else player.play()
                         controlsVisible = true
                     }
-                    Spacer(Modifier.width(28.dp))
-                    if (!item.isLive) CircleBtn(Icons.Default.Forward10, 44.dp) {
+                    Spacer(Modifier.width(40.dp))
+                    if (!item.isLive) CircleBtn(Icons.Default.Forward10, 52.dp) {
                         val dur = player.duration
-                        player.seekTo((player.currentPosition + SEEK_STEP_MS).let { if (dur > 0) it.coerceAtMost(dur) else it })
+                        player.seekTo((player.currentPosition + SEEK_STEP_MS).let { if (dur > 0) it.coerceAtMost(dur) else it }); hud = "⏩ 10 sn"
                     }
                 }
 
