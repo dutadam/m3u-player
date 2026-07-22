@@ -7,17 +7,21 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LiveTv
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -52,8 +56,9 @@ import app.cheesino.ui.theme.TextMute
 private enum class Tab(val label: String, val icon: ImageVector) {
     HOME("Ana Sayfa", Icons.Default.Home),
     LIVE("Canlı", Icons.Default.LiveTv),
-    MOVIES("Filmler", Icons.Default.Movie),
-    SERIES("Diziler", Icons.Default.Tv)
+    CATALOG("Katalog", Icons.Default.Movie),
+    LIBRARY("Kitaplığım", Icons.Default.VideoLibrary),
+    ACCOUNT("Account", Icons.Default.AccountCircle)
 }
 
 @Composable
@@ -69,21 +74,18 @@ fun RootScreen(vm: LibraryViewModel) {
     val activity = LocalContext.current as? android.app.Activity
     var paywallFor by remember { mutableStateOf<app.cheesino.data.ProFeature?>(null) }
     var showPaywall by remember { mutableStateOf(false) }
-    var showDownloads by remember { mutableStateOf(false) }
-    var showRecordings by remember { mutableStateOf(false) }
     // Sekme uygulamaya geri dönüşte/ekran dönmede korunur (ana sayfaya atmasın).
     var tabOrdinal by rememberSaveable { mutableIntStateOf(0) }
     val tab = Tab.entries[tabOrdinal]
+    // Sekme-içi segmentler (Canlı: TV/Rehber/Spor/Çoklu · Katalog: Filmler/Diziler · Kitaplığım: İndirilenler/Kayıtlar/Listem).
+    var liveSeg by rememberSaveable { mutableIntStateOf(0) }
+    var catSeg by rememberSaveable { mutableIntStateOf(0) }
+    var libSeg by rememberSaveable { mutableIntStateOf(0) }
     // Oynatma kuyruğu — tek öğe (kanal/film) ya da dizi bölümleri (otomatik sonraki).
     var playQueue by remember { mutableStateOf<List<PlayItem>>(emptyList()) }
     var playIndex by remember { mutableIntStateOf(0) }
     var detail by remember { mutableStateOf<SeriesRef?>(null) }
     var movieDetail by remember { mutableStateOf<Channel?>(null) }
-    var showSettings by remember { mutableStateOf(false) }
-    var showGuide by remember { mutableStateOf(false) }
-    var showMulti by remember { mutableStateOf(false) }
-    var showSports by remember { mutableStateOf(false) }
-    var showMyList by remember { mutableStateOf(false) }
     var showSearch by remember { mutableStateOf(false) }
     val epg by vm.epg.collectAsStateWithLifecycle()
 
@@ -128,7 +130,7 @@ fun RootScreen(vm: LibraryViewModel) {
         bottomBar = {
             // Sekmeye dokununca açık detay/arama/liste katmanını kapat → gezinme takılmasın.
             BottomBar(tab) { t ->
-                tabOrdinal = t.ordinal; detail = null; movieDetail = null; showMyList = false; showSearch = false
+                tabOrdinal = t.ordinal; detail = null; movieDetail = null; showSearch = false
             }
         }
     ) { pad ->
@@ -167,99 +169,72 @@ fun RootScreen(vm: LibraryViewModel) {
                     onDownloadEpisode = { item -> vm.download(item.id, item.url, item.title) },
                     onRemoveDownload = { vm.removeDownload(it) }
                 )
-                showMyList -> MyListScreen(state, user, onContent, openSeries, onBack = { showMyList = false })
                 showSearch -> SearchScreen(state, discover.genres, onContent, openSeries, onBack = { showSearch = false })
                 else -> Crossfade(targetState = tab, label = "tab") { t ->
                     when (t) {
                         Tab.HOME -> HomeScreen(state, user, discover.recommended, discover.movieRails, discover.seriesRails,
                             onContent, openSeries, resumePlay,
-                            onSettings = { showSettings = true },
-                            onSearch = { showSearch = true },
-                            onMyList = { showMyList = true },
-                            onDownloads = { showDownloads = true })
-                        Tab.LIVE -> LiveScreen(state, epg, playChannel,
-                            onGuide = { showGuide = true },
-                            onMulti = {
-                                if (isPro) showMulti = true
-                                else { paywallFor = app.cheesino.data.ProFeature.MULTI_VIEW; showPaywall = true }
-                            },
-                            onSports = { vm.loadEpg(); showSports = true })
-                        Tab.MOVIES -> MoviesScreen(state, discover.movieRails, onContent)
-                        Tab.SERIES -> SeriesScreen(state, discover.seriesRails, openSeries)
+                            onSearch = { showSearch = true })
+
+                        // CANLI — üstte TV · Rehber · Spor · Çoklu segmenti.
+                        Tab.LIVE -> Column(Modifier.fillMaxSize()) {
+                            SegmentBar(listOf("Kanallar", "Rehber", "Spor", "Çoklu"), liveSeg) { liveSeg = it }
+                            when (liveSeg) {
+                                0 -> LiveScreen(state, epg, playChannel,
+                                    onGuide = { liveSeg = 1 },
+                                    onMulti = {
+                                        if (isPro) liveSeg = 3
+                                        else { paywallFor = app.cheesino.data.ProFeature.MULTI_VIEW; showPaywall = true }
+                                    },
+                                    onSports = { vm.loadEpg(); liveSeg = 2 })
+                                1 -> GuideScreen(channels = state.live, epg = epg,
+                                    onPlay = playChannel,
+                                    onCatchup = { ch, entry ->
+                                        vm.catchupUrl(ch, entry)?.let { url ->
+                                            playOne(PlayItem("${ch.id}_ts", "${ch.name} · baştan", url, ch.logo, isLive = false))
+                                        }
+                                    },
+                                    onClose = { liveSeg = 0 },
+                                    onToggleReminder = { ch, e -> vm.toggleReminder(ch, e) },
+                                    isReminded = { ch, e -> vm.isReminded(ch, e) })
+                                2 -> SportsScreen(channels = state.live, epg = epg, onPlay = playChannel, onClose = { liveSeg = 0 })
+                                else -> MultiViewScreen(channels = state.live,
+                                    initial = remember { vm.loadMultiView() },
+                                    onSave = { vm.saveMultiView(it) }, onClose = { liveSeg = 0 })
+                            }
+                        }
+
+                        // KATALOG — üstte Filmler/Diziler + arama.
+                        Tab.CATALOG -> Column(Modifier.fillMaxSize()) {
+                            SegmentBar(listOf("Filmler", "Diziler"), catSeg, onSearch = { showSearch = true }) { catSeg = it }
+                            when (catSeg) {
+                                0 -> MoviesScreen(state, discover.movieRails, onContent)
+                                else -> SeriesScreen(state, discover.seriesRails, openSeries)
+                            }
+                        }
+
+                        // KİTAPLIĞIM — İndirilenler · Kayıtlar · Listem.
+                        Tab.LIBRARY -> Column(Modifier.fillMaxSize()) {
+                            SegmentBar(listOf("İndirilenler", "Kayıtlar", "Listem"), libSeg) { libSeg = it }
+                            when (libSeg) {
+                                0 -> DownloadsScreen(downloads = downloads, onPlay = { playOne(it) },
+                                    onRemove = { vm.removeDownload(it) }, onRefresh = { vm.refreshDownloads() }, onClose = {})
+                                1 -> RecordingsScreen(recordings = recordings, active = recordingActive,
+                                    onPlay = { playOne(it) }, onDelete = { vm.deleteRecording(it) },
+                                    onStopActive = { vm.stopRecording() }, onRefresh = { vm.refreshRecordings() }, onClose = {})
+                                else -> MyListScreen(state, user, onContent, openSeries, onBack = {})
+                            }
+                        }
+
+                        // ACCOUNT — profil + ayarlar (giriş ileride).
+                        Tab.ACCOUNT -> SettingsScreen(vm, onClose = {}, onSignedOut = {},
+                            onUpgrade = { paywallFor = null; showPaywall = true },
+                            onOpenDownloads = { tabOrdinal = Tab.LIBRARY.ordinal; libSeg = 0 },
+                            onOpenRecordings = { tabOrdinal = Tab.LIBRARY.ordinal; libSeg = 1 })
                     }
                 }
             }
         }
-    }
-
-    // Rehber — overlay (fade).
-    AnimatedVisibility(visible = showGuide, enter = fadeIn(), exit = fadeOut()) {
-        GuideScreen(
-            channels = state.live,
-            epg = epg,
-            onPlay = { showGuide = false; playChannel(it) },
-            onCatchup = { ch, entry ->
-                vm.catchupUrl(ch, entry)?.let { url ->
-                    showGuide = false
-                    playOne(PlayItem("${ch.id}_ts", "${ch.name} · baştan", url, ch.logo, isLive = false))
-                }
-            },
-            onClose = { showGuide = false },
-            onToggleReminder = { ch, e -> vm.toggleReminder(ch, e) },
-            isReminded = { ch, e -> vm.isReminded(ch, e) }
-        )
-    }
-
-    // Çoklu ekran — overlay.
-    if (showMulti) {
-        MultiViewScreen(
-            channels = state.live,
-            initial = remember { vm.loadMultiView() },
-            onSave = { vm.saveMultiView(it) },
-            onClose = { showMulti = false }
-        )
-    }
-
-    // Spor merkezi — overlay (fade).
-    AnimatedVisibility(visible = showSports, enter = fadeIn(), exit = fadeOut()) {
-        SportsScreen(
-            channels = state.live,
-            epg = epg,
-            onPlay = { showSports = false; playChannel(it) },
-            onClose = { showSports = false }
-        )
-    }
-
-    // Ayarlar — overlay (fade).
-    AnimatedVisibility(visible = showSettings, enter = fadeIn(), exit = fadeOut()) {
-        SettingsScreen(vm, onClose = { showSettings = false }, onSignedOut = { showSettings = false },
-            onUpgrade = { showSettings = false; paywallFor = null; showPaywall = true },
-            onOpenDownloads = { showSettings = false; showDownloads = true },
-            onOpenRecordings = { showSettings = false; showRecordings = true })
-    }
-
-    // İndirilenler — overlay (fade).
-    AnimatedVisibility(visible = showDownloads, enter = fadeIn(), exit = fadeOut()) {
-        DownloadsScreen(
-            downloads = downloads,
-            onPlay = { item -> showDownloads = false; playQueue = listOf(item); playIndex = 0 },
-            onRemove = { vm.removeDownload(it) },
-            onRefresh = { vm.refreshDownloads() },
-            onClose = { showDownloads = false }
-        )
-    }
-
-    // Kayıtlar — overlay (fade).
-    AnimatedVisibility(visible = showRecordings, enter = fadeIn(), exit = fadeOut()) {
-        RecordingsScreen(
-            recordings = recordings,
-            active = recordingActive,
-            onPlay = { item -> showRecordings = false; playQueue = listOf(item); playIndex = 0 },
-            onDelete = { vm.deleteRecording(it) },
-            onStopActive = { vm.stopRecording() },
-            onRefresh = { vm.refreshRecordings() },
-            onClose = { showRecordings = false }
-        )
     }
 
     // Pro paywall — overlay (fade).
@@ -305,6 +280,35 @@ private fun PlayerHost(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit
         PlayerScreen(item, vm, onClose, onEnded,
             // Çevrimdışı öğede VLC'ye düşme (kaynak URL'i offline erişilemez).
             onFallback = if (!downloaded && engine == 0) ({ useVlc = true }) else null)
+    }
+}
+
+/** Sekme-içi segment çubuğu — aktif segment accent pill; opsiyonel sağda arama ikonu (Katalog). */
+@Composable
+private fun SegmentBar(items: List<String>, selected: Int, onSearch: (() -> Unit)? = null, onSelect: (Int) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().statusBarsPadding().padding(start = 14.dp, end = 4.dp, top = 8.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items.forEachIndexed { i, label ->
+                val on = i == selected
+                Text(
+                    label,
+                    color = if (on) Ground else TextMute,
+                    fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
+                    fontSize = 13.sp,
+                    modifier = Modifier.clip(RoundedCornerShape(18.dp))
+                        .background(if (on) Accent else Elevated)
+                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onSelect(i) }
+                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                )
+            }
+        }
+        if (onSearch != null) IconButton(onClick = onSearch) { Icon(Icons.Default.Search, "Ara", tint = TextMute) }
     }
 }
 

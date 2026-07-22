@@ -52,10 +52,7 @@ fun HomeScreen(
     onPlay: (Channel) -> Unit,
     onSeries: (SeriesRef) -> Unit,
     onResume: (ResumeMark) -> Unit,
-    onSettings: () -> Unit,
-    onSearch: () -> Unit,
-    onMyList: () -> Unit,
-    onDownloads: () -> Unit = {}
+    onSearch: () -> Unit
 ) {
     fun clean(list: List<Channel>): List<Channel> {
         val seen = HashSet<String>()
@@ -83,9 +80,6 @@ fun HomeScreen(
                 )
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = onSearch) { Icon(Icons.Default.Search, "Ara", tint = TextMute) }
-                IconButton(onClick = onDownloads) { Icon(Icons.Default.Download, "İndirilenler", tint = TextMute) }
-                IconButton(onClick = onMyList) { Icon(Icons.Default.BookmarkBorder, "Listem", tint = TextMute) }
-                IconButton(onClick = onSettings) { Icon(Icons.Default.Settings, "Ayarlar", tint = TextMute) }
             }
         }
         if (featured.isNotEmpty()) item { Hero(featured, onPlay) }
