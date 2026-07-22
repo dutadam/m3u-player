@@ -29,7 +29,7 @@ import app.cheesino.ui.theme.*
 @Composable
 fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () -> Unit,
                    onUpgrade: () -> Unit = {}, onOpenDownloads: () -> Unit = {},
-                   onOpenRecordings: () -> Unit = {}) {
+                   onOpenRecordings: () -> Unit = {}, embedded: Boolean = false) {
     val isPro by vm.isPro.collectAsStateWithLifecycle()
     var ua by remember { mutableStateOf(vm.userAgent) }
     var pin by remember { mutableStateOf("") }
@@ -41,11 +41,11 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
     var subBgOn by remember { mutableStateOf(vm.subtitleBg != 0) }
     var engine by remember { mutableStateOf(vm.playerEngine) }
 
-    Column(Modifier.fillMaxSize().background(Ground).statusBarsPadding().verticalScroll(rememberScrollState())) {
+    Column(Modifier.fillMaxSize().background(Ground).then(if (embedded) Modifier else Modifier.statusBarsPadding()).verticalScroll(rememberScrollState())) {
         // Başlık
-        Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi) }
-            Text("Ayarlar", color = TextHi, fontWeight = FontWeight.Black, fontSize = 20.sp)
+        Row(Modifier.fillMaxWidth().padding(if (embedded) 16.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (!embedded) IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi) }
+            Text(if (embedded) "Hesap" else "Ayarlar", color = TextHi, fontWeight = FontWeight.Black, fontSize = 20.sp)
         }
 
         Section(if (isPro) "cheesino Pro · Aktif" else "cheesino Pro") {

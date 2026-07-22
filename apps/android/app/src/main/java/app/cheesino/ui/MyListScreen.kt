@@ -27,7 +27,8 @@ fun MyListScreen(
     user: UserData,
     onPlay: (Channel) -> Unit,
     onSeries: (SeriesRef) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    embedded: Boolean = false
 ) {
     val fav = user.favorites
     val movies = remember(state.movies, fav) { state.movies.filter { it.id in fav && it.logo != null } }
@@ -36,7 +37,7 @@ fun MyListScreen(
     val empty = movies.isEmpty() && channels.isEmpty() && series.isEmpty()
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 16.dp)) {
-        item {
+        if (!embedded) item {
             Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi) }
                 Text("Listem", color = TextHi, fontWeight = FontWeight.Black, fontSize = 20.sp)

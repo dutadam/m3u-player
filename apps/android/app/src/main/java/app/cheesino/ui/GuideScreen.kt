@@ -45,7 +45,8 @@ fun GuideScreen(
     onCatchup: (Channel, EpgEntry) -> Unit,
     onClose: () -> Unit,
     onToggleReminder: (Channel, EpgEntry) -> Unit = { _, _ -> },
-    isReminded: (Channel, EpgEntry) -> Boolean = { _, _ -> false }
+    isReminded: (Channel, EpgEntry) -> Boolean = { _, _ -> false },
+    embedded: Boolean = false
 ) {
     var q by remember { mutableStateOf("") }
     var grid by remember { mutableStateOf(false) }
@@ -58,11 +59,13 @@ fun GuideScreen(
         return
     }
 
-    Column(Modifier.fillMaxSize().background(Ground).statusBarsPadding()) {
+    Column(Modifier.fillMaxSize().background(Ground).then(if (embedded) Modifier else Modifier.statusBarsPadding())) {
         Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi) }
-            Text("Rehber", color = TextHi, fontWeight = FontWeight.Black, fontSize = 20.sp,
-                modifier = Modifier.weight(1f))
+            if (!embedded) {
+                IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi) }
+                Text("Rehber", color = TextHi, fontWeight = FontWeight.Black, fontSize = 20.sp,
+                    modifier = Modifier.weight(1f))
+            } else Spacer(Modifier.weight(1f))
             IconButton(onClick = { grid = !grid }) {
                 Icon(if (grid) Icons.Default.ViewList else Icons.Default.GridView,
                     if (grid) "Liste görünümü" else "Zaman çizelgesi", tint = Accent)

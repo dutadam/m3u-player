@@ -33,14 +33,15 @@ fun SportsScreen(
     channels: List<Channel>,
     epg: Map<String, List<EpgEntry>>,
     onPlay: (Channel) -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    embedded: Boolean = false
 ) {
     val matches = remember(channels, epg) { SportsFinder.today(channels, epg) }
     val byId = remember(channels) { channels.associateBy { it.id } }
     val timeFmt = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
 
-    Column(Modifier.fillMaxSize().background(Ground).statusBarsPadding()) {
-        Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+    Column(Modifier.fillMaxSize().background(Ground).then(if (embedded) Modifier else Modifier.statusBarsPadding())) {
+        if (!embedded) Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi) }
             Text("Spor Merkezi", color = TextHi, fontWeight = FontWeight.Black, fontSize = 20.sp)
         }

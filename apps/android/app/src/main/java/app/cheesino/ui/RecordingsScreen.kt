@@ -40,12 +40,13 @@ fun RecordingsScreen(
     onDelete: (File) -> Unit,
     onStopActive: () -> Unit,
     onRefresh: () -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    embedded: Boolean = false
 ) {
     LaunchedEffect(Unit) { while (true) { onRefresh(); delay(1500) } }
 
-    Column(Modifier.fillMaxSize().background(Ground).statusBarsPadding()) {
-        Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+    Column(Modifier.fillMaxSize().background(Ground).then(if (embedded) Modifier else Modifier.statusBarsPadding())) {
+        if (!embedded) Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi) }
             Text("Kayıtlar", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 18.sp,
                 modifier = Modifier.padding(start = 4.dp))

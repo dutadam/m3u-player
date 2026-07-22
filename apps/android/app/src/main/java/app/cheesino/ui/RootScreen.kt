@@ -196,8 +196,8 @@ fun RootScreen(vm: LibraryViewModel) {
                                     },
                                     onClose = { liveSeg = 0 },
                                     onToggleReminder = { ch, e -> vm.toggleReminder(ch, e) },
-                                    isReminded = { ch, e -> vm.isReminded(ch, e) })
-                                2 -> SportsScreen(channels = state.live, epg = epg, onPlay = playChannel, onClose = { liveSeg = 0 })
+                                    isReminded = { ch, e -> vm.isReminded(ch, e) }, embedded = true)
+                                2 -> SportsScreen(channels = state.live, epg = epg, onPlay = playChannel, onClose = { liveSeg = 0 }, embedded = true)
                                 else -> MultiViewScreen(channels = state.live,
                                     initial = remember { vm.loadMultiView() },
                                     onSave = { vm.saveMultiView(it) }, onClose = { liveSeg = 0 })
@@ -218,11 +218,11 @@ fun RootScreen(vm: LibraryViewModel) {
                             SegmentBar(listOf("İndirilenler", "Kayıtlar", "Listem"), libSeg) { libSeg = it }
                             when (libSeg) {
                                 0 -> DownloadsScreen(downloads = downloads, onPlay = { playOne(it) },
-                                    onRemove = { vm.removeDownload(it) }, onRefresh = { vm.refreshDownloads() }, onClose = {})
+                                    onRemove = { vm.removeDownload(it) }, onRefresh = { vm.refreshDownloads() }, onClose = {}, embedded = true)
                                 1 -> RecordingsScreen(recordings = recordings, active = recordingActive,
                                     onPlay = { playOne(it) }, onDelete = { vm.deleteRecording(it) },
-                                    onStopActive = { vm.stopRecording() }, onRefresh = { vm.refreshRecordings() }, onClose = {})
-                                else -> MyListScreen(state, user, onContent, openSeries, onBack = {})
+                                    onStopActive = { vm.stopRecording() }, onRefresh = { vm.refreshRecordings() }, onClose = {}, embedded = true)
+                                else -> MyListScreen(state, user, onContent, openSeries, onBack = {}, embedded = true)
                             }
                         }
 
@@ -230,7 +230,7 @@ fun RootScreen(vm: LibraryViewModel) {
                         Tab.ACCOUNT -> SettingsScreen(vm, onClose = {}, onSignedOut = {},
                             onUpgrade = { paywallFor = null; showPaywall = true },
                             onOpenDownloads = { tabOrdinal = Tab.LIBRARY.ordinal; libSeg = 0 },
-                            onOpenRecordings = { tabOrdinal = Tab.LIBRARY.ordinal; libSeg = 1 })
+                            onOpenRecordings = { tabOrdinal = Tab.LIBRARY.ordinal; libSeg = 1 }, embedded = true)
                     }
                 }
             }

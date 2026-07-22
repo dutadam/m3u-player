@@ -37,15 +37,16 @@ fun DownloadsScreen(
     onPlay: (PlayItem) -> Unit,
     onRemove: (String) -> Unit,
     onRefresh: () -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    embedded: Boolean = false
 ) {
     // Ekran açıkken canlı yüzde için periyodik tazele.
     LaunchedEffect(Unit) {
         while (true) { onRefresh(); delay(1200) }
     }
 
-    Column(Modifier.fillMaxSize().background(Ground).statusBarsPadding()) {
-        Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+    Column(Modifier.fillMaxSize().background(Ground).then(if (embedded) Modifier else Modifier.statusBarsPadding())) {
+        if (!embedded) Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi) }
             Text("İndirilenler", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 18.sp,
                 modifier = Modifier.padding(start = 4.dp))
