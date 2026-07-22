@@ -52,6 +52,8 @@ import app.cheesino.data.LibraryViewModel
 import app.cheesino.data.ResumeMark
 import app.cheesino.ui.theme.Accent
 import app.cheesino.ui.theme.Elevated
+import app.cheesino.ui.theme.Glass
+import app.cheesino.ui.theme.GlassBorder
 import app.cheesino.ui.theme.Ground
 import app.cheesino.ui.theme.LineSoft
 import app.cheesino.ui.theme.TextMute
@@ -364,7 +366,7 @@ private fun SegmentBar(items: List<String>, selected: Int, onSearch: (() -> Unit
                     fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
                     fontSize = 13.sp,
                     modifier = Modifier.clip(RoundedCornerShape(18.dp))
-                        .background(if (on) Accent else Elevated)
+                        .background(if (on) Accent else Glass)
                         .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onSelect(i) }
                         .padding(horizontal = 14.dp, vertical = 8.dp)
                 )
@@ -379,8 +381,8 @@ private fun SegmentBar(items: List<String>, selected: Int, onSearch: (() -> Unit
 private fun BottomBar(selected: Tab, onSelect: (Tab) -> Unit) {
     Box(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 14.dp, vertical = 10.dp)) {
         Row(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp)).background(Elevated)
-                .border(1.dp, LineSoft.copy(alpha = 0.7f), RoundedCornerShape(26.dp))
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp)).background(Glass)
+                .border(1.dp, GlassBorder, RoundedCornerShape(26.dp))
                 .padding(6.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
