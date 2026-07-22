@@ -27,8 +27,17 @@ data class LibraryState(
 
     val visibleChannels get() = gate(channels) { AdultFilter.isAdult(it.name, it.group) }
     val live get() = visibleChannels.filter { it.kind == MediaKind.LIVE }
-    val movies get() = visibleChannels.filter { it.kind == MediaKind.VOD }
+    // Filmler: görselsizleri gizle + aynı filmin farklı kategori/varyantlarını tek kart olarak
+    // topla (global tekilleştirme) — "2 farklı film gibi" tekrarları önler.
+    val movies get() = visibleChannels.asSequence()
+        .filter { it.kind == MediaKind.VOD && it.logo != null }
+        .distinctBy { app.cheesino.core.baseTitle(it.name) }
+        .toList()
+    // Diziler: görselsizleri gizle + isim bazlı tekilleştir.
     val visibleSeries get() = gate(series) { AdultFilter.isAdult(it.name, it.group) }
+        .asSequence().filter { it.cover != null }
+        .distinctBy { app.cheesino.core.baseTitle(it.name) }
+        .toList()
     val recentlyAdded get() = movies.filter { it.added != null }.sortedByDescending { it.added }
     val topRated get() = movies.filter { (it.rating ?: 0.0) >= 7.5 }.sortedByDescending { it.rating }
 }
@@ -65,9 +74,9 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
         val u = _user.value
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
             val allCh = st.visibleChannels
-            val movies = allCh.filter { it.kind == MediaKind.VOD }
+            val movies = st.movies          // tekilleştirilmiş + görselli film havuzu
             val series = st.visibleSeries
-            val rec = runCatching { Recommender.recommended(allCh, u) }.getOrDefault(emptyList())
+            val rec = runCatching { Recommender.recommended(movies, u) }.getOrDefault(emptyList())
             val mRails = runCatching { RailEngine.movieRails(movies, allCh, u) }.getOrDefault(emptyList())
             val sRails = runCatching { RailEngine.seriesRails(series, u) }.getOrDefault(emptyList())
             val genres = runCatching {

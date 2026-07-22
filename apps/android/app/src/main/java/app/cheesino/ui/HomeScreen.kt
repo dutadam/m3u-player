@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -25,12 +26,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import app.cheesino.core.Channel
 import app.cheesino.core.SeriesRef
+import app.cheesino.core.baseTitle
 import app.cheesino.data.LibraryState
 import app.cheesino.data.Recommender
 import app.cheesino.data.ResumeMark
@@ -50,7 +54,8 @@ fun HomeScreen(
     onResume: (ResumeMark) -> Unit,
     onSettings: () -> Unit,
     onSearch: () -> Unit,
-    onMyList: () -> Unit
+    onMyList: () -> Unit,
+    onDownloads: () -> Unit = {}
 ) {
     fun clean(list: List<Channel>): List<Channel> {
         val seen = HashSet<String>()
@@ -78,6 +83,7 @@ fun HomeScreen(
                 )
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = onSearch) { Icon(Icons.Default.Search, "Ara", tint = TextMute) }
+                IconButton(onClick = onDownloads) { Icon(Icons.Default.Download, "İndirilenler", tint = TextMute) }
                 IconButton(onClick = onMyList) { Icon(Icons.Default.BookmarkBorder, "Listem", tint = TextMute) }
                 IconButton(onClick = onSettings) { Icon(Icons.Default.Settings, "Ayarlar", tint = TextMute) }
             }
@@ -101,19 +107,6 @@ fun HomeScreen(
     }
 }
 
-private val QUALITY_TOKENS = Regex(
-    "\\b(4K|UHD|FHD|FULL ?HD|HD|SD|HEVC|H\\.?265|H\\.?264|X265|X264|2160P|1080P|720P|480P|HDR|DOLBY|DUAL|MULTI|TR|EN)\\b",
-    RegexOption.IGNORE_CASE
-)
-
-/** Kalite/codec etiketlerini atıp normalize eder → aynı filmin varyantları tek anahtarda toplanır. */
-fun baseTitle(name: String): String =
-    name.replace(QUALITY_TOKENS, " ")
-        .replace(Regex("[\\[\\](){}|]"), " ")
-        .replace(Regex("\\s+"), " ")
-        .trim()
-        .lowercase()
-
 /** Öne çıkan içerik — 6 sn'de bir dönen büyük hero. */
 @Composable
 private fun Hero(items: List<Channel>, onPlay: (Channel) -> Unit) {
@@ -128,12 +121,13 @@ private fun Hero(items: List<Channel>, onPlay: (Channel) -> Unit) {
             .clickable { onPlay(item) }
     ) {
         item.logo?.let {
-            // Portre poster'ı yatay hero'da bulanık dolgu + tam sığdır ile göster (kırpma yok).
-            BlurCover(it, item.name, Modifier.fillMaxSize())
+            // Posteri üst-merkezden kırparak tüm hero'yu doldur (yan bulanık şeritler yok).
+            AsyncImage(it, item.name, Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop, alignment = Alignment.TopCenter)
         }
-        // Alt karartma.
+        // Alt + yan karartma → başlık okunur, kenarlar yumuşar.
         Box(Modifier.fillMaxSize().background(
-            Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f)))
+            Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.15f), Color.Transparent, Color.Black.copy(alpha = 0.9f)))
         ))
         Column(Modifier.align(Alignment.BottomStart).padding(16.dp)) {
             Text(item.name, color = Color.White, fontWeight = FontWeight.Black, fontSize = 20.sp,

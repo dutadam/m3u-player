@@ -58,8 +58,9 @@ fun RecordingsScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(Modifier.size(10.dp).clip(RoundedCornerShape(5.dp)).background(Live))
+                val mb = (runCatching { File(active.path).length() }.getOrDefault(0L)) / (1024.0 * 1024.0)
                 Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                    Text("Kaydediliyor", color = Live, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text("Kaydediliyor · %.1f MB".format(mb), color = Live, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     Text(active.title, color = TextHi, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 IconButton(onClick = onStopActive) { Icon(Icons.Default.Stop, "Durdur", tint = Live) }

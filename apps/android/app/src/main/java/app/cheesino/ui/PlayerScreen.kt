@@ -23,6 +23,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -490,7 +492,8 @@ private fun TrackDialog(player: Player, onDismiss: () -> Unit) {
 
     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.7f)).clickable { onDismiss() },
         contentAlignment = Alignment.Center) {
-        Column(Modifier.width(300.dp).clip(RoundedCornerShape(16.dp)).background(Ground).padding(16.dp)) {
+        Column(Modifier.width(300.dp).heightIn(max = 460.dp).clip(RoundedCornerShape(16.dp))
+            .background(Ground).verticalScroll(rememberScrollState()).padding(16.dp)) {
             if (audio.isNotEmpty()) {
                 Text("Ses", color = Accent2, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 audio.forEach { g ->

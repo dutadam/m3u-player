@@ -175,7 +175,8 @@ fun RootScreen(vm: LibraryViewModel) {
                             onContent, openSeries, resumePlay,
                             onSettings = { showSettings = true },
                             onSearch = { showSearch = true },
-                            onMyList = { showMyList = true })
+                            onMyList = { showMyList = true },
+                            onDownloads = { showDownloads = true })
                         Tab.LIVE -> LiveScreen(state, epg, playChannel,
                             onGuide = { showGuide = true },
                             onMulti = {

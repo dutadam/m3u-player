@@ -110,7 +110,7 @@ class XtreamClient(val creds: XtreamCredentials) {
                 id = "vod_$id", name = s.name ?: "Film", logo = s.icon?.ifBlank { null },
                 group = cats[s.cat ?: ""] ?: "Filmler", url = vodUrl(id, s.ext ?: "mp4"),
                 kind = MediaKind.VOD,
-                rating = s.rating.asDoubleOrNull()?.takeIf { it > 0 },
+                rating = s.rating.asDoubleOrNull()?.let { if (it > 10) it / 10 else it }?.takeIf { it in 0.001..10.0 },
                 added = s.added.asLongOrNull()
             )
         }
@@ -122,7 +122,7 @@ class XtreamClient(val creds: XtreamCredentials) {
         return decodeList(api("get_series"), kotlinx.serialization.builtins.ListSerializer(SeriesRaw.serializer())).map { s ->
             SeriesRef(id = s.seriesId.asInt(), name = s.name ?: "Dizi", cover = s.cover?.ifBlank { null },
                 genre = s.genre, group = cats[s.cat ?: ""] ?: "Diziler",
-                rating = s.rating.asDoubleOrNull()?.takeIf { it > 0 })
+                rating = s.rating.asDoubleOrNull()?.let { if (it > 10) it / 10 else it }?.takeIf { it in 0.001..10.0 })
         }
     }
 
@@ -138,7 +138,7 @@ class XtreamClient(val creds: XtreamCredentials) {
             genre = info["genre"].asStr()?.ifBlank { null },
             cast = info["cast"].asStr()?.ifBlank { null },
             director = info["director"].asStr()?.ifBlank { null },
-            rating = info["rating"].asDoubleOrNull()?.takeIf { it > 0 },
+            rating = info["rating"].asDoubleOrNull()?.let { if (it > 10) it / 10 else it }?.takeIf { it in 0.001..10.0 },
             cover = (info["movie_image"].asStr() ?: info["cover_big"].asStr())?.ifBlank { null } ?: channel.logo,
             releaseDate = (info["releasedate"].asStr() ?: info["release_date"].asStr())?.ifBlank { null },
             durationSecs = info["duration_secs"].asLongOrNull()
@@ -156,7 +156,7 @@ class XtreamClient(val creds: XtreamCredentials) {
         val plot = info?.get("plot").asStr()?.ifBlank { null }
         val genre = info?.get("genre").asStr()?.ifBlank { null } ?: ref.genre
         val cover = info?.get("cover").asStr()?.ifBlank { null } ?: ref.cover
-        val rating = info?.get("rating").asDoubleOrNull()?.takeIf { it > 0 } ?: ref.rating
+        val rating = info?.get("rating").asDoubleOrNull()?.let { if (it > 10) it / 10 else it }?.takeIf { it in 0.001..10.0 } ?: ref.rating
 
         val seasons = ArrayList<Season>()
         (root["episodes"] as? JsonObject)?.forEach { (seasonKey, arr) ->

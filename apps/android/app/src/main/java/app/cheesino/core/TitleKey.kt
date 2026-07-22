@@ -1,0 +1,17 @@
+package app.cheesino.core
+
+private val QUALITY_TOKENS = Regex(
+    "\\b(4K|UHD|FHD|FULL ?HD|HD|SD|HEVC|H\\.?265|H\\.?264|X265|X264|2160P|1080P|720P|480P|HDR|DOLBY|DUAL|MULTI|TR|EN)\\b",
+    RegexOption.IGNORE_CASE
+)
+
+/**
+ * İçerik başlığını kalite/codec/dil etiketlerinden arındırıp normalize eder. Aynı filmin farklı
+ * kategori/varyantlarını (ör. "Film 4K", "Film [TR]") tek anahtarda toplar → global tekilleştirme.
+ */
+fun baseTitle(name: String): String =
+    name.replace(QUALITY_TOKENS, " ")
+        .replace(Regex("[\\[\\](){}|]"), " ")
+        .replace(Regex("\\s+"), " ")
+        .trim()
+        .lowercase()

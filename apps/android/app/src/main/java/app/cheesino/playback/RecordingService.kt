@@ -52,6 +52,11 @@ class RecordingService : Service() {
 
     @Volatile private var stop = false
     private var worker: Thread? = null
+    private var currentFile: File? = null
+
+    // Çoğu IPTV sunucusu User-Agent olmayan isteği 403 ile reddeder → kayıt boş kalır.
+    // Oynatıcılarla uyumlu bir UA gönder.
+    private val userAgent = "VLC/3.0.20 LibVLC/3.0.20"
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -73,6 +78,7 @@ class RecordingService : Service() {
         if (worker != null) return  // zaten kayıtta (tek eşzamanlı kayıt)
         val safe = title.replace(Regex("[^\\w\\-. ]"), "_").take(60).trim()
         val file = File(dir(this), "${safe}_${System.currentTimeMillis()}.ts")
+        currentFile = file
         _active.value = ActiveRecording(title, file.absolutePath, System.currentTimeMillis())
         val fgType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
             ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC else 0
@@ -84,6 +90,9 @@ class RecordingService : Service() {
             val client = OkHttpClient.Builder()
                 .connectTimeout(20, TimeUnit.SECONDS)
                 .readTimeout(0, TimeUnit.SECONDS)   // canlı akış → okuma zaman aşımı yok
+                .addInterceptor { chain ->
+                    chain.proceed(chain.request().newBuilder().header("User-Agent", userAgent).build())
+                }
                 .build()
             try {
                 if (isHls) {
@@ -120,6 +129,9 @@ class RecordingService : Service() {
         stop = true
         _active.value = null
         worker = null
+        // Boş kayıt (ör. sunucu reddi) → 0 MB dosya bırakma.
+        currentFile?.let { if (it.exists() && it.length() == 0L) it.delete() }
+        currentFile = null
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) stopForeground(STOP_FOREGROUND_REMOVE)
         else @Suppress("DEPRECATION") stopForeground(true)
         stopSelf()
