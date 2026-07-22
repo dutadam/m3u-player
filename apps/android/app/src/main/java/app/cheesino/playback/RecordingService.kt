@@ -57,6 +57,8 @@ class RecordingService : Service() {
     @Volatile private var stop = false
     private var worker: Thread? = null
     private var currentFile: File? = null
+    // Süren HTTP çağrısı — bekçi/durdurma bunu iptal ederek bloke okumayı (readTimeout=0) keser.
+    @Volatile private var currentCall: okhttp3.Call? = null
 
     // Çoğu IPTV sunucusu User-Agent olmayan isteği 403 ile reddeder → kayıt boş kalır.
     // Oynatıcılarla uyumlu bir UA gönder.
@@ -93,6 +95,22 @@ class RecordingService : Service() {
         val streamUrl = app.cheesino.core.StreamResolver.candidates(url).firstOrNull()?.url ?: url
         val isHls = streamUrl.substringBefore('?').lowercase().endsWith(".m3u8") || streamUrl.contains(".m3u8")
         _status.value = "Bağlanıyor…"
+
+        // Bekçi: veri gelmezse kaydı sonsuza dek çalışır durumda bırakma. Aksi halde başarısız bir
+        // kayıt sağlayıcının (çoğu tek eşzamanlı) bağlantısını tutar → başka yayın açılamaz.
+        Thread {
+            val start = System.currentTimeMillis()
+            while (!stop) {
+                runCatching { Thread.sleep(1000) }
+                if (file.length() > 0L) break            // veri akıyor → bekçiyi bırak
+                if (System.currentTimeMillis() - start > 15_000) {
+                    _status.value = "Kayıt başlatılamadı — kaynak veri vermedi, bağlantı serbest bırakıldı."
+                    stop = true                          // worker döngüsünü kır
+                    runCatching { currentCall?.cancel() } // bloke okumayı da kes → bağlantıyı serbest bırak
+                    break
+                }
+            }
+        }.also { it.start() }
         worker = Thread {
             val client = OkHttpClient.Builder()
                 .connectTimeout(20, TimeUnit.SECONDS)
@@ -105,12 +123,16 @@ class RecordingService : Service() {
                 if (isHls) {
                     // HLS: playlist'i izleyip segmentleri tek .ts dosyasına ekle (AES-128 çözerek).
                     _status.value = "HLS kaydı…"
-                    HlsRecorder.record(client, streamUrl, file) { stop }
+                    // HLS istekleri kısa → sonsuz beklemesin diye okuma zaman aşımı ver.
+                    val hlsClient = client.newBuilder().readTimeout(20, TimeUnit.SECONDS).build()
+                    HlsRecorder.record(hlsClient, streamUrl, file) { stop }
                     if (file.length() == 0L && !stop)
                         _status.value = "HLS segmentleri alınamadı (kaynak engelli/fMP4 olabilir)."
                 } else {
                     // Doğrudan TS/progressive: bayt akışını dosyaya dök.
-                    client.newCall(Request.Builder().url(streamUrl).build()).execute().use { resp ->
+                    val call = client.newCall(Request.Builder().url(streamUrl).build())
+                    currentCall = call
+                    call.execute().use { resp ->
                         if (!resp.isSuccessful) {
                             _status.value = "Sunucu reddetti (HTTP ${resp.code})."
                             return@use
@@ -133,14 +155,15 @@ class RecordingService : Service() {
                     }
                 }
             } catch (e: Exception) {
-                _status.value = "Kayıt hatası: ${e.message ?: "bilinmeyen"}"
+                if (!stop) _status.value = "Kayıt hatası: ${e.message ?: "bilinmeyen"}"
             } finally {
+                currentCall = null
                 finishAndStop()
             }
         }.also { it.start() }
     }
 
-    private fun stopRecording() { stop = true }
+    private fun stopRecording() { stop = true; runCatching { currentCall?.cancel() } }
 
     private fun finishAndStop() {
         stop = true
