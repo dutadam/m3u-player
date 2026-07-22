@@ -23,6 +23,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,9 +33,13 @@ import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.PictureInPictureAlt
+import androidx.compose.material.icons.filled.Cast
 import androidx.compose.material.icons.filled.FiberManualRecord
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay10
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material3.Icon
@@ -177,6 +182,9 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
         AspectRatioFrameLayout.RESIZE_MODE_FILL
     ) }
     val resizeLabels = remember { listOf("Sığdır", "Yakınlaştır", "Kapla") }
+    // Ekran kilidi (kazara dokunuşları önler) + oynatma hızı.
+    var locked by remember { mutableStateOf(false) }
+    var speed by remember { mutableFloatStateOf(1f) }
 
     // Oynatıcı servise ait; burada yalnız bu öğe için medyayı kur (buffer/kod çözücü ayarları
     // serviste). Öğe değişince yeniden kur.
@@ -298,11 +306,11 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
         )
 
         // Merkez dokunuş — tek dokunuş kontrolleri açar, çift dokunuş konuma göre ±10 sn.
-        Box(Modifier.fillMaxSize().pointerInput(Unit) {
+        Box(Modifier.fillMaxSize().pointerInput(locked) {
             detectTapGestures(
-                onTap = { controlsVisible = !controlsVisible },
+                onTap = { controlsVisible = if (locked) true else !controlsVisible },
                 onDoubleTap = { offset ->
-                    if (item.isLive) return@detectTapGestures
+                    if (locked || item.isLive) return@detectTapGestures
                     if (offset.x < size.width / 2f) {
                         player.seekTo((player.currentPosition - SEEK_STEP_MS).coerceAtLeast(0)); hud = "⏪ 10 sn"
                     } else {
@@ -314,8 +322,8 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
             )
         })
 
-        // Yan jest bölgeleri — yalnız dikey kaydırma (çakışmasın): sol parlaklık, sağ ses.
-        GestureZone(Modifier.align(Alignment.CenterStart)) { dy ->
+        // Yan jest bölgeleri — yalnız dikey kaydırma (çakışmasın): sol parlaklık, sağ ses. Kilitliyken kapalı.
+        if (!locked) GestureZone(Modifier.align(Alignment.CenterStart)) { dy ->
             activity?.window?.let { w ->
                 val lp = w.attributes
                 val cur = if (lp.screenBrightness in 0f..1f) lp.screenBrightness else 0.5f
@@ -344,17 +352,17 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
             ) { Text(it, color = TextHi, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
         }
 
-        // Kontrol katmanı — video ortada net kalsın diye düz karartma yerine üst+alt degrade.
-        AnimatedVisibility(visible = controlsVisible, enter = fadeIn(), exit = fadeOut()) {
+        // Tam kontroller — kilitli değilken. Üstte yalnız Geri + Kilit; her şey altta.
+        AnimatedVisibility(visible = controlsVisible && !locked, enter = fadeIn(), exit = fadeOut()) {
             Box(Modifier.fillMaxSize().background(
                 Brush.verticalGradient(
                     0f to Color.Black.copy(alpha = 0.55f),
                     0.25f to Color.Black.copy(alpha = 0.15f),
                     0.7f to Color.Black.copy(alpha = 0.15f),
-                    1f to Color.Black.copy(alpha = 0.7f)
+                    1f to Color.Black.copy(alpha = 0.75f)
                 )
             )) {
-                // Üst bar.
+                // Üst bar: Geri (sol) + başlık + Kilit (sağ).
                 Row(
                     Modifier.align(Alignment.TopStart).fillMaxWidth().statusBarsPadding().padding(6.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -364,37 +372,8 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
                     }
                     Text(item.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp,
                         maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                    // Chromecast butonu (cihaz destekliyorsa; MediaRouteButton AppCompat teması ister).
-                    if (castContext != null) {
-                        AndroidView(factory = { ctx ->
-                            val themed = android.view.ContextThemeWrapper(ctx, androidx.appcompat.R.style.Theme_AppCompat_NoActionBar)
-                            MediaRouteButton(themed).also { CastButtonFactory.setUpMediaRouteButton(themed, it) }
-                        })
-                    }
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        IconButton(onClick = {
-                            controlsVisible = false
-                            runCatching { activity?.enterPictureInPictureMode(PictureInPictureParams.Builder().build()) }
-                        }) { Icon(Icons.Default.PictureInPictureAlt, "Küçük ekran", tint = Color.White) }
-                    }
-                    // Canlı kayıt (DVR) — yalnız canlı yayında.
-                    if (item.isLive) {
-                        IconButton(onClick = {
-                            if (recordingThis) { vm.stopRecording(); hud = "Kayıt durduruldu" }
-                            else if (recording == null) { vm.startRecording(item.url, item.title); hud = "● Kaydediliyor" }
-                            else { hud = "Zaten kayıt var" }
-                            controlsVisible = true
-                        }) {
-                            Icon(if (recordingThis) Icons.Default.Stop else Icons.Default.FiberManualRecord,
-                                "Kaydet", tint = if (recordingThis) Live else Color.White)
-                        }
-                    }
-                    IconButton(onClick = {
-                        resizeIdx = (resizeIdx + 1) % resizeModes.size
-                        hud = resizeLabels[resizeIdx]; controlsVisible = true
-                    }) { Icon(Icons.Default.AspectRatio, "En-boy oranı", tint = Color.White) }
-                    IconButton(onClick = { showTracks = true }) {
-                        Icon(Icons.Default.Subtitles, "Altyazı / Ses", tint = Color.White)
+                    IconButton(onClick = { locked = true; hud = "🔒 Kilitli" }) {
+                        Icon(Icons.Default.Lock, "Kilitle", tint = Color.White)
                     }
                 }
 
@@ -415,8 +394,45 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
                     }
                 }
 
-                // Alt bar — seekbar veya canlı rozeti.
+                // Alt: kayan kontrol şeridi + seekbar/canlı — hepsi parmak bölgesinde.
                 Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().navigationBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp)) {
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Chromecast (MediaRouteButton — kendi diyalogunu açar; AppCompat teması ister).
+                        if (castContext != null) {
+                            Box(Modifier.clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = 0.12f)).padding(horizontal = 8.dp, vertical = 6.dp)) {
+                                AndroidView(factory = { ctx ->
+                                    val themed = android.view.ContextThemeWrapper(ctx, androidx.appcompat.R.style.Theme_AppCompat_NoActionBar)
+                                    MediaRouteButton(themed).also { CastButtonFactory.setUpMediaRouteButton(themed, it) }
+                                })
+                            }
+                        }
+                        CtrlChip(Icons.Default.AspectRatio, resizeLabels[resizeIdx]) {
+                            resizeIdx = (resizeIdx + 1) % resizeModes.size; hud = resizeLabels[resizeIdx]; controlsVisible = true
+                        }
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) CtrlChip(Icons.Default.PictureInPictureAlt, "Küçük ekran") {
+                            controlsVisible = false
+                            runCatching { activity?.enterPictureInPictureMode(PictureInPictureParams.Builder().build()) }
+                        }
+                        if (!item.isLive) CtrlChip(Icons.Default.Speed, "${speed}×") {
+                            speed = when (speed) { 1f -> 1.25f; 1.25f -> 1.5f; 1.5f -> 2f; 2f -> 0.75f; else -> 1f }
+                            runCatching { player.setPlaybackSpeed(speed) }; hud = "Hız ${speed}×"; controlsVisible = true
+                        }
+                        CtrlChip(Icons.Default.Subtitles, "Altyazı") { showTracks = true }
+                        if (item.isLive) CtrlChip(
+                            if (recordingThis) Icons.Default.Stop else Icons.Default.FiberManualRecord,
+                            if (recordingThis) "Durdur" else "Kaydet",
+                            tint = if (recordingThis) Live else Color.White
+                        ) {
+                            if (recordingThis) { vm.stopRecording(); hud = "Kayıt durduruldu" }
+                            else if (recording == null) { vm.startRecording(item.url, item.title); hud = "● Kaydediliyor" }
+                            else { hud = "Zaten kayıt var" }
+                            controlsVisible = true
+                        }
+                    }
                     if (item.isLive) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(Modifier.size(8.dp).clip(RoundedCornerShape(4.dp)).background(Live))
@@ -436,6 +452,15 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
                             Text(fmt(durationMs), color = Color.White, fontSize = 12.sp)
                         }
                     }
+                }
+            }
+        }
+
+        // Kilitliyken: yalnız kilit-aç butonu (kazara dokunuş korunur).
+        AnimatedVisibility(visible = controlsVisible && locked, enter = fadeIn(), exit = fadeOut()) {
+            Box(Modifier.fillMaxSize()) {
+                Box(Modifier.align(Alignment.Center)) {
+                    CircleBtn(Icons.Default.LockOpen, 56.dp) { locked = false; hud = "🔓 Kilit açıldı"; controlsVisible = true }
                 }
             }
         }
@@ -464,6 +489,24 @@ private fun CircleBtn(icon: androidx.compose.ui.graphics.vector.ImageVector, siz
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) { Icon(icon, null, tint = Color.White, modifier = Modifier.size(size * 0.55f)) }
+}
+
+/** Alt kontrol şeridi pill'i — ikon + etiket, yarı saydam cam yüzey. */
+@Composable
+private fun CtrlChip(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    tint: Color = Color.White,
+    onClick: () -> Unit
+) {
+    Row(
+        Modifier.clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = 0.12f))
+            .clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, label, tint = tint, modifier = Modifier.size(18.dp))
+        Text(label, color = tint, fontSize = 12.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(start = 6.dp))
+    }
 }
 
 @Composable
