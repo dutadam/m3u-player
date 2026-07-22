@@ -26,6 +26,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -83,7 +85,7 @@ fun SeriesDetailScreen(
                 downloadStateFor, onDownloadEpisode, onRemoveDownload)
         }
         IconButton(onClick = onBack, modifier = Modifier.padding(4.dp).align(Alignment.TopStart)) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi)
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = Color.White)
         }
     }
 }
@@ -155,53 +157,61 @@ private fun Header(
     onPlay: () -> Unit,
     omdb: app.cheesino.core.OmdbInfo? = null
 ) {
-    Column(Modifier.padding(top = 44.dp)) {
-        Row(Modifier.padding(horizontal = 16.dp)) {
-            Box(
-                Modifier.size(104.dp, 156.dp).clip(RoundedCornerShape(12.dp)).background(Elevated),
-                contentAlignment = Alignment.Center
-            ) {
-                if (s.cover != null) AsyncImage(s.cover, s.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-            }
-            Column(Modifier.padding(start = 14.dp)) {
-                Text(s.name, color = TextHi, fontWeight = FontWeight.Black, fontSize = 20.sp, maxLines = 2,
-                    overflow = TextOverflow.Ellipsis)
-                // Gerçek puanlar (OMDb) varsa onları, yoksa sağlayıcı IMDb puanını göster.
-                if (omdb?.hasAny == true) OmdbBadges(omdb, modifier = Modifier.padding(top = 6.dp))
-                else s.rating?.takeIf { it > 0 }?.let {
-                    Text("★ ${"%.1f".format(it)} · IMDb", color = Gold, fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
-                }
-                s.genre?.let { Text(it, color = Accent2, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp)) }
-                s.plot?.let {
-                    Text(it, color = TextDim, fontSize = 13.sp, maxLines = 5,
-                        overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
-                }
-            }
+    Column {
+        // Backdrop hero — film detayla aynı düzen (tam genişlik kapak + gradient + büyük başlık).
+        Box(Modifier.fillMaxWidth().height(260.dp)) {
+            if (s.cover != null)
+                AsyncImage(s.cover, s.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Ground))))
+            Text(s.name, color = Color.White, fontWeight = FontWeight.Black, fontSize = 24.sp,
+                maxLines = 2, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.align(Alignment.BottomStart).padding(16.dp))
         }
-        // Aksiyon satırı.
-        Row(Modifier.padding(start = 16.dp, top = 14.dp, end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Row(
-                Modifier.clip(RoundedCornerShape(12.dp)).background(Accent)
-                    .clickable(onClick = onPlay).padding(horizontal = 22.dp, vertical = 11.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Default.PlayArrow, null, tint = Ground)
-                Text(
-                    if (isResume && resumeEp != null) "Devam Et · B${resumeEp.episodeNum}" else "Oynat",
-                    color = Ground, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 6.dp)
-                )
+
+        Column(Modifier.padding(horizontal = 16.dp)) {
+            // Meta satırı — puan · tür · sezon/bölüm sayısı.
+            val meta = buildList {
+                s.rating?.takeIf { it > 0 }?.let { add("★ ${"%.1f".format(it)}") }
+                s.genre?.let { add(it) }
+                add("${s.seasons.size} sezon")
+                s.seasons.sumOf { it.episodes.size }.takeIf { it > 0 }?.let { add("$it bölüm") }
             }
-            IconButton(onClick = onFavorite, modifier = Modifier.padding(start = 6.dp)) {
-                Icon(if (favorite) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                    "Daha sonra izle", tint = if (favorite) Accent else TextDim)
+            if (meta.isNotEmpty())
+                Text(meta.joinToString("  ·  "), color = Accent2, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+
+            // Gerçek puanlar (OMDb: IMDb + Rotten Tomatoes).
+            if (omdb?.hasAny == true) OmdbBadges(omdb, modifier = Modifier.padding(top = 10.dp))
+
+            // Aksiyonlar.
+            Row(Modifier.padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    Modifier.clip(RoundedCornerShape(12.dp)).background(Accent)
+                        .clickable(onClick = onPlay).padding(horizontal = 24.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.PlayArrow, null, tint = Ground)
+                    Text(
+                        if (isResume && resumeEp != null) "Devam Et · B${resumeEp.episodeNum}" else "Oynat",
+                        color = Ground, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 6.dp)
+                    )
+                }
+                IconButton(onClick = onFavorite, modifier = Modifier.padding(start = 8.dp)) {
+                    Icon(if (favorite) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                        "Daha sonra izle", tint = if (favorite) Accent else TextDim)
+                }
+                IconButton(onClick = { onRate(if (rating == 1) 0 else 1) }) {
+                    Icon(Icons.Default.ThumbUp, "Beğen", tint = if (rating == 1) Accent else TextDim)
+                }
+                IconButton(onClick = { onRate(if (rating == -1) 0 else -1) }) {
+                    Icon(Icons.Default.ThumbDown, "Beğenme", tint = if (rating == -1) Live else TextDim)
+                }
             }
-            IconButton(onClick = { onRate(if (rating == 1) 0 else 1) }) {
-                Icon(Icons.Default.ThumbUp, "Beğen", tint = if (rating == 1) Accent else TextDim)
+
+            s.plot?.let {
+                Text(it, color = TextDim, fontSize = 14.sp, lineHeight = 20.sp,
+                    modifier = Modifier.padding(top = 16.dp))
             }
-            IconButton(onClick = { onRate(if (rating == -1) 0 else -1) }) {
-                Icon(Icons.Default.ThumbDown, "Beğenme", tint = if (rating == -1) Live else TextDim)
-            }
+            Spacer(Modifier.height(4.dp))
         }
     }
 }
