@@ -157,7 +157,15 @@ fun RootScreen(vm: LibraryViewModel) {
                     onBack = { movieDetail = null },
                     downloadState = downloads.firstOrNull { it.request.id == md.id }?.state,
                     onDownload = { vm.download(md.id, md.url, md.name) },
-                    onRemoveDownload = { vm.removeDownload(md.id) }
+                    onRemoveDownload = { vm.removeDownload(md.id) },
+                    similar = remember(md.id, state.movies) {
+                        val tags = app.cheesino.core.GenreTagger.tags(md.name, md.group)
+                        if (tags.isEmpty()) emptyList()
+                        else state.movies.filter {
+                            it.id != md.id && (app.cheesino.core.GenreTagger.tags(it.name, it.group) intersect tags).isNotEmpty()
+                        }.take(20)
+                    },
+                    onSimilar = onContent
                 )
                 sd != null -> SeriesDetailScreen(
                     ref = sd,

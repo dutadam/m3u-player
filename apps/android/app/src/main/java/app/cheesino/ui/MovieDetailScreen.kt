@@ -47,7 +47,9 @@ fun MovieDetailScreen(
     onBack: () -> Unit,
     downloadState: Int? = null,
     onDownload: () -> Unit = {},
-    onRemoveDownload: () -> Unit = {}
+    onRemoveDownload: () -> Unit = {},
+    similar: List<Channel> = emptyList(),
+    onSimilar: (Channel) -> Unit = {}
 ) {
     var info by remember(channel.id) { mutableStateOf<MovieInfo?>(null) }
     var omdbInfo by remember(channel.id) { mutableStateOf<app.cheesino.core.OmdbInfo?>(null) }
@@ -136,8 +138,11 @@ fun MovieDetailScreen(
                     Text("Yönetmen: $it", color = TextMute, fontSize = 12.sp,
                         modifier = Modifier.padding(top = 4.dp))
                 }
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(16.dp))
             }
+            // Tür bazlı benzer içerik.
+            if (similar.isNotEmpty()) PosterRail("Benzerler", similar, onSimilar)
+            Spacer(Modifier.height(24.dp))
         }
         IconButton(onClick = onBack, modifier = Modifier.padding(4.dp)) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = Color.White)
