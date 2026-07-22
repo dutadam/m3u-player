@@ -10,6 +10,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -80,6 +83,7 @@ fun RootScreen(vm: LibraryViewModel) {
     // Sekme-içi segmentler (Canlı: TV/Rehber/Spor/Çoklu · Katalog: Filmler/Diziler · Kitaplığım: İndirilenler/Kayıtlar/Listem).
     var liveSeg by rememberSaveable { mutableIntStateOf(0) }
     var catSeg by rememberSaveable { mutableIntStateOf(0) }
+    var catGenre by rememberSaveable { mutableIntStateOf(0) }   // Katalog kategori/mood filtresi (0 = Tümü)
     var libSeg by rememberSaveable { mutableIntStateOf(0) }
     // Oynatma kuyruğu — tek öğe (kanal/film) ya da dizi bölümleri (otomatik sonraki).
     var playQueue by remember { mutableStateOf<List<PlayItem>>(emptyList()) }
@@ -204,12 +208,22 @@ fun RootScreen(vm: LibraryViewModel) {
                             }
                         }
 
-                        // KATALOG — üstte Filmler/Diziler + arama.
+                        // KATALOG — üstte Filmler/Diziler + arama, altında Kategori/Mood filtresi.
                         Tab.CATALOG -> Column(Modifier.fillMaxSize()) {
-                            SegmentBar(listOf("Filmler", "Diziler"), catSeg, onSearch = { showSearch = true }) { catSeg = it }
-                            when (catSeg) {
-                                0 -> MoviesScreen(state, discover.movieRails, onContent)
-                                else -> SeriesScreen(state, discover.seriesRails, openSeries)
+                            SegmentBar(listOf("Filmler", "Diziler"), catSeg, onSearch = { showSearch = true }) { catSeg = it; catGenre = 0 }
+                            val genreItems = remember(discover.genres) { listOf("Tümü") + discover.genres.take(14) }
+                            if (genreItems.size > 1)
+                                SegmentBar(genreItems, catGenre.coerceIn(0, genreItems.lastIndex), topInset = false) { catGenre = it }
+                            val g = genreItems.getOrNull(catGenre)?.takeIf { catGenre > 0 }
+                            when {
+                                g == null && catSeg == 0 -> MoviesScreen(state, discover.movieRails, onContent)
+                                g == null -> SeriesScreen(state, discover.seriesRails, openSeries)
+                                catSeg == 0 -> FilteredPosterGrid(
+                                    remember(g, state.movies) { state.movies.filter { g in app.cheesino.core.GenreTagger.tags(it.name, it.group) } },
+                                    onContent)
+                                else -> FilteredSeriesGrid(
+                                    remember(g, state.visibleSeries) { state.visibleSeries.filter { g in app.cheesino.core.GenreTagger.tags(it.name, it.genre, it.group) } },
+                                    openSeries)
                             }
                         }
 
@@ -283,11 +297,53 @@ private fun PlayerHost(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit
     }
 }
 
+/** Kategori filtresi seçilince gösterilen film grid'i. */
+@Composable
+private fun FilteredPosterGrid(items: List<Channel>, onTap: (Channel) -> Unit) {
+    if (items.isEmpty()) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("Bu kategoride içerik yok.", color = TextMute, fontSize = 14.sp)
+        }
+        return
+    }
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(112.dp), modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 90.dp)
+    ) {
+        items(items) { ch ->
+            val rating = ch.rating?.takeIf { it > 0 }?.let { "★ ${"%.1f".format(it)}" }
+            PosterCard(ch.name, ch.logo, badge = rating, quality = ch.quality?.label) { onTap(ch) }
+        }
+    }
+}
+
+/** Kategori filtresi seçilince gösterilen dizi grid'i. */
+@Composable
+private fun FilteredSeriesGrid(items: List<SeriesRef>, onTap: (SeriesRef) -> Unit) {
+    if (items.isEmpty()) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("Bu kategoride içerik yok.", color = TextMute, fontSize = 14.sp)
+        }
+        return
+    }
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(112.dp), modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 90.dp)
+    ) {
+        items(items) { s ->
+            val rating = s.rating?.takeIf { it > 0 }?.let { "★ ${"%.1f".format(it)}" }
+            PosterCard(s.name, s.cover, badge = rating) { onTap(s) }
+        }
+    }
+}
+
 /** Sekme-içi segment çubuğu — aktif segment accent pill; opsiyonel sağda arama ikonu (Katalog). */
 @Composable
-private fun SegmentBar(items: List<String>, selected: Int, onSearch: (() -> Unit)? = null, onSelect: (Int) -> Unit) {
+private fun SegmentBar(items: List<String>, selected: Int, onSearch: (() -> Unit)? = null,
+                      topInset: Boolean = true, onSelect: (Int) -> Unit) {
     Row(
-        Modifier.fillMaxWidth().statusBarsPadding().padding(start = 14.dp, end = 4.dp, top = 8.dp, bottom = 6.dp),
+        Modifier.fillMaxWidth().then(if (topInset) Modifier.statusBarsPadding() else Modifier)
+            .padding(start = 14.dp, end = 4.dp, top = if (topInset) 8.dp else 2.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
