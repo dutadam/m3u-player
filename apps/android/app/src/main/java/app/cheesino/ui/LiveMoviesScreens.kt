@@ -298,7 +298,7 @@ private fun CategoryGrid(title: String, cards: List<CardItem>, query: String, on
             columns = GridCells.Adaptive(112.dp),
             modifier = Modifier.weight(1f).fillMaxWidth(),
             contentPadding = PaddingValues(16.dp)
-        ) { items(shown) { c -> PosterCard(c.name, c.poster, null, c.onClick) } }
+        ) { items(shown) { c -> PosterCard(c.name, c.poster, badge = null, onTap = c.onClick) } }
     }
 }
 

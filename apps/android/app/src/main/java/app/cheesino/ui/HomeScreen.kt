@@ -87,8 +87,8 @@ fun HomeScreen(
         item { ResumeRail("Devam Et", continueW, onResume) }
         item { PosterRail("Sana Özel", recommended, onPlay) }
         item { PosterRail("Daha Sonra İzle", favorites, onPlay) }
+        item { RankedRail("Bu Hafta Top 10", clean(state.topRated), onPlay) }
         item { PosterRail("Son Eklenenler", clean(state.recentlyAdded), onPlay) }
-        item { PosterRail("Yüksek Puanlı · IMDb", clean(state.topRated), onPlay) }
         // Dinamik tür/senaryo rayları — film ve dizi karışık.
         movieRails.take(6).forEach { (title, list) -> item { PosterRail(title, clean(list), onPlay) } }
         seriesRails.take(4).forEach { (title, list) -> item { SeriesRail(title, list, onSeries) } }

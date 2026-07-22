@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -72,9 +73,43 @@ fun PosterRail(title: String, items: List<Channel>, onTap: (Channel) -> Unit, on
     Rail(title, onSeeAll) {
         LazyRow(contentPadding = PaddingValues(horizontal = 16.dp)) {
             items(items.take(30)) { ch ->
-                val badge = ch.rating?.takeIf { it > 0 }?.let { "★ ${"%.1f".format(it)}" } ?: ch.quality?.label
-                PosterCard(ch.name, ch.logo, badge) { onTap(ch) }
+                val rating = ch.rating?.takeIf { it > 0 }?.let { "★ ${"%.1f".format(it)}" }
+                val hdr = Regex("\\bHDR\\b", RegexOption.IGNORE_CASE).containsMatchIn(ch.name)
+                val qual = ch.quality?.label?.let { if (hdr) "$it HDR" else it } ?: if (hdr) "HDR" else null
+                PosterCard(ch.name, ch.logo, badge = rating, quality = qual) { onTap(ch) }
             }
+        }
+    }
+}
+
+/** Top 10 — outline'lı büyük sıra numarası + poster (Netflix stili). */
+@Composable
+fun RankedRail(title: String, items: List<Channel>, onTap: (Channel) -> Unit) {
+    if (items.isEmpty()) return
+    Rail(title) {
+        LazyRow(contentPadding = PaddingValues(horizontal = 16.dp)) {
+            itemsIndexed(items.take(10)) { i, ch -> RankedCard(i + 1, ch.name, ch.logo) { onTap(ch) } }
+        }
+    }
+}
+
+@Composable
+private fun RankedCard(rank: Int, name: String, poster: String?, onTap: () -> Unit) {
+    Row(
+        Modifier.focusHighlight(12).padding(end = 6.dp).clickable(onClick = onTap),
+        verticalAlignment = Alignment.Bottom
+    ) {
+        Text(
+            "$rank", fontSize = 74.sp, fontWeight = FontWeight.Black, color = Accent,
+            style = androidx.compose.ui.text.TextStyle(
+                drawStyle = androidx.compose.ui.graphics.drawscope.Stroke(width = 7f)
+            ),
+            modifier = Modifier.padding(end = 2.dp).offset(y = 6.dp)
+        )
+        Box(Modifier.size(104.dp, 156.dp).clip(RoundedCornerShape(12.dp)).background(Elevated)) {
+            if (poster != null) AsyncImage(poster, name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            else Text(name.take(2).uppercase(), color = TextMute, fontWeight = FontWeight.Black,
+                modifier = Modifier.align(Alignment.Center))
         }
     }
 }
@@ -141,7 +176,7 @@ fun ResumeCard(mark: ResumeMark, onTap: () -> Unit) {
 }
 
 @Composable
-fun PosterCard(name: String, poster: String?, badge: String? = null, onTap: () -> Unit) {
+fun PosterCard(name: String, poster: String?, badge: String? = null, quality: String? = null, onTap: () -> Unit) {
     Column(Modifier.focusHighlight().padding(end = 11.dp).width(124.dp).clickable(onClick = onTap)) {
         Box(
             Modifier.size(124.dp, 186.dp).clip(RoundedCornerShape(14.dp)).background(Elevated),
@@ -149,7 +184,9 @@ fun PosterCard(name: String, poster: String?, badge: String? = null, onTap: () -
         ) {
             if (poster != null) AsyncImage(poster, name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             else Text(name.take(2).uppercase(), color = TextMute, fontWeight = FontWeight.Black, fontSize = 22.sp)
+            // Puan sol-üstte (altın), kalite/HDR sağ-üstte (accent).
             badge?.let { Badge(it, if (it.startsWith("★")) Gold else qualityColor(it), Modifier.align(Alignment.TopStart).padding(6.dp)) }
+            quality?.let { Badge(it, Accent, Modifier.align(Alignment.TopEnd).padding(6.dp)) }
         }
         Text(name, color = TextDim, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 6.dp))
