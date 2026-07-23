@@ -57,7 +57,9 @@ fun SeriesDetailScreen(
     omdb: suspend (String, String?) -> app.cheesino.core.OmdbInfo? = { _, _ -> null },
     downloadStateFor: (String) -> Int? = { null },
     onDownloadEpisode: (PlayItem) -> Unit = {},
-    onRemoveDownload: (String) -> Unit = {}
+    onRemoveDownload: (String) -> Unit = {},
+    similar: List<SeriesRef> = emptyList(),
+    onSimilar: (SeriesRef) -> Unit = {}
 ) {
     var series by remember(ref.id) { mutableStateOf<Series?>(null) }
     var loading by remember(ref.id) { mutableStateOf(true) }
@@ -82,7 +84,7 @@ fun SeriesDetailScreen(
             )
             else -> SeriesContent(s, selectedSeason, { selectedSeason = it }, resumeFor, watchedIds,
                 favorite, rating, onFavorite, onRate, onPlayQueue, omdbInfo,
-                downloadStateFor, onDownloadEpisode, onRemoveDownload)
+                downloadStateFor, onDownloadEpisode, onRemoveDownload, similar, onSimilar)
         }
         IconButton(onClick = onBack, modifier = Modifier.padding(4.dp).align(Alignment.TopStart)) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = Color.White)
@@ -105,7 +107,9 @@ private fun SeriesContent(
     omdb: app.cheesino.core.OmdbInfo? = null,
     downloadStateFor: (String) -> Int? = { null },
     onDownloadEpisode: (PlayItem) -> Unit = {},
-    onRemoveDownload: (String) -> Unit = {}
+    onRemoveDownload: (String) -> Unit = {},
+    similar: List<SeriesRef> = emptyList(),
+    onSimilar: (SeriesRef) -> Unit = {}
 ) {
     val season = s.seasons.firstOrNull { it.number == selectedSeason } ?: s.seasons.first()
     val queue = remember(season, s.name) {
@@ -141,6 +145,10 @@ private fun SeriesContent(
                 onRemoveDownload = { onRemoveDownload(key) },
                 onPlay = { onPlayQueue(queue, i) }
             )
+        }
+        if (similar.isNotEmpty()) item {
+            Spacer(Modifier.height(8.dp))
+            SeriesRail("Benzer Diziler", similar, onSimilar)
         }
     }
 }

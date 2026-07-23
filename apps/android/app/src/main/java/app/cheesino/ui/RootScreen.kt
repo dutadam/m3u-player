@@ -195,7 +195,16 @@ fun RootScreen(vm: LibraryViewModel) {
                     omdb = { t, y -> vm.omdbRatings(t, y) },
                     downloadStateFor = { key -> downloads.firstOrNull { it.request.id == key }?.state },
                     onDownloadEpisode = { item -> vm.download(item.id, item.url, item.title) },
-                    onRemoveDownload = { vm.removeDownload(it) }
+                    onRemoveDownload = { vm.removeDownload(it) },
+                    similar = remember(sd.id, state.visibleSeries) {
+                        val tags = app.cheesino.core.GenreTagger.tags(sd.name, sd.genre, sd.group)
+                        if (tags.isEmpty()) emptyList()
+                        else state.visibleSeries.filter {
+                            it.id != sd.id && it.cover != null &&
+                                (app.cheesino.core.GenreTagger.tags(it.name, it.genre, it.group) intersect tags).isNotEmpty()
+                        }.take(20)
+                    },
+                    onSimilar = openSeries
                 )
                 showSearch -> SearchScreen(state, discover.genres, onContent, openSeries, onBack = { showSearch = false })
                 else -> Crossfade(targetState = tab, label = "tab") { t ->
