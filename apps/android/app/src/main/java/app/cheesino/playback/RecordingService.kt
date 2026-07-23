@@ -158,6 +158,10 @@ class RecordingService : Service() {
                 if (!stop) _status.value = "Kayıt hatası: ${e.message ?: "bilinmeyen"}"
             } finally {
                 currentCall = null
+                // Havuzdaki keep-alive soketi hemen kapat — yoksa kayıt bittikten sonra bile
+                // sağlayıcının (tek eşzamanlı) bağlantısı dakikalarca tutulu kalır → yayın açılmaz.
+                runCatching { client.connectionPool.evictAll() }
+                runCatching { client.dispatcher.executorService.shutdown() }
                 finishAndStop()
             }
         }.also { it.start() }
