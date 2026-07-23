@@ -50,8 +50,15 @@ fun MovieDetailScreen(
     onDownload: () -> Unit = {},
     onRemoveDownload: () -> Unit = {},
     similar: List<Channel> = emptyList(),
-    onSimilar: (Channel) -> Unit = {}
+    onSimilar: (Channel) -> Unit = {},
+    onTmdbSimilar: (suspend () -> List<Channel>)? = null
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    // TMDB gerçek benzerleri (varsa tür-tahmininin yerine geçer).
+    var tmdbSimilar by remember(channel.id) { mutableStateOf<List<Channel>>(emptyList()) }
+    LaunchedEffect(channel.id) {
+        onTmdbSimilar?.let { tmdbSimilar = runCatching { it() }.getOrDefault(emptyList()) }
+    }
     var info by remember(channel.id) { mutableStateOf<MovieInfo?>(null) }
     var omdbInfo by remember(channel.id) { mutableStateOf<app.cheesino.core.OmdbInfo?>(null) }
     var tmdbInfo by remember(channel.id) { mutableStateOf<app.cheesino.core.TmdbInfo?>(null) }
@@ -91,6 +98,25 @@ fun MovieDetailScreen(
 
                 // Gerçek puanlar (OMDb: IMDb + Rotten Tomatoes).
                 OmdbBadges(omdbInfo, modifier = Modifier.padding(top = 10.dp))
+
+                // Fragman (TMDB → YouTube).
+                tmdbInfo?.trailerKey?.let { key ->
+                    Row(
+                        Modifier.padding(top = 12.dp).clip(RoundedCornerShape(10.dp)).background(Elevated)
+                            .clickable {
+                                runCatching {
+                                    context.startActivity(android.content.Intent(
+                                        android.content.Intent.ACTION_VIEW,
+                                        android.net.Uri.parse("https://www.youtube.com/watch?v=$key")))
+                                }
+                            }.padding(horizontal = 14.dp, vertical = 9.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.PlayArrow, null, tint = Accent, modifier = Modifier.size(18.dp))
+                        Text("Fragmanı İzle", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                            modifier = Modifier.padding(start = 6.dp))
+                    }
+                }
 
                 // Aksiyonlar.
                 Row(Modifier.padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -145,8 +171,9 @@ fun MovieDetailScreen(
                 }
                 Spacer(Modifier.height(16.dp))
             }
-            // Tür bazlı benzer içerik.
-            if (similar.isNotEmpty()) PosterRail("Benzerler", similar, onSimilar)
+            // Benzerler — TMDB önerisi varsa onu, yoksa tür bazlı listeyi göster.
+            val shownSimilar = tmdbSimilar.ifEmpty { similar }
+            if (shownSimilar.isNotEmpty()) PosterRail("Benzerler", shownSimilar, onSimilar)
             Spacer(Modifier.height(24.dp))
         }
         IconButton(onClick = onBack, modifier = Modifier.padding(4.dp)) {

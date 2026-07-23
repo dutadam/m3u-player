@@ -426,6 +426,28 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
         return r
     }
 
+    private fun tmdbKey() = runCatching { appCtx.getString(app.cheesino.R.string.tmdb_api_key) }.getOrDefault("")
+
+    /** TMDB önerileri (gerçek benzerler) → kütüphanedeki filmlerle eşleşenler. */
+    suspend fun tmdbSimilarMovies(title: String, year: String?): List<Channel> {
+        val key = tmdbKey(); if (key.isBlank()) return emptyList()
+        val id = tmdbInfo(title, year, isTv = false)?.id ?: return emptyList()
+        val titles = runCatching { app.cheesino.core.TmdbClient.recommendationsFor(key, id, false) }.getOrDefault(emptyList())
+        if (titles.isEmpty()) return emptyList()
+        val byKey = _state.value.movies.filter { it.logo != null }.associateBy { app.cheesino.core.railKey(it.name) }
+        return titles.mapNotNull { byKey[app.cheesino.core.railKey(it)] }.distinctBy { it.id }.take(20)
+    }
+
+    /** TMDB önerileri (gerçek benzerler) → kütüphanedeki dizilerle eşleşenler. */
+    suspend fun tmdbSimilarSeries(title: String, year: String?): List<SeriesRef> {
+        val key = tmdbKey(); if (key.isBlank()) return emptyList()
+        val id = tmdbInfo(title, year, isTv = true)?.id ?: return emptyList()
+        val titles = runCatching { app.cheesino.core.TmdbClient.recommendationsFor(key, id, true) }.getOrDefault(emptyList())
+        if (titles.isEmpty()) return emptyList()
+        val byKey = _state.value.visibleSeries.filter { it.cover != null }.associateBy { app.cheesino.core.railKey(it.name) }
+        return titles.mapNotNull { byKey[app.cheesino.core.railKey(it)] }.distinctBy { it.id }.take(20)
+    }
+
     // OMDb puan önbelleği — aynı başlığı tekrar sorma.
     private val omdbCache = HashMap<String, OmdbInfo?>()
     suspend fun omdbRatings(title: String, year: String? = null): OmdbInfo? {

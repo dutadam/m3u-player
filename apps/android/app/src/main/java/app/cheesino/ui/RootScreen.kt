@@ -181,7 +181,8 @@ fun RootScreen(vm: LibraryViewModel) {
                             it.id != md.id && (app.cheesino.core.GenreTagger.tags(it.name, it.group) intersect tags).isNotEmpty()
                         }.take(20)
                     },
-                    onSimilar = onContent
+                    onSimilar = onContent,
+                    onTmdbSimilar = { vm.tmdbSimilarMovies(md.name, null) }
                 )
                 sd != null -> SeriesDetailScreen(
                     ref = sd,
@@ -207,7 +208,8 @@ fun RootScreen(vm: LibraryViewModel) {
                                 (app.cheesino.core.GenreTagger.tags(it.name, it.genre, it.group) intersect tags).isNotEmpty()
                         }.take(20)
                     },
-                    onSimilar = openSeries
+                    onSimilar = openSeries,
+                    onTmdbSimilar = { vm.tmdbSimilarSeries(sd.name, null) }
                 )
                 showSearch -> SearchScreen(state, discover.genres, onContent, openSeries, onBack = { showSearch = false })
                 else -> Crossfade(targetState = tab, label = "tab") { t ->

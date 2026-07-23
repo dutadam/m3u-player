@@ -45,6 +45,25 @@ object TmdbClient {
     private fun img(path: String?, size: String): String? =
         path?.takeIf { it.isNotBlank() && it != "null" }?.let { "https://image.tmdb.org/t/p/$size$it" }
 
+    /** Bir başlığın TMDB önerileri (gerçek "benzerler") — başlık listesi, sıralı. */
+    suspend fun recommendationsFor(apiKey: String, id: Int, isTv: Boolean): List<String> =
+        withContext(Dispatchers.IO) {
+            if (apiKey.isBlank()) return@withContext emptyList()
+            val kind = if (isTv) "tv" else "movie"
+            val url = "https://api.themoviedb.org/3/$kind/$id/recommendations?api_key=$apiKey&language=tr-TR"
+            try {
+                val body = http.newCall(Request.Builder().url(url).build()).execute().use { r ->
+                    if (!r.isSuccessful) return@withContext emptyList(); r.body?.string() ?: return@withContext emptyList()
+                }
+                val o = json.parseToJsonElement(body) as? JsonObject ?: return@withContext emptyList()
+                (o["results"] as? JsonArray)?.mapNotNull { it as? JsonObject }?.mapNotNull { r ->
+                    (r["title"] as? JsonPrimitive)?.content ?: (r["name"] as? JsonPrimitive)?.content
+                } ?: emptyList()
+            } catch (e: Exception) {
+                emptyList()
+            }
+        }
+
     /**
      * Başlığı TMDB'de arar ve zengin metadata döner (yüksek kaliteli backdrop/poster, özet, gerçek
      * puan, oyuncular, tür). [isTv] diziler için true. Bulunamazsa/anahtar boşsa null.
@@ -72,7 +91,7 @@ object TmdbClient {
                     ?: return@withContext null
                 val id = (first["id"] as? JsonPrimitive)?.content?.toIntOrNull() ?: return@withContext null
 
-                val detUrl = "https://api.themoviedb.org/3/$kind/$id?api_key=$apiKey&language=tr-TR&append_to_response=credits"
+                val detUrl = "https://api.themoviedb.org/3/$kind/$id?api_key=$apiKey&language=tr-TR&append_to_response=credits,videos"
                 val dBody = http.newCall(Request.Builder().url(detUrl).build()).execute().use { r ->
                     if (!r.isSuccessful) return@withContext null; r.body?.string() ?: return@withContext null
                 }
@@ -84,14 +103,21 @@ object TmdbClient {
                 val genres = (d["genres"] as? JsonArray)
                     ?.mapNotNull { (it as? JsonObject)?.get("name") as? JsonPrimitive }
                     ?.joinToString(", ") { it.content }?.takeIf { it.isNotBlank() }
+                // Fragman — YouTube tipli ilk video (öncelik Trailer).
+                val vids = ((d["videos"] as? JsonObject)?.get("results") as? JsonArray)?.mapNotNull { it as? JsonObject }
+                    ?.filter { (it["site"] as? JsonPrimitive)?.content.equals("YouTube", true) }
+                val trailer = (vids?.firstOrNull { (it["type"] as? JsonPrimitive)?.content.equals("Trailer", true) }
+                    ?: vids?.firstOrNull())?.let { (it["key"] as? JsonPrimitive)?.content }
                 TmdbInfo(
+                    id = id,
                     backdrop = img(str("backdrop_path"), "w780"),
                     poster = img(str("poster_path"), "w500"),
                     overview = str("overview"),
                     rating = (d["vote_average"] as? JsonPrimitive)?.content?.toDoubleOrNull()?.takeIf { it > 0 },
                     year = (str("release_date") ?: str("first_air_date"))?.take(4),
                     cast = cast,
-                    genres = genres
+                    genres = genres,
+                    trailerKey = trailer
                 ).takeIf { it.backdrop != null || it.overview != null || it.rating != null }
             } catch (e: Exception) {
                 null
@@ -101,11 +127,13 @@ object TmdbClient {
 
 /** TMDB zengin metadata. */
 data class TmdbInfo(
+    val id: Int? = null,
     val backdrop: String? = null,
     val poster: String? = null,
     val overview: String? = null,
     val rating: Double? = null,
     val year: String? = null,
     val cast: String? = null,
-    val genres: String? = null
+    val genres: String? = null,
+    val trailerKey: String? = null   // YouTube video anahtarı (fragman)
 )

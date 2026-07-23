@@ -60,13 +60,16 @@ fun SeriesDetailScreen(
     onDownloadEpisode: (PlayItem) -> Unit = {},
     onRemoveDownload: (String) -> Unit = {},
     similar: List<SeriesRef> = emptyList(),
-    onSimilar: (SeriesRef) -> Unit = {}
+    onSimilar: (SeriesRef) -> Unit = {},
+    onTmdbSimilar: (suspend () -> List<SeriesRef>)? = null
 ) {
     var series by remember(ref.id) { mutableStateOf<Series?>(null) }
     var loading by remember(ref.id) { mutableStateOf(true) }
     var selectedSeason by remember(ref.id) { mutableIntStateOf(0) }
     var omdbInfo by remember(ref.id) { mutableStateOf<app.cheesino.core.OmdbInfo?>(null) }
     var tmdbInfo by remember(ref.id) { mutableStateOf<app.cheesino.core.TmdbInfo?>(null) }
+    var tmdbSimilar by remember(ref.id) { mutableStateOf<List<SeriesRef>>(emptyList()) }
+    LaunchedEffect(ref.id) { onTmdbSimilar?.let { tmdbSimilar = runCatching { it() }.getOrDefault(emptyList()) } }
 
     LaunchedEffect(ref.id) {
         loading = true
@@ -87,7 +90,8 @@ fun SeriesDetailScreen(
             )
             else -> SeriesContent(s, selectedSeason, { selectedSeason = it }, resumeFor, watchedIds,
                 favorite, rating, onFavorite, onRate, onPlayQueue, omdbInfo, tmdbInfo,
-                downloadStateFor, onDownloadEpisode, onRemoveDownload, similar, onSimilar)
+                downloadStateFor, onDownloadEpisode, onRemoveDownload,
+                tmdbSimilar.ifEmpty { similar }, onSimilar)
         }
         IconButton(onClick = onBack, modifier = Modifier.padding(4.dp).align(Alignment.TopStart)) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = Color.White)
@@ -195,6 +199,25 @@ private fun Header(
 
             // Gerçek puanlar (OMDb: IMDb + Rotten Tomatoes).
             if (omdb?.hasAny == true) OmdbBadges(omdb, modifier = Modifier.padding(top = 10.dp))
+
+            // Fragman (TMDB → YouTube).
+            val ctx = androidx.compose.ui.platform.LocalContext.current
+            tmdb?.trailerKey?.let { key ->
+                Row(
+                    Modifier.padding(top = 12.dp).clip(RoundedCornerShape(10.dp)).background(Elevated)
+                        .clickable {
+                            runCatching {
+                                ctx.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
+                                    android.net.Uri.parse("https://www.youtube.com/watch?v=$key")))
+                            }
+                        }.padding(horizontal = 14.dp, vertical = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.PlayArrow, null, tint = Accent, modifier = Modifier.size(18.dp))
+                    Text("Fragmanı İzle", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                        modifier = Modifier.padding(start = 6.dp))
+                }
+            }
 
             // Aksiyonlar.
             Row(Modifier.padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
