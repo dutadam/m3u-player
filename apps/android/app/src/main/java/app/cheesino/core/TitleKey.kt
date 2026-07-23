@@ -18,10 +18,17 @@ fun baseTitle(name: String): String =
 
 private val TRAILING_YEAR = Regex("\\b(19|20)\\d{2}\\b")
 
+// Aynı filmin dil/versiyon varyantları — ray tekilleştirmede "Film Dublaj" ↔ "Film Altyazılı" birleşir.
+private val VARIANT_TOKENS = Regex(
+    "\\b(DUBLAJ(LI)?|ALT ?YAZILI|ALTYAZI|T[ÜU]RK[ÇC]E|ORI?[İI]?J?[İI]?NAL|DUB|SUB|SUBBED|DUBBED|VOSTFR|YERL[İI])\\b",
+    RegexOption.IGNORE_CASE
+)
+
 /**
- * Vitrin/ray tekilleştirme anahtarı — [baseTitle]'a ek olarak yıl etiketini de atar
- * ("Film 2023" ↔ "Film"). YALNIZ görüntü rayları için; global katalog dedup'unda kullanma
+ * Vitrin/ray tekilleştirme anahtarı — [baseTitle]'a ek olarak yıl ve dil/versiyon etiketini de atar
+ * ("Film 2023 Dublaj" ↔ "Film"). YALNIZ görüntü rayları için; global katalog dedup'unda kullanma
  * (yoksa "Blade Runner" ile "Blade Runner 2049" birleşip biri gizlenir).
  */
 fun railKey(name: String): String =
-    baseTitle(name).replace(TRAILING_YEAR, " ").replace(Regex("\\s+"), " ").trim()
+    baseTitle(name).replace(TRAILING_YEAR, " ").replace(VARIANT_TOKENS, " ")
+        .replace(Regex("\\s+"), " ").trim()

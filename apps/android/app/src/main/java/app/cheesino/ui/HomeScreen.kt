@@ -59,9 +59,16 @@ fun HomeScreen(
     onGenre: (String) -> Unit = {}
 ) {
     fun clean(list: List<Channel>): List<Channel> {
-        val seen = HashSet<String>()
-        // Aynı filmin 4K/FHD/HD/HEVC ve yıl varyantları ("Film 2023" ↔ "Film") tek posterde toplanır.
-        return list.filter { it.logo != null && seen.add(railKey(it.name)) }
+        val seenKey = HashSet<String>()
+        val seenPoster = HashSet<String>()
+        // Aynı filmin kalite/yıl/dil varyantları tek posterde toplanır. Ayrıca aynı poster görseli
+        // rayda iki kez görünmez (ad farklı olsa da aynı içerik → kullanıcının "aynı poster" şikâyeti).
+        return list.filter { c ->
+            val logo = c.logo ?: return@filter false
+            val keyOk = seenKey.add(railKey(c.name))
+            val posterOk = seenPoster.add(logo)
+            keyOk && posterOk
+        }
     }
 
     // Bunların hepsi ucuz (filter) — ağır iş (öneri/raylar) arka planda önceden hesaplandı.

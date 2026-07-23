@@ -463,7 +463,8 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
                             tint = if (recordingThis) Live else Color.White
                         ) {
                             if (recordingThis) { vm.stopRecording(); hud = "Kayıt durduruldu" }
-                            else if (recording == null) { vm.startRecording(item.url, item.title); hud = "Kayıt başlatılıyor…" }
+                            // İzlenen akıştan kaydet — ikinci bağlantı açmaz (tek-bağlantılı sağlayıcıda da çalışır).
+                            else if (recording == null) { vm.startRecordingHere(item.title); hud = "Kayıt başladı" }
                             else { hud = "Zaten kayıt var" }
                             controlsVisible = true
                         }

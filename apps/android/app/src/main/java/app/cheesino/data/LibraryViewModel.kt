@@ -144,6 +144,8 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     val recordingStatus: StateFlow<String?> = recordingsRepo.status
     val recordings: StateFlow<List<java.io.File>> = recordingsRepo.recordings
     fun startRecording(url: String, title: String) = recordingsRepo.start(url, title)
+    /** İzlenen akıştan kaydet (ExoPlayer tee) — sağlayıcı tek bağlantıya izin verse de çalışır. */
+    fun startRecordingHere(title: String) = recordingsRepo.startHere(title)
     fun stopRecording() = recordingsRepo.stop()
     fun refreshRecordings() = recordingsRepo.refresh()
     fun deleteRecording(file: java.io.File) = recordingsRepo.delete(file)

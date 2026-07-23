@@ -33,6 +33,7 @@ class RecordingsRepository(context: Context) {
             ?.filter { it.isFile }?.sortedByDescending { it.lastModified() } ?: emptyList()
     }
 
+    /** Ayrı bağlantı açarak kaydet (arka planda / izlemezken; VLC oynatıcı). */
     fun start(url: String, title: String) {
         val i = Intent(appCtx, RecordingService::class.java)
             .setAction(RecordingService.ACTION_START)
@@ -41,10 +42,19 @@ class RecordingsRepository(context: Context) {
         ContextCompat.startForegroundService(appCtx, i)
     }
 
+    /** İzlenen akıştan kaydet (ExoPlayer/PlaybackService tee) — ikinci bağlantı açmaz. */
+    fun startHere(title: String) {
+        app.cheesino.playback.RecordingSink.start(appCtx, title)
+        refresh()
+    }
+
     fun stop() {
+        // Hangisi aktifse dursun: tee (izlenen akış) + ayrı-bağlantı servisi.
+        app.cheesino.playback.RecordingSink.stop()
         appCtx.startService(
             Intent(appCtx, RecordingService::class.java).setAction(RecordingService.ACTION_STOP)
         )
+        refresh()
     }
 
     fun delete(file: File) { runCatching { file.delete() }; refresh() }

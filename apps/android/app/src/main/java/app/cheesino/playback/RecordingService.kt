@@ -41,13 +41,11 @@ class RecordingService : Service() {
         const val CHANNEL_ID = "cheesino_recording"
         const val NOTIF_ID = 3000
 
-        private val _active = MutableStateFlow<ActiveRecording?>(null)
-        /** UI için: şu an kaydedilen yayın (yoksa null). */
-        val active: StateFlow<ActiveRecording?> = _active.asStateFlow()
+        /** UI için: şu an kaydedilen yayın (yoksa null). Tee ve servis kaydı ortak akışa yazar. */
+        val active: StateFlow<ActiveRecording?> = RecordingState.active.asStateFlow()
 
-        private val _status = MutableStateFlow<String?>(null)
         /** Son kayıt durum/hata mesajı (UI'da göster — 0 MB nedenini görmek için). */
-        val status: StateFlow<String?> = _status.asStateFlow()
+        val status: StateFlow<String?> = RecordingState.status.asStateFlow()
 
         /** Kayıt dizini (uygulamaya özel, izin gerektirmez). */
         fun dir(context: Context): File =
@@ -85,7 +83,7 @@ class RecordingService : Service() {
         val safe = title.replace(Regex("[^\\w\\-. ]"), "_").take(60).trim()
         val file = File(dir(this), "${safe}_${System.currentTimeMillis()}.ts")
         currentFile = file
-        _active.value = ActiveRecording(title, file.absolutePath, System.currentTimeMillis())
+        RecordingState.active.value = ActiveRecording(title, file.absolutePath, System.currentTimeMillis())
         val fgType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
             ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC else 0
         ServiceCompat.startForeground(this, NOTIF_ID, buildNotification(title), fgType)
@@ -94,7 +92,7 @@ class RecordingService : Service() {
         // Oynatıcıyla aynı aday-URL çözümünü kullan (http→https, .m3u8 ek) — ham URL çalışmıyorsa.
         val streamUrl = app.cheesino.core.StreamResolver.candidates(url).firstOrNull()?.url ?: url
         val isHls = streamUrl.substringBefore('?').lowercase().endsWith(".m3u8") || streamUrl.contains(".m3u8")
-        _status.value = "Bağlanıyor…"
+        RecordingState.status.value = "Bağlanıyor…"
 
         // Bekçi: veri gelmezse kaydı sonsuza dek çalışır durumda bırakma. Aksi halde başarısız bir
         // kayıt sağlayıcının (çoğu tek eşzamanlı) bağlantısını tutar → başka yayın açılamaz.
@@ -104,7 +102,7 @@ class RecordingService : Service() {
                 runCatching { Thread.sleep(1000) }
                 if (file.length() > 0L) break            // veri akıyor → bekçiyi bırak
                 if (System.currentTimeMillis() - start > 15_000) {
-                    _status.value = "Kayıt başlatılamadı — kaynak veri vermedi, bağlantı serbest bırakıldı."
+                    RecordingState.status.value = "Kayıt başlatılamadı — kaynak veri vermedi, bağlantı serbest bırakıldı."
                     stop = true                          // worker döngüsünü kır
                     runCatching { currentCall?.cancel() } // bloke okumayı da kes → bağlantıyı serbest bırak
                     break
@@ -122,22 +120,22 @@ class RecordingService : Service() {
             try {
                 if (isHls) {
                     // HLS: playlist'i izleyip segmentleri tek .ts dosyasına ekle (AES-128 çözerek).
-                    _status.value = "HLS kaydı…"
+                    RecordingState.status.value = "HLS kaydı…"
                     // HLS istekleri kısa → sonsuz beklemesin diye okuma zaman aşımı ver.
                     val hlsClient = client.newBuilder().readTimeout(20, TimeUnit.SECONDS).build()
                     HlsRecorder.record(hlsClient, streamUrl, file) { stop }
                     if (file.length() == 0L && !stop)
-                        _status.value = "HLS segmentleri alınamadı (kaynak engelli/fMP4 olabilir)."
+                        RecordingState.status.value = "HLS segmentleri alınamadı (kaynak engelli/fMP4 olabilir)."
                 } else {
                     // Doğrudan TS/progressive: bayt akışını dosyaya dök.
                     val call = client.newCall(Request.Builder().url(streamUrl).build())
                     currentCall = call
                     call.execute().use { resp ->
                         if (!resp.isSuccessful) {
-                            _status.value = "Sunucu reddetti (HTTP ${resp.code})."
+                            RecordingState.status.value = "Sunucu reddetti (HTTP ${resp.code})."
                             return@use
                         }
-                        val body = resp.body ?: run { _status.value = "Boş yanıt."; return@use }
+                        val body = resp.body ?: run { RecordingState.status.value = "Boş yanıt."; return@use }
                         var total = 0L
                         body.byteStream().use { input ->
                             file.outputStream().use { output ->
@@ -146,16 +144,16 @@ class RecordingService : Service() {
                                     val n = input.read(buf)
                                     if (n < 0) break
                                     output.write(buf, 0, n); total += n
-                                    if (total > 0) _status.value = null   // akış başladı, mesaj temiz
+                                    if (total > 0) RecordingState.status.value = null   // akış başladı, mesaj temiz
                                 }
                                 output.flush()
                             }
                         }
-                        if (total == 0L) _status.value = "Veri gelmedi (kaynak boş/engelli)."
+                        if (total == 0L) RecordingState.status.value = "Veri gelmedi (kaynak boş/engelli)."
                     }
                 }
             } catch (e: Exception) {
-                if (!stop) _status.value = "Kayıt hatası: ${e.message ?: "bilinmeyen"}"
+                if (!stop) RecordingState.status.value = "Kayıt hatası: ${e.message ?: "bilinmeyen"}"
             } finally {
                 currentCall = null
                 // Havuzdaki keep-alive soketi hemen kapat — yoksa kayıt bittikten sonra bile
@@ -171,7 +169,7 @@ class RecordingService : Service() {
 
     private fun finishAndStop() {
         stop = true
-        _active.value = null
+        RecordingState.active.value = null
         worker = null
         // Boş kayıt (ör. sunucu reddi) → 0 MB dosya bırakma.
         currentFile?.let { if (it.exists() && it.length() == 0L) it.delete() }
