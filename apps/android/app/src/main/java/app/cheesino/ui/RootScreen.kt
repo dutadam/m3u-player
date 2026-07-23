@@ -80,6 +80,7 @@ fun RootScreen(vm: LibraryViewModel) {
     val recordingActive by vm.recordingActive.collectAsStateWithLifecycle()
     val recordingStatus by vm.recordingStatus.collectAsStateWithLifecycle()
     val weeklyTop by vm.weeklyTop.collectAsStateWithLifecycle()
+    val tmdbRails by vm.tmdbRails.collectAsStateWithLifecycle()
     val activity = LocalContext.current as? android.app.Activity
     var paywallFor by remember { mutableStateOf<app.cheesino.data.ProFeature?>(null) }
     var showPaywall by remember { mutableStateOf(false) }
@@ -223,7 +224,7 @@ fun RootScreen(vm: LibraryViewModel) {
                                 val gi = discover.genres.take(14).indexOf(g)
                                 catGenre = if (gi >= 0) gi + 1 else 0
                             },
-                            weeklyTop = weeklyTop)
+                            weeklyTop = weeklyTop, tmdbRails = tmdbRails)
 
                         // CANLI — üstte TV · Rehber · Spor · Çoklu segmenti.
                         Tab.LIVE -> Column(Modifier.fillMaxSize()) {

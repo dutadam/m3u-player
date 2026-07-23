@@ -56,6 +56,9 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     // Haftanın Trendleri · Top 10 — TMDB trending (haftalık) kaynağın kütüphaneyle eşleşeni.
     private val _weeklyTop = MutableStateFlow<List<Channel>>(emptyList())
     val weeklyTop: StateFlow<List<Channel>> = _weeklyTop.asStateFlow()
+    // TMDB keşif rayları (Popüler, Vizyonda) — kütüphaneyle eşleşen.
+    private val _tmdbRails = MutableStateFlow<List<Pair<String, List<Channel>>>>(emptyList())
+    val tmdbRails: StateFlow<List<Pair<String, List<Channel>>>> = _tmdbRails.asStateFlow()
     // Kayıtlı kaynak varsa açılışta doğrudan yükleniyor durumu → boş ekran görünmez.
     private val _state = MutableStateFlow(
         creds.load().let { LibraryState(hasSource = it != null, loading = it != null) }
@@ -94,19 +97,28 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
         refreshWeeklyTop()
     }
 
-    /** TMDB haftalık trend başlıklarını kütüphaneyle eşleştirip Top 10 rayı kurar (anahtar yoksa atlar). */
+    /** TMDB trend + keşif listelerini kütüphaneyle eşleştirir (Top 10 + Popüler/Vizyonda). Anahtar yoksa atlar. */
     private fun refreshWeeklyTop() {
         val key = runCatching { appCtx.getString(app.cheesino.R.string.tmdb_api_key) }.getOrDefault("")
         if (key.isBlank()) return
         viewModelScope.launch {
             runCatching {
-                val titles = app.cheesino.core.TmdbClient.trendingTitles(key)
-                if (titles.isEmpty()) return@runCatching
                 val byKey = _state.value.movies.filter { it.logo != null }
                     .associateBy { app.cheesino.core.railKey(it.name) }
-                val matched = titles.mapNotNull { byKey[app.cheesino.core.railKey(it)] }
-                    .distinctBy { it.id }.take(10)
-                if (matched.isNotEmpty()) _weeklyTop.value = matched
+                if (byKey.isEmpty()) return@runCatching
+                fun match(titles: List<String>, n: Int) =
+                    titles.mapNotNull { byKey[app.cheesino.core.railKey(it)] }.distinctBy { it.id }.take(n)
+
+                val trend = match(app.cheesino.core.TmdbClient.trendingTitles(key), 10)
+                if (trend.isNotEmpty()) _weeklyTop.value = trend
+
+                val rails = buildList {
+                    match(app.cheesino.core.TmdbClient.listTitles(key, "movie/popular"), 20)
+                        .takeIf { it.size >= 4 }?.let { add("Dünyada Popüler" to it) }
+                    match(app.cheesino.core.TmdbClient.listTitles(key, "movie/now_playing"), 20)
+                        .takeIf { it.size >= 4 }?.let { add("Vizyondakiler" to it) }
+                }
+                if (rails.isNotEmpty()) _tmdbRails.value = rails
             }
         }
     }

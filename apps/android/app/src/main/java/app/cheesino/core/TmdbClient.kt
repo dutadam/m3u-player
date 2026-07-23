@@ -42,6 +42,23 @@ object TmdbClient {
         }
     }
 
+    /** Genel liste uç noktası (movie/popular, movie/now_playing, tv/top_rated...) → sıralı başlıklar. */
+    suspend fun listTitles(apiKey: String, path: String): List<String> = withContext(Dispatchers.IO) {
+        if (apiKey.isBlank()) return@withContext emptyList()
+        val url = "https://api.themoviedb.org/3/$path?api_key=$apiKey&language=tr-TR"
+        try {
+            val body = http.newCall(Request.Builder().url(url).build()).execute().use { r ->
+                if (!r.isSuccessful) return@withContext emptyList(); r.body?.string() ?: return@withContext emptyList()
+            }
+            val o = json.parseToJsonElement(body) as? JsonObject ?: return@withContext emptyList()
+            (o["results"] as? JsonArray)?.mapNotNull { it as? JsonObject }?.mapNotNull { r ->
+                (r["title"] as? JsonPrimitive)?.content ?: (r["name"] as? JsonPrimitive)?.content
+            } ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
     private fun img(path: String?, size: String): String? =
         path?.takeIf { it.isNotBlank() && it != "null" }?.let { "https://image.tmdb.org/t/p/$size$it" }
 

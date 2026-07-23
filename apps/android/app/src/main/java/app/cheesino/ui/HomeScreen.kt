@@ -57,7 +57,8 @@ fun HomeScreen(
     onSearch: () -> Unit,
     genres: List<String> = emptyList(),
     onGenre: (String) -> Unit = {},
-    weeklyTop: List<Channel> = emptyList()
+    weeklyTop: List<Channel> = emptyList(),
+    tmdbRails: List<Pair<String, List<Channel>>> = emptyList()
 ) {
     fun clean(list: List<Channel>): List<Channel> {
         val seenKey = HashSet<String>()
@@ -103,6 +104,8 @@ fun HomeScreen(
         item { PosterRail("Daha Sonra İzle", favorites, onPlay) }
         if (weeklyTop.isNotEmpty()) item { RankedRail("Haftanın Trendleri · Top 10", weeklyTop, onPlay) }
         item { RankedRail("Yüksek Puanlı · Top 10", clean(state.topRated), onPlay) }
+        // TMDB keşif rayları (Dünyada Popüler, Vizyondakiler) — kütüphaneyle eşleşen.
+        tmdbRails.forEach { (title, list) -> item { PosterRail(title, clean(list), onPlay) } }
         item { PosterRail("Son Eklenenler", clean(state.recentlyAdded), onPlay) }
         // Dinamik tür/senaryo rayları — film ve dizi karışık.
         movieRails.take(6).forEach { (title, list) -> item { PosterRail(title, clean(list), onPlay) } }
