@@ -32,6 +32,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.AspectRatio
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.PictureInPictureAlt
 import androidx.compose.material.icons.filled.Cast
 import androidx.compose.material.icons.filled.FiberManualRecord
@@ -204,6 +205,11 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
     // Ekran kilidi (kazara dokunuşları önler) + oynatma hızı.
     var locked by remember { mutableStateOf(false) }
     var speed by remember { mutableFloatStateOf(1f) }
+    // Uyku zamanlayıcısı (dk; 0 = kapalı) — süre dolunca duraklat.
+    var sleepMin by remember { mutableIntStateOf(0) }
+    LaunchedEffect(sleepMin) {
+        if (sleepMin > 0) { delay(sleepMin * 60_000L); player.pause(); hud = "😴 Uyku — duraklatıldı"; sleepMin = 0 }
+    }
 
     // Oynatıcı servise ait; burada yalnız bu öğe için medyayı kur (buffer/kod çözücü ayarları
     // serviste). Öğe değişince yeniden kur.
@@ -464,6 +470,11 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
                             runCatching { player.setPlaybackSpeed(speed) }; hud = "Hız ${speed}×"; controlsVisible = true
                         }
                         CtrlChip(Icons.Default.Subtitles, "Altyazı") { showTracks = true }
+                        CtrlChip(Icons.Default.Bedtime, if (sleepMin == 0) "Uyku" else "$sleepMin dk",
+                            tint = if (sleepMin == 0) Color.White else Accent) {
+                            sleepMin = when (sleepMin) { 0 -> 15; 15 -> 30; 30 -> 60; else -> 0 }
+                            hud = if (sleepMin == 0) "Uyku kapalı" else "Uyku: $sleepMin dk"; controlsVisible = true
+                        }
                         if (item.isLive) CtrlChip(
                             if (recordingThis) Icons.Default.Stop else Icons.Default.FiberManualRecord,
                             if (recordingThis) "Durdur" else "Kaydet",
