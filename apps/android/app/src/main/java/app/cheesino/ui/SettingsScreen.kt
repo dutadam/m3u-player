@@ -263,6 +263,15 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
                 "Kimlik bilgileri cihazda şifreli, telemetri yok.",
                 color = TextMute, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
         }
+
+        // Veri kaynağı atıfları — TMDB lisansı (ücretsiz kullanım) atıf gerektirir.
+        Section("Kaynaklar") {
+            Text("Bu uygulama TMDB ve TMDB API'lerini kullanır ancak TMDB tarafından onaylanmış, " +
+                "sertifikalanmış ya da başka bir şekilde tasdik edilmiş değildir.",
+                color = TextMute, fontSize = 12.sp)
+            Text("Puanlar OMDb (omdbapi.com); afiş/özet/fragman TMDB (themoviedb.org).",
+                color = TextDim, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
+        }
         Spacer(Modifier.height(16.dp))
     }
 }
