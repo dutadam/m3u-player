@@ -264,12 +264,13 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
                 color = TextMute, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
         }
 
-        // Veri kaynağı atıfları — TMDB lisansı (ücretsiz kullanım) atıf gerektirir.
+        // Veri kaynağı atıfları — Trakt/TMDB lisansları atıf gerektirir.
         Section("Kaynaklar") {
-            Text("Bu uygulama TMDB ve TMDB API'lerini kullanır ancak TMDB tarafından onaylanmış, " +
-                "sertifikalanmış ya da başka bir şekilde tasdik edilmiş değildir.",
+            Text("Trend, benzer ve özet verileri Trakt (trakt.tv) tarafından sağlanır. " +
+                "TMDB kullanıldığında: bu uygulama TMDB ve TMDB API'lerini kullanır ancak TMDB " +
+                "tarafından onaylanmış/sertifikalanmış değildir.",
                 color = TextMute, fontSize = 12.sp)
-            Text("Puanlar OMDb (omdbapi.com); afiş/özet/fragman TMDB (themoviedb.org).",
+            Text("Puanlar OMDb (omdbapi.com). Powered by Trakt (trakt.tv).",
                 color = TextDim, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
         }
         Spacer(Modifier.height(16.dp))

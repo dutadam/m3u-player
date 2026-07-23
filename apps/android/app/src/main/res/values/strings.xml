@@ -6,4 +6,7 @@
     <!-- TMDB (themoviedb.org) ücretsiz v3 API anahtarı — "Haftanın Trendleri · Top 10" için.
          Boşsa özellik kapalı. Ücretsiz anahtar: themoviedb.org → Ayarlar → API. -->
     <string name="tmdb_api_key" translatable="false"></string>
+    <!-- Trakt.tv Client ID (public) — trend/benzer/popüler/özet/puan. Trakt öncelikli; boşsa TMDB'ye düşer.
+         Ücretsiz: trakt.tv → Settings → Your API Apps → New Application. -->
+    <string name="trakt_client_id" translatable="false"></string>
 </resources>

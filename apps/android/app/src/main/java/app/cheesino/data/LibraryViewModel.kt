@@ -97,10 +97,14 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
         refreshWeeklyTop()
     }
 
-    /** TMDB trend + keşif listelerini kütüphaneyle eşleştirir (Top 10 + Popüler/Vizyonda). Anahtar yoksa atlar. */
+    // Metadata sağlayıcısı — Trakt öncelikli (ticari-temiz), yoksa TMDB. İkisi de boşsa özellik kapalı.
+    private fun traktId() = runCatching { appCtx.getString(app.cheesino.R.string.trakt_client_id) }.getOrDefault("")
+
+    /** Trend + keşif listelerini kütüphaneyle eşleştirir (Top 10 + Popüler/Gişe). Anahtar yoksa atlar. */
     private fun refreshWeeklyTop() {
-        val key = runCatching { appCtx.getString(app.cheesino.R.string.tmdb_api_key) }.getOrDefault("")
-        if (key.isBlank()) return
+        val trakt = traktId(); val tmdb = tmdbKey()
+        if (trakt.isBlank() && tmdb.isBlank()) return
+        val useTrakt = trakt.isNotBlank()
         viewModelScope.launch {
             runCatching {
                 val byKey = _state.value.movies.filter { it.logo != null }
@@ -109,14 +113,20 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
                 fun match(titles: List<String>, n: Int) =
                     titles.mapNotNull { byKey[app.cheesino.core.railKey(it)] }.distinctBy { it.id }.take(n)
 
-                val trend = match(app.cheesino.core.TmdbClient.trendingTitles(key), 10)
+                val trendTitles = if (useTrakt) app.cheesino.core.TraktClient.trendingTitles(trakt, false)
+                    else app.cheesino.core.TmdbClient.trendingTitles(tmdb)
+                val trend = match(trendTitles, 10)
                 if (trend.isNotEmpty()) _weeklyTop.value = trend
 
                 val rails = buildList {
-                    match(app.cheesino.core.TmdbClient.listTitles(key, "movie/popular"), 20)
-                        .takeIf { it.size >= 4 }?.let { add("Dünyada Popüler" to it) }
-                    match(app.cheesino.core.TmdbClient.listTitles(key, "movie/now_playing"), 20)
-                        .takeIf { it.size >= 4 }?.let { add("Vizyondakiler" to it) }
+                    val popular = if (useTrakt) app.cheesino.core.TraktClient.listTitles(trakt, "movies/popular")
+                        else app.cheesino.core.TmdbClient.listTitles(tmdb, "movie/popular")
+                    match(popular, 20).takeIf { it.size >= 4 }?.let { add("Dünyada Popüler" to it) }
+                    val second = if (useTrakt) app.cheesino.core.TraktClient.listTitles(trakt, "movies/boxoffice")
+                        else app.cheesino.core.TmdbClient.listTitles(tmdb, "movie/now_playing")
+                    match(second, 20).takeIf { it.size >= 4 }?.let {
+                        add((if (useTrakt) "Gişe Rekortmenleri" else "Vizyondakiler") to it)
+                    }
                 }
                 if (rails.isNotEmpty()) _tmdbRails.value = rails
             }
@@ -428,33 +438,45 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
 
     // TMDB zengin metadata önbelleği (backdrop/özet/oyuncu). Anahtar strings.xml'de.
     private val tmdbCache = HashMap<String, app.cheesino.core.TmdbInfo?>()
+    /** Zengin metadata — Trakt öncelikli (özet/puan/tür/fragman), yoksa TMDB (+backdrop/oyuncu). */
     suspend fun tmdbInfo(title: String, year: String?, isTv: Boolean): app.cheesino.core.TmdbInfo? {
-        val key = runCatching { appCtx.getString(app.cheesino.R.string.tmdb_api_key) }.getOrDefault("")
-        if (key.isBlank()) return null
+        val trakt = traktId(); val tmdb = tmdbKey()
+        if (trakt.isBlank() && tmdb.isBlank()) return null
         val ck = "${if (isTv) "t" else "m"}:${title.trim().lowercase()}:${year ?: ""}"
         if (tmdbCache.containsKey(ck)) return tmdbCache[ck]
-        val r = runCatching { app.cheesino.core.TmdbClient.info(key, title, year, isTv) }.getOrNull()
+        val r = runCatching {
+            if (trakt.isNotBlank()) app.cheesino.core.TraktClient.info(trakt, title, year, isTv)
+            else app.cheesino.core.TmdbClient.info(tmdb, title, year, isTv)
+        }.getOrNull()
         tmdbCache[ck] = r
         return r
     }
 
     private fun tmdbKey() = runCatching { appCtx.getString(app.cheesino.R.string.tmdb_api_key) }.getOrDefault("")
 
-    /** TMDB önerileri (gerçek benzerler) → kütüphanedeki filmlerle eşleşenler. */
+    /** Gerçek benzerler (Trakt related / TMDB recommendations) → kütüphanedeki filmlerle eşleşenler. */
     suspend fun tmdbSimilarMovies(title: String, year: String?): List<Channel> {
-        val key = tmdbKey(); if (key.isBlank()) return emptyList()
+        val trakt = traktId(); val tmdb = tmdbKey()
+        if (trakt.isBlank() && tmdb.isBlank()) return emptyList()
         val id = tmdbInfo(title, year, isTv = false)?.id ?: return emptyList()
-        val titles = runCatching { app.cheesino.core.TmdbClient.recommendationsFor(key, id, false) }.getOrDefault(emptyList())
+        val titles = runCatching {
+            if (trakt.isNotBlank()) app.cheesino.core.TraktClient.relatedTitles(trakt, id, false)
+            else app.cheesino.core.TmdbClient.recommendationsFor(tmdb, id, false)
+        }.getOrDefault(emptyList())
         if (titles.isEmpty()) return emptyList()
         val byKey = _state.value.movies.filter { it.logo != null }.associateBy { app.cheesino.core.railKey(it.name) }
         return titles.mapNotNull { byKey[app.cheesino.core.railKey(it)] }.distinctBy { it.id }.take(20)
     }
 
-    /** TMDB önerileri (gerçek benzerler) → kütüphanedeki dizilerle eşleşenler. */
+    /** Gerçek benzerler (Trakt related / TMDB recommendations) → kütüphanedeki dizilerle eşleşenler. */
     suspend fun tmdbSimilarSeries(title: String, year: String?): List<SeriesRef> {
-        val key = tmdbKey(); if (key.isBlank()) return emptyList()
+        val trakt = traktId(); val tmdb = tmdbKey()
+        if (trakt.isBlank() && tmdb.isBlank()) return emptyList()
         val id = tmdbInfo(title, year, isTv = true)?.id ?: return emptyList()
-        val titles = runCatching { app.cheesino.core.TmdbClient.recommendationsFor(key, id, true) }.getOrDefault(emptyList())
+        val titles = runCatching {
+            if (trakt.isNotBlank()) app.cheesino.core.TraktClient.relatedTitles(trakt, id, true)
+            else app.cheesino.core.TmdbClient.recommendationsFor(tmdb, id, true)
+        }.getOrDefault(emptyList())
         if (titles.isEmpty()) return emptyList()
         val byKey = _state.value.visibleSeries.filter { it.cover != null }.associateBy { app.cheesino.core.railKey(it.name) }
         return titles.mapNotNull { byKey[app.cheesino.core.railKey(it)] }.distinctBy { it.id }.take(20)
