@@ -151,6 +151,23 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
     // Canlı kayıt (DVR) — tek eşzamanlı kayıt; bu kanal kaydediliyor mu?
     val recording by vm.recordingActive.collectAsStateWithLifecycle()
     val recordingThis = item.isLive && recording?.title == item.title
+    val recStatus by vm.recordingStatus.collectAsStateWithLifecycle()
+    // Kayıt durumunu oynatıcıda göster (bağlanıyor / kaydediliyor MB / hata) — "ne oldu" belli olsun.
+    var recNote by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(recStatus, recording) {
+        recNote = recStatus
+        // Hata mesajıysa bir süre sonra kendiliğinden kaybolsun (aktif kayıt sürüyorsa kalsın).
+        if (recStatus != null && recording == null) { delay(6000); if (recNote == recStatus) recNote = null }
+    }
+    // Aktif kaydın diske yazdığı MB — oynatıcıda ilerlemeyi göster.
+    var recMb by remember { mutableDoubleStateOf(0.0) }
+    LaunchedEffect(recording?.path) {
+        val path = recording?.path ?: return@LaunchedEffect
+        while (true) {
+            recMb = runCatching { java.io.File(path).length() }.getOrDefault(0L) / (1024.0 * 1024.0)
+            delay(1000)
+        }
+    }
     val audio = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
     val maxVol = remember { audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1) }
 
@@ -352,6 +369,24 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
             ) { Text(it, color = TextHi, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
         }
 
+        // Kayıt durum şeridi — üstte, kontroller gizliyken de görünür (donma/boş Kitaplık yerine net geri bildirim).
+        val recBanner = when {
+            recordingThis -> "● Kaydediliyor · %.1f MB".format(recMb)
+            recNote != null -> recNote
+            else -> null
+        }
+        recBanner?.let { note ->
+            val err = listOf("hata", "reddetti", "gelmedi", "alınamadı", "vermedi", "Boş", "başlatılamadı")
+                .any { note.contains(it) }
+            Box(
+                Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 10.dp)
+                    .clip(RoundedCornerShape(20.dp)).background(Color.Black.copy(alpha = 0.7f))
+                    .padding(horizontal = 14.dp, vertical = 7.dp)
+            ) {
+                Text(note, color = if (err) Accent2 else Live, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+            }
+        }
+
         // Tam kontroller — kilitli değilken. Üstte yalnız Geri + Kilit; her şey altta.
         AnimatedVisibility(visible = controlsVisible && !locked, enter = fadeIn(), exit = fadeOut()) {
             Box(Modifier.fillMaxSize().background(
@@ -428,7 +463,7 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
                             tint = if (recordingThis) Live else Color.White
                         ) {
                             if (recordingThis) { vm.stopRecording(); hud = "Kayıt durduruldu" }
-                            else if (recording == null) { vm.startRecording(item.url, item.title); hud = "● Kaydediliyor" }
+                            else if (recording == null) { vm.startRecording(item.url, item.title); hud = "Kayıt başlatılıyor…" }
                             else { hud = "Zaten kayıt var" }
                             controlsVisible = true
                         }
