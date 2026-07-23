@@ -100,8 +100,13 @@ fun RootScreen(vm: LibraryViewModel) {
 
     // Kaynak yoksa onboarding tam ekran.
     if (!state.hasSource) {
+        val authUser by vm.authUser.collectAsStateWithLifecycle()
+        val authStatus by vm.authStatus.collectAsStateWithLifecycle()
         OnboardingScreen(
             state = state,
+            authUser = authUser,
+            authStatus = authStatus,
+            onGoogleSignIn = { activity?.let { vm.signIn(it) } },
             onXtream = { vm.loadXtream(it) },
             onM3U = { url ->
                 if (url.startsWith("http", true)) vm.loadM3UUrl(url) else vm.loadM3U(url)

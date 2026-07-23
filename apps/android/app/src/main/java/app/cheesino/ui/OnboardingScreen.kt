@@ -23,11 +23,19 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.cheesino.core.XtreamCredentials
+import app.cheesino.data.AuthUser
 import app.cheesino.data.LibraryState
 import app.cheesino.ui.theme.*
 
 @Composable
-fun OnboardingScreen(state: LibraryState, onXtream: (XtreamCredentials) -> Unit, onM3U: (String) -> Unit) {
+fun OnboardingScreen(
+    state: LibraryState,
+    authUser: AuthUser?,
+    authStatus: String?,
+    onGoogleSignIn: () -> Unit,
+    onXtream: (XtreamCredentials) -> Unit,
+    onM3U: (String) -> Unit
+) {
     var tab by remember { mutableIntStateOf(0) }   // 0 Xtream, 1 M3U
     var server by remember { mutableStateOf("") }
     var user by remember { mutableStateOf("") }
@@ -57,7 +65,32 @@ fun OnboardingScreen(state: LibraryState, onXtream: (XtreamCredentials) -> Unit,
             Spacer(Modifier.height(16.dp))
             Text("cheesino", color = TextHi, fontSize = 32.sp, fontWeight = FontWeight.Black)
             Text("Premium medya oynatıcı", color = Accent2, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(24.dp))
+
+            // Google ile giriş — kendi kaynağın cihazlar arası otomatik gelsin.
+            if (authUser == null) {
+                Button(
+                    onClick = onGoogleSignIn,
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = TextHi)
+                ) { Text("Google ile Giriş", color = Ground, fontWeight = FontWeight.Bold, fontSize = 15.sp) }
+                Text(
+                    "Girince daha önce eklediğin kaynak otomatik gelir. İstersen aşağıdan elle de ekleyebilirsin.",
+                    color = TextMute, fontSize = 12.sp,
+                    modifier = Modifier.padding(top = 8.dp, start = 4.dp, end = 4.dp)
+                )
+            } else {
+                Text("Giriş yapıldı: ${authUser.name ?: authUser.email ?: ""}",
+                    color = Accent2, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            }
+            authStatus?.let {
+                Text(it, color = Accent2, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+            }
+
+            Spacer(Modifier.height(20.dp))
+            Text("veya kaynağını elle ekle", color = TextDim, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+            Spacer(Modifier.height(12.dp))
 
             // Form kartı.
             Column(

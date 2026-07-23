@@ -228,9 +228,27 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
                 val r = authManager.signInWithGoogle(activity)
                 _authStatus.value = if (r.isSuccess) null
                     else "Giriş başarısız: ${r.exceptionOrNull()?.message ?: "iptal edildi / hata"}"
-                if (r.isSuccess) pullAndMerge()
+                if (r.isSuccess) { pullAndMerge(); syncSourceOnSignIn() }
             } catch (t: Throwable) {
                 _authStatus.value = "Giriş başarısız: ${t.message ?: "hata"}"
+            }
+        }
+    }
+
+    /**
+     * Girişte kaynağı senkronla: yerelde kaynak varsa hesaba yaz; yoksa hesaptakini indir ve yükle
+     * → yeni cihazda "Google ile gir, kaynağın otomatik gelsin". (Kullanıcının KENDİ kaynağı.)
+     */
+    private fun syncSourceOnSignIn() {
+        val uid = authManager.currentUid() ?: return
+        viewModelScope.launch {
+            val local = creds.load()
+            if (local != null) { syncRepo.pushSource(uid, local); return@launch }
+            if (!_state.value.hasSource) {
+                _authStatus.value = "Kaynak hesabından getiriliyor…"
+                val remote = syncRepo.pullSource(uid)
+                if (remote != null) { loadXtream(remote); _authStatus.value = null }
+                else _authStatus.value = "Hesapta kayıtlı kaynak yok — kaynağını bir kez ekle, sonraki cihazda otomatik gelir."
             }
         }
     }
@@ -347,6 +365,8 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 client = cl
                 creds.save(c)
+                // Giriş yapıldıysa kendi kaynağını hesaba yaz → başka cihazda otomatik gelsin.
+                authManager.currentUid()?.let { uid -> launch { syncRepo.pushSource(uid, c) } }
                 val channels = live + vod
                 contentCache.save(xtKey(c), CachedContent(channels, series, null, System.currentTimeMillis()))
                 // Oturum içi yetişkin kilidini koru (arka plan tazelemede yeniden kilitleme).
