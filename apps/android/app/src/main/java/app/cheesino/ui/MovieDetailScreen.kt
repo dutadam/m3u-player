@@ -39,6 +39,7 @@ fun MovieDetailScreen(
     channel: Channel,
     load: suspend (Channel) -> MovieInfo?,
     omdb: suspend (String, String?) -> app.cheesino.core.OmdbInfo? = { _, _ -> null },
+    tmdb: suspend (String, String?) -> app.cheesino.core.TmdbInfo? = { _, _ -> null },
     isFavorite: Boolean,
     rating: Int,
     onFavorite: () -> Unit,
@@ -53,12 +54,16 @@ fun MovieDetailScreen(
 ) {
     var info by remember(channel.id) { mutableStateOf<MovieInfo?>(null) }
     var omdbInfo by remember(channel.id) { mutableStateOf<app.cheesino.core.OmdbInfo?>(null) }
+    var tmdbInfo by remember(channel.id) { mutableStateOf<app.cheesino.core.TmdbInfo?>(null) }
     LaunchedEffect(channel.id) {
         val i = load(channel); info = i
+        val year = i?.releaseDate?.take(4)
         omdbInfo = omdb(channel.name, i?.releaseDate)
+        tmdbInfo = tmdb(channel.name, year)
     }
 
-    val cover = info?.cover ?: channel.logo
+    // Hero: TMDB backdrop (16:9, az kırpılır) > poster. Metin: sağlayıcı > TMDB > OMDb.
+    val cover = tmdbInfo?.backdrop ?: info?.cover ?: channel.logo
     Box(Modifier.fillMaxSize().background(Ground)) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
             // Backdrop.
@@ -75,9 +80,9 @@ fun MovieDetailScreen(
             Column(Modifier.padding(16.dp)) {
                 // Meta satırı.
                 val meta = buildList {
-                    (info?.rating ?: channel.rating)?.takeIf { it > 0 }?.let { add("★ ${"%.1f".format(it)}") }
-                    info?.genre?.let { add(it) }
-                    info?.releaseDate?.take(4)?.takeIf { it.isNotBlank() }?.let { add(it) }
+                    (info?.rating ?: channel.rating ?: tmdbInfo?.rating)?.takeIf { it > 0 }?.let { add("★ ${"%.1f".format(it)}") }
+                    (info?.genre ?: tmdbInfo?.genres)?.let { add(it) }
+                    (info?.releaseDate?.take(4)?.takeIf { it.isNotBlank() } ?: tmdbInfo?.year)?.let { add(it) }
                     info?.durationSecs?.let { add("${it / 60} dk") }
                     channel.quality?.label?.let { add(it) }
                 }
@@ -126,11 +131,11 @@ fun MovieDetailScreen(
                     }
                 }
 
-                (info?.plot ?: omdbInfo?.plot)?.let {
+                (info?.plot ?: tmdbInfo?.overview ?: omdbInfo?.plot)?.let {
                     Text(it, color = TextDim, fontSize = 14.sp, lineHeight = 20.sp,
                         modifier = Modifier.padding(top = 16.dp))
                 }
-                info?.cast?.let {
+                (info?.cast ?: tmdbInfo?.cast)?.let {
                     Text("Oyuncular: $it", color = TextMute, fontSize = 12.sp,
                         modifier = Modifier.padding(top = 12.dp))
                 }

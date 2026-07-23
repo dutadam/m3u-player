@@ -414,6 +414,18 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     private val seriesCache = HashMap<Int, Series>()
     private val movieCache = HashMap<String, MovieInfo>()
 
+    // TMDB zengin metadata önbelleği (backdrop/özet/oyuncu). Anahtar strings.xml'de.
+    private val tmdbCache = HashMap<String, app.cheesino.core.TmdbInfo?>()
+    suspend fun tmdbInfo(title: String, year: String?, isTv: Boolean): app.cheesino.core.TmdbInfo? {
+        val key = runCatching { appCtx.getString(app.cheesino.R.string.tmdb_api_key) }.getOrDefault("")
+        if (key.isBlank()) return null
+        val ck = "${if (isTv) "t" else "m"}:${title.trim().lowercase()}:${year ?: ""}"
+        if (tmdbCache.containsKey(ck)) return tmdbCache[ck]
+        val r = runCatching { app.cheesino.core.TmdbClient.info(key, title, year, isTv) }.getOrNull()
+        tmdbCache[ck] = r
+        return r
+    }
+
     // OMDb puan önbelleği — aynı başlığı tekrar sorma.
     private val omdbCache = HashMap<String, OmdbInfo?>()
     suspend fun omdbRatings(title: String, year: String? = null): OmdbInfo? {

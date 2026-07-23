@@ -55,6 +55,7 @@ fun SeriesDetailScreen(
     onPlayQueue: (List<PlayItem>, Int) -> Unit,
     onBack: () -> Unit,
     omdb: suspend (String, String?) -> app.cheesino.core.OmdbInfo? = { _, _ -> null },
+    tmdb: suspend (String, String?) -> app.cheesino.core.TmdbInfo? = { _, _ -> null },
     downloadStateFor: (String) -> Int? = { null },
     onDownloadEpisode: (PlayItem) -> Unit = {},
     onRemoveDownload: (String) -> Unit = {},
@@ -65,6 +66,7 @@ fun SeriesDetailScreen(
     var loading by remember(ref.id) { mutableStateOf(true) }
     var selectedSeason by remember(ref.id) { mutableIntStateOf(0) }
     var omdbInfo by remember(ref.id) { mutableStateOf<app.cheesino.core.OmdbInfo?>(null) }
+    var tmdbInfo by remember(ref.id) { mutableStateOf<app.cheesino.core.TmdbInfo?>(null) }
 
     LaunchedEffect(ref.id) {
         loading = true
@@ -73,6 +75,7 @@ fun SeriesDetailScreen(
         loading = false
     }
     LaunchedEffect(ref.id) { omdbInfo = omdb(ref.name, null) }
+    LaunchedEffect(ref.id) { tmdbInfo = tmdb(ref.name, null) }
 
     Box(Modifier.fillMaxSize().background(Ground)) {
         val s = series
@@ -83,7 +86,7 @@ fun SeriesDetailScreen(
                 modifier = Modifier.align(Alignment.Center)
             )
             else -> SeriesContent(s, selectedSeason, { selectedSeason = it }, resumeFor, watchedIds,
-                favorite, rating, onFavorite, onRate, onPlayQueue, omdbInfo,
+                favorite, rating, onFavorite, onRate, onPlayQueue, omdbInfo, tmdbInfo,
                 downloadStateFor, onDownloadEpisode, onRemoveDownload, similar, onSimilar)
         }
         IconButton(onClick = onBack, modifier = Modifier.padding(4.dp).align(Alignment.TopStart)) {
@@ -105,6 +108,7 @@ private fun SeriesContent(
     onRate: (Int) -> Unit,
     onPlayQueue: (List<PlayItem>, Int) -> Unit,
     omdb: app.cheesino.core.OmdbInfo? = null,
+    tmdb: app.cheesino.core.TmdbInfo? = null,
     downloadStateFor: (String) -> Int? = { null },
     onDownloadEpisode: (PlayItem) -> Unit = {},
     onRemoveDownload: (String) -> Unit = {},
@@ -133,7 +137,7 @@ private fun SeriesContent(
                 resumeEp = season.episodes.getOrNull(resumeIndex.coerceAtLeast(0)),
                 isResume = resumeIndex >= 0,
                 onPlay = { onPlayQueue(queue, resumeIndex.coerceAtLeast(0)) },
-                omdb = omdb)
+                omdb = omdb, tmdb = tmdb)
         }
         if (s.seasons.size > 1) item { SeasonPicker(s.seasons, selectedSeason, onSelectSeason) }
         itemsIndexed(season.episodes) { i, ep ->
@@ -163,13 +167,15 @@ private fun Header(
     resumeEp: Episode?,
     isResume: Boolean,
     onPlay: () -> Unit,
-    omdb: app.cheesino.core.OmdbInfo? = null
+    omdb: app.cheesino.core.OmdbInfo? = null,
+    tmdb: app.cheesino.core.TmdbInfo? = null
 ) {
     Column {
-        // Backdrop hero — film detayla aynı düzen (tam genişlik kapak + gradient + büyük başlık).
+        // Backdrop hero — TMDB backdrop (16:9, az kırpılır) > poster; gradient + büyük başlık.
+        val hero = tmdb?.backdrop ?: s.cover
         Box(Modifier.fillMaxWidth().height(260.dp)) {
-            if (s.cover != null)
-                AsyncImage(s.cover, s.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            if (hero != null)
+                AsyncImage(hero, s.name, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Transparent, Ground))))
             Text(s.name, color = Color.White, fontWeight = FontWeight.Black, fontSize = 24.sp,
                 maxLines = 2, overflow = TextOverflow.Ellipsis,
@@ -179,8 +185,8 @@ private fun Header(
         Column(Modifier.padding(horizontal = 16.dp)) {
             // Meta satırı — puan · tür · sezon/bölüm sayısı.
             val meta = buildList {
-                s.rating?.takeIf { it > 0 }?.let { add("★ ${"%.1f".format(it)}") }
-                s.genre?.let { add(it) }
+                (s.rating ?: tmdb?.rating)?.takeIf { it > 0 }?.let { add("★ ${"%.1f".format(it)}") }
+                (s.genre ?: tmdb?.genres)?.let { add(it) }
                 add("${s.seasons.size} sezon")
                 s.seasons.sumOf { it.episodes.size }.takeIf { it > 0 }?.let { add("$it bölüm") }
             }
@@ -215,9 +221,13 @@ private fun Header(
                 }
             }
 
-            s.plot?.let {
+            (s.plot ?: tmdb?.overview)?.let {
                 Text(it, color = TextDim, fontSize = 14.sp, lineHeight = 20.sp,
                     modifier = Modifier.padding(top = 16.dp))
+            }
+            tmdb?.cast?.let {
+                Text("Oyuncular: $it", color = TextMute, fontSize = 12.sp,
+                    modifier = Modifier.padding(top = 12.dp))
             }
             Spacer(Modifier.height(4.dp))
         }
