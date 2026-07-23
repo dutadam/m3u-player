@@ -242,37 +242,42 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     private fun syncSourceOnSignIn() {
         val uid = authManager.currentUid() ?: return
         viewModelScope.launch {
-            val local = creds.load()
-            if (local != null) { syncRepo.pushSource(uid, local); return@launch }
-            if (!_state.value.hasSource) {
-                _authStatus.value = "Kaynak hesabından getiriliyor…"
-                val remote = syncRepo.pullSource(uid)
-                if (remote != null) { loadXtream(remote); _authStatus.value = null }
-                else _authStatus.value = "Hesapta kayıtlı kaynak yok — kaynağını bir kez ekle, sonraki cihazda otomatik gelir."
+            runCatching {
+                val local = creds.load()
+                if (local != null) { syncRepo.pushSource(uid, local); return@runCatching }
+                if (!_state.value.hasSource) {
+                    _authStatus.value = "Kaynak hesabından getiriliyor…"
+                    val remote = syncRepo.pullSource(uid)
+                    if (remote != null) { loadXtream(remote); _authStatus.value = null }
+                    else _authStatus.value = "Hesapta kayıtlı kaynak yok — kaynağını bir kez ekle, sonraki cihazda otomatik gelir."
+                }
             }
         }
     }
     fun signOutAccount() = authManager.signOut()
 
-    /** Yerel veriyi buluta yaz (giriş varsa). */
+    /** Yerel veriyi buluta yaz (giriş varsa). Firestore hazır değilse sessizce geç (çökme yok). */
     private fun pushSync() {
         val uid = authManager.currentUid() ?: return
-        viewModelScope.launch { syncRepo.push(uid, _user.value) }
+        viewModelScope.launch { runCatching { syncRepo.push(uid, _user.value) } }
     }
 
     /** Girişte buluttaki favori/beğeni/beğenmeme'yi yerelle birleştir (union) ve geri yaz. */
     private fun pullAndMerge() {
         val uid = authManager.currentUid() ?: return
         viewModelScope.launch {
-            syncRepo.pull(uid)?.let { r ->
-                val merged = _user.value.copy(
-                    favorites = _user.value.favorites + r.favorites,
-                    likes = _user.value.likes + r.likes,
-                    dislikes = _user.value.dislikes + r.dislikes
-                )
-                _user.value = merged
-                userStore.save(merged)
-                syncRepo.push(uid, merged)
+            // Firestore SDK'sından gelebilecek her türlü hatayı (Error dahil) yut — giriş sonrası çökmesin.
+            runCatching {
+                syncRepo.pull(uid)?.let { r ->
+                    val merged = _user.value.copy(
+                        favorites = _user.value.favorites + r.favorites,
+                        likes = _user.value.likes + r.likes,
+                        dislikes = _user.value.dislikes + r.dislikes
+                    )
+                    _user.value = merged
+                    userStore.save(merged)
+                    syncRepo.push(uid, merged)
+                }
             }
         }
     }
