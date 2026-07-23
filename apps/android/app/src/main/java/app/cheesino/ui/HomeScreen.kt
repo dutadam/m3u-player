@@ -92,29 +92,29 @@ fun HomeScreen(
                     color = Accent, strokeWidth = 2.dp
                 )
                 Spacer(Modifier.weight(1f))
-                IconButton(onClick = onSearch) { Icon(Icons.Default.Search, "Ara", tint = TextMute) }
+                IconButton(onClick = onSearch) { Icon(Icons.Default.Search, "Search", tint = TextMute) }
             }
         }
         if (featured.isNotEmpty()) item { Hero(featured, onPlay) }
         // Hero altı hızlı tür filtresi → Katalog'a yönlendirir.
         if (genres.isNotEmpty()) item { GenreChipRow(genres, onGenre) }
         // Öncelikli raylar üstte.
-        item { ResumeRail("Devam Et", continueW, onResume) }
-        item { PosterRail("Sana Özel", recommended, onPlay) }
-        item { PosterRail("Daha Sonra İzle", favorites, onPlay) }
-        if (weeklyTop.isNotEmpty()) item { RankedRail("Haftanın Trendleri · Top 10", weeklyTop, onPlay) }
-        item { RankedRail("Yüksek Puanlı · Top 10", clean(state.topRated), onPlay) }
+        item { ResumeRail("Continue Watching", continueW, onResume) }
+        item { PosterRail("For You", recommended, onPlay) }
+        item { PosterRail("Watch Later", favorites, onPlay) }
+        if (weeklyTop.isNotEmpty()) item { RankedRail("Trending This Week · Top 10", weeklyTop, onPlay) }
+        item { RankedRail("Top Rated · Top 10", clean(state.topRated), onPlay) }
         // TMDB keşif rayları (Dünyada Popüler, Vizyondakiler) — kütüphaneyle eşleşen.
         tmdbRails.forEach { (title, list) -> item { PosterRail(title, clean(list), onPlay) } }
-        item { PosterRail("Son Eklenenler", clean(state.recentlyAdded), onPlay) }
+        item { PosterRail("Recently Added", clean(state.recentlyAdded), onPlay) }
         // Dinamik tür/senaryo rayları — film ve dizi karışık.
         movieRails.take(6).forEach { (title, list) -> item { PosterRail(title, clean(list), onPlay) } }
         seriesRails.take(4).forEach { (title, list) -> item { SeriesRail(title, list, onSeries) } }
         // Genel katalog en altta.
-        item { PosterRail("Tüm Filmler", clean(state.movies), onPlay) }
+        item { PosterRail("All Movies", clean(state.movies), onPlay) }
         item {
             if (state.visibleSeries.isNotEmpty())
-                SeriesRail("Tüm Diziler", state.visibleSeries.filter { it.cover != null }, onSeries)
+                SeriesRail("All Series", state.visibleSeries.filter { it.cover != null }, onSeries)
         }
     }
 }
@@ -183,7 +183,7 @@ private fun Hero(items: List<Channel>, onPlay: (Channel) -> Unit) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(Icons.Default.PlayArrow, null, tint = Ground)
-                Text("Oynat", color = Ground, fontWeight = FontWeight.Black, fontSize = 16.sp, modifier = Modifier.padding(start = 6.dp))
+                Text("Play", color = Ground, fontWeight = FontWeight.Black, fontSize = 16.sp, modifier = Modifier.padding(start = 6.dp))
             }
         }
     }

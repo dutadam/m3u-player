@@ -24,13 +24,13 @@ object RailEngine {
     }
 
     private val scenarios = listOf(
-        "Paranormal & Doğaüstü" to listOf("hayalet", "ghost", "ruh", "şeytan", "demon", "exorcist", "paranormal", "lanet", "cadı", "witch", "zombi", "vampir", "doğaüstü", "conjuring", "insidious"),
-        "Uzay & Ötesi" to listOf("uzay", "space", "mars", "galaks", "alien", "uzaylı", "star wars", "yıldız savaş", "gezegen", "planet", "interstellar", "kozmik"),
-        "Suç & Mafya" to listOf("mafya", "mafia", "gangster", "çete", "cartel", "kartel", "cinayet", "dedektif", "detective", "katil", "heist", "soygun", "godfather", "narcos"),
-        "Süper Kahramanlar" to listOf("marvel", "batman", "superman", "spider", "avenger", "x-men", "mutant", "süper", "thor", "hulk", "joker", "aquaman", "venom"),
-        "Savaş Cephesi" to listOf("savaş", "war", "asker", "soldier", "komando", "sniper", "dunkirk", "normandiya"),
-        "Gerçek Hikâyeler" to listOf("gerçek", "true story", "biyografi", "biography", "based on", "hayatı"),
-        "Korku Gecesi" to listOf("korku", "horror", "scream", "halloween", "annabelle", "dehşet")
+        "Paranormal & Supernatural" to listOf("hayalet", "ghost", "ruh", "şeytan", "demon", "exorcist", "paranormal", "lanet", "cadı", "witch", "zombi", "vampir", "doğaüstü", "conjuring", "insidious"),
+        "Space & Beyond" to listOf("uzay", "space", "mars", "galaks", "alien", "uzaylı", "star wars", "yıldız savaş", "gezegen", "planet", "interstellar", "kozmik"),
+        "Crime & Mafia" to listOf("mafya", "mafia", "gangster", "çete", "cartel", "kartel", "cinayet", "dedektif", "detective", "katil", "heist", "soygun", "godfather", "narcos"),
+        "Superheroes" to listOf("marvel", "batman", "superman", "spider", "avenger", "x-men", "mutant", "süper", "thor", "hulk", "joker", "aquaman", "venom"),
+        "War Front" to listOf("savaş", "war", "asker", "soldier", "komando", "sniper", "dunkirk", "normandiya"),
+        "True Stories" to listOf("gerçek", "true story", "biyografi", "biography", "based on", "hayatı"),
+        "Horror Night" to listOf("korku", "horror", "scream", "halloween", "annabelle", "dehşet")
     )
 
     private class MTag(val ch: Channel, val tags: Set<String>, val nameLower: String, val score: Double)
@@ -61,7 +61,7 @@ object RailEngine {
         }
         val kult = tagged.filter { (it.ch.rating ?: 0.0) >= 8.2 }
         if (kult.size >= 6)
-            rails.add(Scored("Kült & Efsane", kult.sortedByDescending { it.score }.take(CAP).map { it.ch }, 0.9 + jitter("kult", seed)))
+            rails.add(Scored("Cult & Legends", kult.sortedByDescending { it.score }.take(CAP).map { it.ch }, 0.9 + jitter("kult", seed)))
 
         return rails.sortedByDescending { it.score }.take(limit).map { it.title to it.items }
     }

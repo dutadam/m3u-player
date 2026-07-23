@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">cheesino</string>
-    <string name="download_channel_name">İndirmeler</string>
-    <string name="record_channel_name">Kayıt</string>
+    <string name="download_channel_name">Downloads</string>
+    <string name="record_channel_name">Recording</string>
     <!-- TMDB (themoviedb.org) ücretsiz v3 API anahtarı — "Haftanın Trendleri · Top 10" için.
          Boşsa özellik kapalı. Ücretsiz anahtar: themoviedb.org → Ayarlar → API. -->
     <string name="tmdb_api_key" translatable="false">OqJhDvXsy7pMjGozL14BTVWLpv0q5EthrXdYw-1e2p0</string>

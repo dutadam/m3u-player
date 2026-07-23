@@ -50,7 +50,7 @@ fun Rail(title: String, onSeeAll: (() -> Unit)? = null, content: @Composable () 
             Box(Modifier.size(4.dp, 18.dp).clip(RoundedCornerShape(2.dp)).background(Accent))
             Text(title, color = TextHi, fontWeight = FontWeight.Black, fontSize = 18.sp,
                 modifier = Modifier.padding(start = 8.dp).weight(1f))
-            if (onSeeAll != null) Text("Tümü ›", color = Accent2, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+            if (onSeeAll != null) Text("All ›", color = Accent2, fontWeight = FontWeight.Bold, fontSize = 13.sp,
                 modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable(onClick = onSeeAll).padding(4.dp))
         }
         content()

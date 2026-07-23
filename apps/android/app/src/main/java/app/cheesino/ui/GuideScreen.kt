@@ -62,18 +62,18 @@ fun GuideScreen(
     Column(Modifier.fillMaxSize().background(Ground).then(if (embedded) Modifier else Modifier.statusBarsPadding())) {
         Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
             if (!embedded) {
-                IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi) }
-                Text("Rehber", color = TextHi, fontWeight = FontWeight.Black, fontSize = 20.sp,
+                IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = TextHi) }
+                Text("Guide", color = TextHi, fontWeight = FontWeight.Black, fontSize = 20.sp,
                     modifier = Modifier.weight(1f))
             } else Spacer(Modifier.weight(1f))
             IconButton(onClick = { grid = !grid }) {
                 Icon(if (grid) Icons.Default.ViewList else Icons.Default.GridView,
-                    if (grid) "Liste görünümü" else "Zaman çizelgesi", tint = Accent)
+                    if (grid) "List view" else "Timeline", tint = Accent)
             }
         }
         OutlinedTextField(
             value = q, onValueChange = { q = it }, singleLine = true,
-            placeholder = { Text("Kanal veya program ara…") },
+            placeholder = { Text("Search channel or program…") },
             leadingIcon = { Icon(Icons.Default.Search, null) },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
             shape = RoundedCornerShape(12.dp),
@@ -84,7 +84,7 @@ fun GuideScreen(
             )
         )
         if (epg.isEmpty()) {
-            Text("EPG yükleniyor… kanallar aşağıda listeleniyor.", color = TextMute, fontSize = 12.sp,
+            Text("Loading EPG… channels are listed below.", color = TextMute, fontSize = 12.sp,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
         }
 
@@ -96,7 +96,7 @@ fun GuideScreen(
                     ch.name.lowercase().contains(query) ||
                         (ch.tvgId?.let { epg[it] }?.any { e -> e.title.lowercase().contains(query) } == true)
                 }
-                if (hits.isEmpty()) item { Text("Sonuç yok.", color = TextMute, modifier = Modifier.padding(16.dp)) }
+                if (hits.isEmpty()) item { Text("No results.", color = TextMute, modifier = Modifier.padding(16.dp)) }
                 items(hits) { ch -> GuideRow(ch, epg, query) { selected = it } }
             } else {
                 fun hasNow(ch: Channel) = ch.tvgId?.let { epg[it] }?.any { it.isLiveNow } == true
@@ -120,7 +120,7 @@ private fun GuideCategoryHeader(title: String, liveCount: Int) {
         Box(Modifier.size(4.dp, 15.dp).clip(RoundedCornerShape(2.dp)).background(Accent))
         Text(title, color = TextHi, fontWeight = FontWeight.Bold, fontSize = 14.sp,
             modifier = Modifier.padding(start = 8.dp).weight(1f, fill = false), maxLines = 1, overflow = TextOverflow.Ellipsis)
-        if (liveCount > 0) Text("$liveCount canlı", color = Accent2, fontSize = 11.sp, fontWeight = FontWeight.Bold,
+        if (liveCount > 0) Text("$liveCount live", color = Accent2, fontSize = 11.sp, fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(start = 8.dp))
     }
 }
@@ -155,11 +155,11 @@ private fun GuideRow(
                     Box(Modifier.fillMaxWidth(frac).height(3.dp).background(Accent))
                 }
             } else {
-                Text("Program bilgisi yok", color = TextMute, fontSize = 12.sp,
+                Text("No program info", color = TextMute, fontSize = 12.sp,
                     modifier = Modifier.padding(top = 2.dp))
             }
             next?.let {
-                Text("Sırada · ${hhmm(it.start)} · ${it.title}", color = TextDim, fontSize = 11.sp,
+                Text("Next · ${hhmm(it.start)} · ${it.title}", color = TextDim, fontSize = 11.sp,
                     maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
             }
             matched?.let {
@@ -168,7 +168,7 @@ private fun GuideRow(
                     modifier = Modifier.padding(top = 3.dp))
             }
         }
-        Icon(Icons.Default.ChevronRight, "Programı gör", tint = TextMute)
+        Icon(Icons.Default.ChevronRight, "Show schedule", tint = TextMute)
     }
 }
 
@@ -189,18 +189,18 @@ private fun ChannelSchedule(
     }
     Column(Modifier.fillMaxSize().background(Ground).statusBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi) }
+            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = TextHi) }
             Text(ch.name, color = TextHi, fontWeight = FontWeight.Black, fontSize = 18.sp,
                 maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             Row(Modifier.clip(RoundedCornerShape(10.dp)).background(Accent)
                 .clickable { onPlay(ch) }.padding(horizontal = 14.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.PlayArrow, null, tint = Ground)
-                Text("İzle", color = Ground, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 4.dp))
+                Text("Watch", color = Ground, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 4.dp))
             }
         }
         if (progs.isEmpty()) {
-            EmptyState("Program bilgisi yok", "Bu kanal için EPG verisi görünmüyor.")
+            EmptyState("No program info", "No EPG data for this channel.")
         } else LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 16.dp)) {
             items(progs) { p ->
                 val live = p.isLiveNow
@@ -226,10 +226,10 @@ private fun ChannelSchedule(
                             modifier = Modifier.padding(top = 2.dp))
                     }
                     when {
-                        live -> Icon(Icons.Default.PlayArrow, "İzle", tint = Accent)
-                        past && ch.supportsCatchup -> Icon(Icons.Default.Replay, "Baştan izle", tint = Accent2)
+                        live -> Icon(Icons.Default.PlayArrow, "Watch", tint = Accent)
+                        past && ch.supportsCatchup -> Icon(Icons.Default.Replay, "Watch from start", tint = Accent2)
                         !past -> Icon(if (reminded) Icons.Default.Notifications else Icons.Default.NotificationsNone,
-                            if (reminded) "Hatırlatmayı kaldır" else "Bildirim aç",
+                            if (reminded) "Remove reminder" else "Set reminder",
                             tint = if (reminded) Accent else TextMute)
                         else -> {}
                     }

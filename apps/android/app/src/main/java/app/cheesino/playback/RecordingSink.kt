@@ -22,9 +22,9 @@ object RecordingSink {
         val safe = title.replace(Regex("[^\\w\\-. ]"), "_").take(60).trim()
         val f = File(RecordingService.dir(context), "${safe}_${System.currentTimeMillis()}.ts")
         val ok = runCatching { out = f.outputStream().buffered(); file = f }.isSuccess
-        if (!ok) { RecordingState.status.value = "Kayıt dosyası açılamadı."; return }
+        if (!ok) { RecordingState.status.value = "Could not open recording file."; return }
         RecordingState.active.value = ActiveRecording(title, f.absolutePath, System.currentTimeMillis())
-        RecordingState.status.value = "● İzlenen yayından kaydediliyor…"
+        RecordingState.status.value = "● Recording the stream you're watching…"
     }
 
     /** [TeeDataSource] tarafından çağrılır — okunan medya baytlarını dosyaya ekler. */
@@ -41,7 +41,7 @@ object RecordingSink {
         RecordingState.active.value = null
         // Boş kayıt bırakma.
         if (f != null && f.exists() && f.length() == 0L) {
-            f.delete(); RecordingState.status.value = "Kayıt boş kaldı (veri gelmedi)."
+            f.delete(); RecordingState.status.value = "Recording empty (no data)."
         } else RecordingState.status.value = null
     }
 }

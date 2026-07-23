@@ -47,14 +47,14 @@ fun DownloadsScreen(
 
     Column(Modifier.fillMaxSize().background(Ground).then(if (embedded) Modifier else Modifier.statusBarsPadding())) {
         if (!embedded) Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi) }
-            Text("İndirilenler", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 18.sp,
+            IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = TextHi) }
+            Text("Downloads", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 18.sp,
                 modifier = Modifier.padding(start = 4.dp))
         }
 
         if (downloads.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Henüz indirme yok.\nFilm detayında “Çevrimdışı indir”e dokun.",
+                Text("No downloads yet.\nTap “Download offline” on a movie's detail.",
                     color = TextMute, fontSize = 14.sp)
             }
         } else {
@@ -74,12 +74,12 @@ private fun DownloadRow(dl: Download, onPlay: (PlayItem) -> Unit, onRemove: (Str
     val completed = dl.state == Download.STATE_COMPLETED
     val percent = dl.percentDownloaded.let { if (it < 0f) 0f else it } / 100f
     val status = when (dl.state) {
-        Download.STATE_COMPLETED -> "İndirildi"
-        Download.STATE_DOWNLOADING -> "İniyor · %${(dl.percentDownloaded.coerceAtLeast(0f)).toInt()}"
-        Download.STATE_QUEUED, Download.STATE_RESTARTING -> "Sırada"
-        Download.STATE_STOPPED -> "Duraklatıldı"
-        Download.STATE_FAILED -> "Başarısız"
-        Download.STATE_REMOVING -> "Kaldırılıyor"
+        Download.STATE_COMPLETED -> "Downloaded"
+        Download.STATE_DOWNLOADING -> "Downloading · ${(dl.percentDownloaded.coerceAtLeast(0f)).toInt()}%"
+        Download.STATE_QUEUED, Download.STATE_RESTARTING -> "Queued"
+        Download.STATE_STOPPED -> "Paused"
+        Download.STATE_FAILED -> "Failed"
+        Download.STATE_REMOVING -> "Removing"
         else -> ""
     }
 
@@ -104,7 +104,7 @@ private fun DownloadRow(dl: Download, onPlay: (PlayItem) -> Unit, onRemove: (Str
         if (completed) {
             IconButton(onClick = {
                 onPlay(PlayItem(id = dl.request.id, title = title, url = dl.request.uri.toString()))
-            }) { Icon(Icons.Default.PlayArrow, "Oynat", tint = Accent) }
+            }) { Icon(Icons.Default.PlayArrow, "Play", tint = Accent) }
         }
         IconButton(onClick = { onRemove(dl.request.id) }) {
             Icon(Icons.Default.Delete, "Sil", tint = TextDim)

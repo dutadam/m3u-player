@@ -69,7 +69,7 @@ class RecordingService : Service() {
             ACTION_STOP -> { stopRecording(); return START_NOT_STICKY }
             ACTION_START -> {
                 val url = intent.getStringExtra(EXTRA_URL)
-                val title = intent.getStringExtra(EXTRA_TITLE) ?: "Kayıt"
+                val title = intent.getStringExtra(EXTRA_TITLE) ?: "Recording"
                 if (url.isNullOrBlank()) { stopSelf(); return START_NOT_STICKY }
                 startRecording(url, title)
             }
@@ -92,7 +92,7 @@ class RecordingService : Service() {
         // Oynatıcıyla aynı aday-URL çözümünü kullan (http→https, .m3u8 ek) — ham URL çalışmıyorsa.
         val streamUrl = app.cheesino.core.StreamResolver.candidates(url).firstOrNull()?.url ?: url
         val isHls = streamUrl.substringBefore('?').lowercase().endsWith(".m3u8") || streamUrl.contains(".m3u8")
-        RecordingState.status.value = "Bağlanıyor…"
+        RecordingState.status.value = "Connecting…"
 
         // Bekçi: veri gelmezse kaydı sonsuza dek çalışır durumda bırakma. Aksi halde başarısız bir
         // kayıt sağlayıcının (çoğu tek eşzamanlı) bağlantısını tutar → başka yayın açılamaz.
@@ -102,7 +102,7 @@ class RecordingService : Service() {
                 runCatching { Thread.sleep(1000) }
                 if (file.length() > 0L) break            // veri akıyor → bekçiyi bırak
                 if (System.currentTimeMillis() - start > 15_000) {
-                    RecordingState.status.value = "Kayıt başlatılamadı — kaynak veri vermedi, bağlantı serbest bırakıldı."
+                    RecordingState.status.value = "Recording couldn't start — source sent no data, connection released."
                     stop = true                          // worker döngüsünü kır
                     runCatching { currentCall?.cancel() } // bloke okumayı da kes → bağlantıyı serbest bırak
                     break
@@ -120,22 +120,22 @@ class RecordingService : Service() {
             try {
                 if (isHls) {
                     // HLS: playlist'i izleyip segmentleri tek .ts dosyasına ekle (AES-128 çözerek).
-                    RecordingState.status.value = "HLS kaydı…"
+                    RecordingState.status.value = "HLS recording…"
                     // HLS istekleri kısa → sonsuz beklemesin diye okuma zaman aşımı ver.
                     val hlsClient = client.newBuilder().readTimeout(20, TimeUnit.SECONDS).build()
                     HlsRecorder.record(hlsClient, streamUrl, file) { stop }
                     if (file.length() == 0L && !stop)
-                        RecordingState.status.value = "HLS segmentleri alınamadı (kaynak engelli/fMP4 olabilir)."
+                        RecordingState.status.value = "HLS segments unavailable (source blocked or fMP4)."
                 } else {
                     // Doğrudan TS/progressive: bayt akışını dosyaya dök.
                     val call = client.newCall(Request.Builder().url(streamUrl).build())
                     currentCall = call
                     call.execute().use { resp ->
                         if (!resp.isSuccessful) {
-                            RecordingState.status.value = "Sunucu reddetti (HTTP ${resp.code})."
+                            RecordingState.status.value = "Server refused (HTTP ${resp.code})."
                             return@use
                         }
-                        val body = resp.body ?: run { RecordingState.status.value = "Boş yanıt."; return@use }
+                        val body = resp.body ?: run { RecordingState.status.value = "Empty response."; return@use }
                         var total = 0L
                         body.byteStream().use { input ->
                             file.outputStream().use { output ->
@@ -149,11 +149,11 @@ class RecordingService : Service() {
                                 output.flush()
                             }
                         }
-                        if (total == 0L) RecordingState.status.value = "Veri gelmedi (kaynak boş/engelli)."
+                        if (total == 0L) RecordingState.status.value = "No data (source empty or blocked)."
                     }
                 }
             } catch (e: Exception) {
-                if (!stop) RecordingState.status.value = "Kayıt hatası: ${e.message ?: "bilinmeyen"}"
+                if (!stop) RecordingState.status.value = "Recording error: ${e.message ?: "bilinmeyen"}"
             } finally {
                 currentCall = null
                 // Havuzdaki keep-alive soketi hemen kapat — yoksa kayıt bittikten sonra bile
@@ -200,12 +200,12 @@ class RecordingService : Service() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         return Notification.Builder(this, CHANNEL_ID)
-            .setContentTitle("Kaydediliyor")
+            .setContentTitle("Recording")
             .setContentText(title)
             .setSmallIcon(android.R.drawable.presence_video_online)
             .setOngoing(true)
             .addAction(Notification.Action.Builder(
-                null as android.graphics.drawable.Icon?, "Durdur", stopIntent).build())
+                null as android.graphics.drawable.Icon?, "Stop", stopIntent).build())
             .build()
     }
 }

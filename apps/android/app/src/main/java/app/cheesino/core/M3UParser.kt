@@ -23,7 +23,7 @@ object M3UParser {
                     val group = attrs["group-title"] ?: "Genel"
                     out.add(Channel(
                         id = attrs["tvg-id"]?.ifBlank { null } ?: url,
-                        name = name.ifBlank { attrs["tvg-name"] ?: "Kanal" },
+                        name = name.ifBlank { attrs["tvg-name"] ?: "Channel" },
                         logo = attrs["tvg-logo"]?.ifBlank { null },
                         group = group,
                         url = url,

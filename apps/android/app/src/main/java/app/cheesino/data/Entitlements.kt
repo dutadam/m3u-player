@@ -26,8 +26,8 @@ class Entitlements(context: Context) {
 
 /** Pro'ya kilitli özellikler — tek yerden yönetilir. */
 enum class ProFeature(val title: String, val desc: String) {
-    MULTI_VIEW("Çoklu Ekran", "2–6 yayını aynı anda izle"),
-    EPG_GRID("Zaman Çizelgesi", "Çok kanallı rehber ızgarası"),
-    MULTI_SOURCE("Sınırsız Kaynak", "Birden çok kaynağı kaydet ve geçiş yap"),
-    RECORDING("Kayıt", "Canlı yayını kaydet ve sonra izle")
+    MULTI_VIEW("Multi-View", "Watch 2–6 streams at once"),
+    EPG_GRID("Timeline", "Multi-channel guide grid"),
+    MULTI_SOURCE("Unlimited Sources", "Save multiple sources and switch between them"),
+    RECORDING("Recording", "Record live and watch later")
 }

@@ -50,56 +50,56 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
     Column(Modifier.fillMaxSize().background(Ground).then(if (embedded) Modifier else Modifier.statusBarsPadding()).verticalScroll(rememberScrollState())) {
         // Başlık
         Row(Modifier.fillMaxWidth().padding(if (embedded) 16.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (!embedded) IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi) }
-            Text(if (embedded) "Hesap" else "Ayarlar", color = TextHi, fontWeight = FontWeight.Black, fontSize = 20.sp)
+            if (!embedded) IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = TextHi) }
+            Text(if (embedded) "Account" else "Settings", color = TextHi, fontWeight = FontWeight.Black, fontSize = 20.sp)
         }
 
-        Section("Hesap") {
+        Section("Account") {
             val a = account
             if (a != null) {
-                Text(a.name ?: a.email ?: "Giriş yapıldı", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text(a.name ?: a.email ?: "Signed in", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 a.email?.let { Text(it, color = TextMute, fontSize = 12.sp) }
-                Text("Favori ve beğeniler cihazlar arası senkron.", color = TextDim, fontSize = 12.sp,
+                Text("Favorites and likes sync across devices.", color = TextDim, fontSize = 12.sp,
                     modifier = Modifier.padding(top = 4.dp))
                 Button(onClick = { vm.signOutAccount() }, modifier = Modifier.padding(top = 8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Ground)
-                ) { Text("Çıkış Yap", color = Live, fontWeight = FontWeight.Bold) }
+                ) { Text("Sign out", color = Live, fontWeight = FontWeight.Bold) }
             } else {
-                Text("Google ile giriş yap → favori/beğeni tüm cihazlarında aynı olsun.",
+                Text("Sign in with Google → favorites/likes stay the same across all your devices.",
                     color = TextDim, fontSize = 13.sp)
                 Button(onClick = { activity?.let { vm.signIn(it) } }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Accent)
-                ) { Text("Google ile Giriş", color = Ground, fontWeight = FontWeight.Bold) }
+                ) { Text("Sign in with Google", color = Ground, fontWeight = FontWeight.Bold) }
                 if (!vm.isAuthConfigured(ctx))
-                    Text("Google girişi konsolda etkinleştirilince aktif olur.",
+                    Text("Google sign-in becomes active once enabled in the console.",
                         color = TextMute, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
             }
             authStatus?.let {
-                Text(it, color = if (it.contains("başarısız")) Live else Accent2,
+                Text(it, color = if (it.contains("failed")) Live else Accent2,
                     fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
             }
         }
 
-        Section(if (isPro) "cheesino Pro · Aktif" else "cheesino Pro") {
+        Section(if (isPro) "cheesino Pro · Active" else "cheesino Pro") {
             if (isPro) {
-                Text("Pro aktif — tüm özellikler açık. Teşekkürler!", color = TextDim, fontSize = 13.sp)
+                Text("Pro active — all features unlocked. Thank you!", color = TextDim, fontSize = 13.sp)
             } else {
-                Text("Çoklu ekran, zaman çizelgesi, sınırsız kaynak, senkron ve daha fazlası.",
+                Text("Multi-view, timeline, unlimited sources, sync and more.",
                     color = TextDim, fontSize = 13.sp, modifier = Modifier.padding(bottom = 8.dp))
                 Button(onClick = onUpgrade, modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = Accent)
-                ) { Text("Pro'ya Geç", fontWeight = FontWeight.Black, color = Ground) }
+                ) { Text("Go Pro", fontWeight = FontWeight.Black, color = Ground) }
             }
             if (BuildConfig.DEBUG) {
-                Text("Geliştirici: Pro'yu değiştir", color = TextMute, fontSize = 11.sp,
+                Text("Developer: toggle Pro", color = TextMute, fontSize = 11.sp,
                     modifier = Modifier.padding(top = 10.dp).clickable { vm.setPro(!isPro) })
             }
         }
 
-        Section("Oynatma") {
-            Text("Oynatıcı motoru", color = TextDim, fontSize = 12.sp, modifier = Modifier.padding(bottom = 6.dp))
+        Section("Playback") {
+            Text("Player engine", color = TextDim, fontSize = 12.sp, modifier = Modifier.padding(bottom = 6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("Otomatik" to 0, "ExoPlayer" to 1, "VLC" to 2).forEach { (lbl, v) ->
+                listOf("Auto" to 0, "ExoPlayer" to 1, "VLC" to 2).forEach { (lbl, v) ->
                     val on = engine == v
                     Box(
                         Modifier.weight(1f).clip(RoundedCornerShape(10.dp))
@@ -110,8 +110,8 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
                     ) { Text(lbl, color = if (on) Ground else TextHi, fontWeight = FontWeight.Bold, fontSize = 13.sp) }
                 }
             }
-            Text("Otomatik (önerilen): film/dizi VLC ile (geniş codec — MKV/AVI/HEVC), canlı yayın " +
-                "ExoPlayer ile (Chromecast/PiP/düşük gecikme). ExoPlayer açamazsa VLC devreye girer.",
+            Text("Automatic (recommended): movies/series via VLC (wide codecs — MKV/AVI/HEVC), live via " +
+                "ExoPlayer (Chromecast/PiP/low latency). If ExoPlayer can't open it, VLC takes over.",
                 color = TextMute, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
 
             OutlinedTextField(
@@ -119,16 +119,16 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
                 singleLine = true, modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
                 colors = fieldColors()
             )
-            Button(onClick = { vm.setUserAgent(ua); msg = "User-Agent kaydedildi." },
+            Button(onClick = { vm.setUserAgent(ua); msg = "User-Agent saved." },
                 modifier = Modifier.padding(top = 8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Accent)
-            ) { Text("Kaydet", fontWeight = FontWeight.Bold) }
+            ) { Text("Save", fontWeight = FontWeight.Bold) }
         }
 
-        Section("Altyazı") {
-            Text("Boyut", color = TextDim, fontSize = 12.sp, modifier = Modifier.padding(bottom = 6.dp))
+        Section("Subtitles") {
+            Text("Size", color = TextDim, fontSize = 12.sp, modifier = Modifier.padding(bottom = 6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("Küçük" to 0.04f, "Orta" to 0.06f, "Büyük" to 0.09f).forEach { (lbl, sc) ->
+                listOf("Small" to 0.04f, "Medium" to 0.06f, "Large" to 0.09f).forEach { (lbl, sc) ->
                     val active = kotlin.math.abs(subScale - sc) < 0.001f
                     Box(
                         Modifier.clip(RoundedCornerShape(10.dp)).background(if (active) Accent else Ground)
@@ -137,7 +137,7 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
                     ) { Text(lbl, color = if (active) Ground else TextHi, fontWeight = FontWeight.Bold) }
                 }
             }
-            Text("Renk", color = TextDim, fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp, bottom = 6.dp))
+            Text("Color", color = TextDim, fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp, bottom = 6.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 listOf(0xFFFFFFFF, 0xFFFFD200, 0xFF4FD1C5, 0xFFFF8A00).forEach { argb ->
                     val c = Color(argb)
@@ -150,7 +150,7 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
                 }
             }
             Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("Arka plan", color = TextHi, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                Text("Background", color = TextHi, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
                 Switch(checked = subBgOn, onCheckedChange = {
                     subBgOn = it
                     val v = if (it) 0xB0000000.toInt() else 0x00000000
@@ -159,9 +159,9 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
             }
         }
 
-        Section("Ebeveyn Kilidi") {
+        Section("Parental Lock") {
             if (parentalOn) {
-                Text("Yetişkin içerik gizli. Kaldırmak için PIN gir.", color = TextDim, fontSize = 13.sp)
+                Text("Adult content hidden. Enter PIN to remove.", color = TextDim, fontSize = 13.sp)
                 OutlinedTextField(
                     value = pin, onValueChange = { pin = it }, label = { Text("PIN") },
                     singleLine = true, visualTransformation = PasswordVisualTransformation(),
@@ -169,70 +169,70 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp), colors = fieldColors()
                 )
                 Button(onClick = {
-                    msg = if (vm.disableParental(pin)) { parentalOn = false; pin = ""; "Ebeveyn kilidi kapatıldı." }
-                    else "PIN yanlış."
+                    msg = if (vm.disableParental(pin)) { parentalOn = false; pin = ""; "Parental lock disabled." }
+                    else "Wrong PIN."
                 }, modifier = Modifier.padding(top = 8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Live)
-                ) { Text("Kilidi Kaldır", fontWeight = FontWeight.Bold) }
+                ) { Text("Remove Lock", fontWeight = FontWeight.Bold) }
             } else {
-                Text("4+ haneli PIN ile yetişkin kategorileri gizle.", color = TextDim, fontSize = 13.sp)
+                Text("Hide adult categories with a 4+ digit PIN.", color = TextDim, fontSize = 13.sp)
                 OutlinedTextField(
-                    value = pin, onValueChange = { pin = it }, label = { Text("Yeni PIN") },
+                    value = pin, onValueChange = { pin = it }, label = { Text("New PIN") },
                     singleLine = true, visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp), colors = fieldColors()
                 )
                 OutlinedTextField(
-                    value = pin2, onValueChange = { pin2 = it }, label = { Text("PIN tekrar") },
+                    value = pin2, onValueChange = { pin2 = it }, label = { Text("Repeat PIN") },
                     singleLine = true, visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp), colors = fieldColors()
                 )
                 Button(onClick = {
                     msg = when {
-                        pin.length < 4 -> "PIN en az 4 hane olmalı."
-                        pin != pin2 -> "PIN'ler eşleşmiyor."
-                        else -> { vm.setPin(pin); parentalOn = true; pin = ""; pin2 = ""; "Ebeveyn kilidi açıldı." }
+                        pin.length < 4 -> "PIN must be at least 4 digits."
+                        pin != pin2 -> "PINs don't match."
+                        else -> { vm.setPin(pin); parentalOn = true; pin = ""; pin2 = ""; "Parental lock enabled." }
                     }
                 }, modifier = Modifier.padding(top = 8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Accent)
-                ) { Text("PIN Belirle", fontWeight = FontWeight.Bold) }
+                ) { Text("Set PIN", fontWeight = FontWeight.Bold) }
             }
         }
 
-        Section("İndirilenler") {
-            Text("Filmleri çevrimdışı izlemek için indir; buradan yönet.",
+        Section("Downloads") {
+            Text("Download movies to watch offline; manage them here.",
                 color = TextDim, fontSize = 13.sp)
             Button(onClick = onOpenDownloads, modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Ground)
-            ) { Text("İndirilenleri Aç", color = Accent, fontWeight = FontWeight.Bold) }
+            ) { Text("Open Downloads", color = Accent, fontWeight = FontWeight.Bold) }
         }
 
-        Section("Kayıtlar") {
-            Text("Canlı yayını oynatıcıdan kaydet; kayıtları buradan izle/sil.",
+        Section("Recordings") {
+            Text("Record live from the player; watch/delete recordings here.",
                 color = TextDim, fontSize = 13.sp)
             Button(onClick = onOpenRecordings, modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Ground)
-            ) { Text("Kayıtları Aç", color = Accent, fontWeight = FontWeight.Bold) }
+            ) { Text("Open Recordings", color = Accent, fontWeight = FontWeight.Bold) }
         }
 
-        Section("Veriler") {
-            Text("Favori, beğeni, izleme geçmişi ve ilerleme cihazında tutulur.",
+        Section("Data") {
+            Text("Favorites, likes, watch history and progress are kept on your device.",
                 color = TextDim, fontSize = 13.sp)
-            Button(onClick = { vm.clearUserData(); msg = "Veriler temizlendi." },
+            Button(onClick = { vm.clearUserData(); msg = "Data cleared." },
                 modifier = Modifier.padding(top = 8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Ground)
-            ) { Text("İzleme Verilerini Temizle", color = Live, fontWeight = FontWeight.Bold) }
+            ) { Text("Clear Watch Data", color = Live, fontWeight = FontWeight.Bold) }
         }
 
-        Section("Kaynak") {
-            Button(onClick = { vm.reload(); msg = "İçerik yenileniyor…" }, modifier = Modifier.fillMaxWidth(),
+        Section("Source") {
+            Button(onClick = { vm.reload(); msg = "Refreshing content…" }, modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = Accent)
-            ) { Text("İçeriği Yenile", color = Ground, fontWeight = FontWeight.Bold) }
+            ) { Text("Refresh Content", color = Ground, fontWeight = FontWeight.Bold) }
             Button(onClick = { vm.signOut(); onSignedOut() },
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Ground)
-            ) { Text("Çıkış Yap / Kaynağı Değiştir", color = Live, fontWeight = FontWeight.Bold) }
+            ) { Text("Sign out / Change Source", color = Live, fontWeight = FontWeight.Bold) }
         }
 
         msg?.let { Text(it, color = Accent2, fontSize = 13.sp, modifier = Modifier.padding(16.dp)) }
@@ -241,36 +241,36 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
         var crash by remember { mutableStateOf(app.cheesino.data.CrashLog.last(ctx)) }
         val clipboard = LocalClipboardManager.current
         crash?.let { c ->
-            Section("Tanılama") {
-                Text("Son çökme kaydı bulundu — kopyalayıp geliştiriciyle paylaşabilirsin.",
+            Section("Diagnostics") {
+                Text("A crash report was found — copy and share it with the developer.",
                     color = TextMute, fontSize = 12.sp)
                 Text(c.take(1500), color = TextDim, fontSize = 10.sp, modifier = Modifier.padding(top = 8.dp))
                 Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(
-                        onClick = { clipboard.setText(AnnotatedString(c)); msg = "Çökme kaydı panoya kopyalandı" },
+                        onClick = { clipboard.setText(AnnotatedString(c)); msg = "Crash report copied to clipboard" },
                         shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Accent)
-                    ) { Text("Kopyala", color = Ground, fontWeight = FontWeight.Bold) }
+                    ) { Text("Copy", color = Ground, fontWeight = FontWeight.Bold) }
                     OutlinedButton(onClick = { app.cheesino.data.CrashLog.clear(ctx); crash = null },
-                        shape = RoundedCornerShape(10.dp)) { Text("Temizle", color = TextHi) }
+                        shape = RoundedCornerShape(10.dp)) { Text("Clear", color = TextHi) }
                 }
             }
         }
 
-        Section("Hakkında") {
-            Text("cheesino · sürüm 0.1.0", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-            Text("Premium medya oynatıcı. İçerik barındırmaz — kendi kaynağını sen eklersin. " +
-                "Kimlik bilgileri cihazda şifreli, telemetri yok.",
+        Section("About") {
+            Text("cheesino · version 0.1.0", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Text("Premium media player. Hosts no content — you add your own source. " +
+                "Credentials encrypted on device, no telemetry.",
                 color = TextMute, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
         }
 
         // Veri kaynağı atıfları — Trakt/TMDB lisansları atıf gerektirir.
-        Section("Kaynaklar") {
-            Text("Trend, benzer ve özet verileri Trakt (trakt.tv) tarafından sağlanır. " +
-                "TMDB kullanıldığında: bu uygulama TMDB ve TMDB API'lerini kullanır ancak TMDB " +
-                "tarafından onaylanmış/sertifikalanmış değildir.",
+        Section("Sources") {
+            Text("Trending, similar and summary data are provided by Trakt (trakt.tv). " +
+                "When TMDB is used: this product uses TMDB and the TMDB APIs but is not " +
+                "endorsed or certified by TMDB.",
                 color = TextMute, fontSize = 12.sp)
-            Text("Puanlar OMDb (omdbapi.com). Powered by Trakt (trakt.tv).",
+            Text("Ratings by OMDb (omdbapi.com). Powered by Trakt (trakt.tv).",
                 color = TextDim, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
         }
         Spacer(Modifier.height(16.dp))

@@ -56,7 +56,7 @@ fun EpgGrid(
     }
 
     if (rows.isEmpty()) {
-        EmptyState("EPG yok", "Bu kaynakta program verisi görünmüyor.")
+        EmptyState("No EPG", "No program data in this source.")
         return
     }
 

@@ -39,7 +39,7 @@ fun MyListScreen(
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 16.dp)) {
         if (!embedded) item {
             Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi) }
+                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = TextHi) }
                 Text("Listem", color = TextHi, fontWeight = FontWeight.Black, fontSize = 20.sp)
             }
         }
@@ -49,16 +49,16 @@ fun MyListScreen(
                     Modifier.fillMaxWidth().padding(top = 80.dp), horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Icon(Icons.Default.BookmarkBorder, null, tint = TextMute, modifier = Modifier.size(48.dp))
-                    Text("Listen boş", color = TextDim, fontWeight = FontWeight.Bold, fontSize = 16.sp,
+                    Text("Your list is empty", color = TextDim, fontWeight = FontWeight.Bold, fontSize = 16.sp,
                         modifier = Modifier.padding(top = 12.dp))
-                    Text("Film veya dizi detayında yer imi ekleyerek buraya kaydet.",
+                    Text("Bookmark a movie or series from its detail to save it here.",
                         color = TextMute, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp, start = 32.dp, end = 32.dp))
                 }
             }
         } else {
-            item { PosterRail("Filmler", movies, onPlay) }
-            item { SeriesRail("Diziler", series, onSeries) }
-            item { ChannelRail("Kanallar", channels, onPlay) }
+            item { PosterRail("Movies", movies, onPlay) }
+            item { SeriesRail("Series", series, onSeries) }
+            item { ChannelRail("Channels", channels, onPlay) }
         }
     }
 }

@@ -121,11 +121,11 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
                 val rails = buildList {
                     val popular = if (useTrakt) app.cheesino.core.TraktClient.listTitles(trakt, "movies/popular")
                         else app.cheesino.core.TmdbClient.listTitles(tmdb, "movie/popular")
-                    match(popular, 20).takeIf { it.size >= 4 }?.let { add("Dünyada Popüler" to it) }
+                    match(popular, 20).takeIf { it.size >= 4 }?.let { add("Popular Worldwide" to it) }
                     val second = if (useTrakt) app.cheesino.core.TraktClient.listTitles(trakt, "movies/boxoffice")
                         else app.cheesino.core.TmdbClient.listTitles(tmdb, "movie/now_playing")
                     match(second, 20).takeIf { it.size >= 4 }?.let {
-                        add((if (useTrakt) "Gişe Rekortmenleri" else "Vizyondakiler") to it)
+                        add((if (useTrakt) "Box Office Hits" else "Now Playing") to it)
                     }
                 }
                 if (rails.isNotEmpty()) _tmdbRails.value = rails
@@ -267,14 +267,14 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
 
     fun signIn(activity: android.app.Activity) {
         viewModelScope.launch {
-            _authStatus.value = "Giriş yapılıyor…"
+            _authStatus.value = "Signing in…"
             try {
                 val r = authManager.signInWithGoogle(activity)
                 _authStatus.value = if (r.isSuccess) null
-                    else "Giriş başarısız: ${r.exceptionOrNull()?.message ?: "iptal edildi / hata"}"
+                    else "Sign-in failed: ${r.exceptionOrNull()?.message ?: "canceled / error"}"
                 if (r.isSuccess) { pullAndMerge(); syncSourceOnSignIn() }
             } catch (t: Throwable) {
-                _authStatus.value = "Giriş başarısız: ${t.message ?: "hata"}"
+                _authStatus.value = "Sign-in failed: ${t.message ?: "error"}"
             }
         }
     }
@@ -290,10 +290,10 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
                 val local = creds.load()
                 if (local != null) { syncRepo.pushSource(uid, local); return@runCatching }
                 if (!_state.value.hasSource) {
-                    _authStatus.value = "Kaynak hesabından getiriliyor…"
+                    _authStatus.value = "Fetching source from your account…"
                     val remote = syncRepo.pullSource(uid)
                     if (remote != null) { loadXtream(remote); _authStatus.value = null }
-                    else _authStatus.value = "Hesapta kayıtlı kaynak yok — kaynağını bir kez ekle, sonraki cihazda otomatik gelir."
+                    else _authStatus.value = "No saved source on the account — add your source once, it will load automatically on the next device."
                 }
             }
         }
@@ -401,7 +401,7 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
                 val cl = XtreamClient(c)
                 if (!cl.authenticateActive()) {
                     _state.value = _state.value.copy(loading = false, refreshing = false,
-                        error = if (background) null else "Abonelik aktif değil.")
+                        error = if (background) null else "Subscription is not active.")
                     return@launch
                 }
                 val live = cl.allLive()
@@ -409,7 +409,7 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
                 val series = runCatching { cl.allSeries() }.getOrDefault(emptyList())
                 if (live.isEmpty() && vod.isEmpty()) {
                     _state.value = _state.value.copy(loading = false, refreshing = false,
-                        error = if (background) null else "Sunucuda kanal bulunamadı.")
+                        error = if (background) null else "No channels found on the server.")
                     return@launch
                 }
                 client = cl
@@ -427,7 +427,7 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
                 rebuildDiscover()
             } catch (e: Exception) {
                 _state.value = _state.value.copy(loading = false, refreshing = false,
-                    error = if (background) null else "Giriş başarısız — sunucu/kullanıcı/şifreyi kontrol edin.")
+                    error = if (background) null else "Sign-in failed — check server/username/password.")
             }
         }
     }
@@ -506,7 +506,7 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
 
     fun loadM3U(text: String) {
         val result = M3UParser.parse(text)
-        if (result.channels.isEmpty()) { _state.value = _state.value.copy(error = "M3U içinde kanal bulunamadı."); return }
+        if (result.channels.isEmpty()) { _state.value = _state.value.copy(error = "No channels found in the M3U."); return }
         epgSourceUrl = result.epgUrl
         _epg.value = emptyMap()
         _state.value = LibraryState(channels = result.channels, loading = false,
@@ -523,7 +523,7 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 loadM3U(text)
             } catch (e: Exception) {
-                _state.value = _state.value.copy(loading = false, error = "Playlist alınamadı.")
+                _state.value = _state.value.copy(loading = false, error = "Could not load the playlist.")
             }
         }
     }

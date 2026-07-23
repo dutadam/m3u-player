@@ -8,30 +8,30 @@ object GenreTagger {
 
     /** Kanonik tür etiketleri (kullanıcıya gösterilebilir). */
     val canonical = listOf(
-        "Aksiyon", "Macera", "Komedi", "Dram", "Korku", "Gerilim",
-        "Bilim Kurgu", "Fantastik", "Romantik", "Animasyon", "Belgesel",
-        "Suç", "Aile", "Savaş", "Western", "Müzikal", "Spor"
+        "Action", "Adventure", "Comedy", "Drama", "Horror", "Thriller",
+        "Sci-Fi", "Fantasy", "Romance", "Animation", "Documentary",
+        "Crime", "Family", "War", "Western", "Musical", "Sports"
     )
 
     // Her kanonik türe eşlenen anahtar kelimeler (küçük harf, TR+EN).
     private val map: Map<String, List<String>> = mapOf(
-        "Aksiyon" to listOf("aksiyon", "action"),
-        "Macera" to listOf("macera", "adventure"),
-        "Komedi" to listOf("komedi", "comedy"),
-        "Dram" to listOf("dram", "drama"),
-        "Korku" to listOf("korku", "horror"),
-        "Gerilim" to listOf("gerilim", "thriller", "suspense"),
-        "Bilim Kurgu" to listOf("bilim kurgu", "bilimkurgu", "sci-fi", "scifi", "science fiction"),
-        "Fantastik" to listOf("fantastik", "fantasy", "fantezi"),
-        "Romantik" to listOf("romantik", "romance", "romantic", "aşk"),
-        "Animasyon" to listOf("animasyon", "animation", "anime", "çizgi"),
-        "Belgesel" to listOf("belgesel", "documentary", "docu"),
-        "Suç" to listOf("suç", "crime", "mafya", "gangster"),
-        "Aile" to listOf("aile", "family", "çocuk", "kids", "children"),
-        "Savaş" to listOf("savaş", "war"),
+        "Action" to listOf("aksiyon", "action"),
+        "Adventure" to listOf("macera", "adventure"),
+        "Comedy" to listOf("komedi", "comedy"),
+        "Drama" to listOf("dram", "drama"),
+        "Horror" to listOf("korku", "horror"),
+        "Thriller" to listOf("gerilim", "thriller", "suspense"),
+        "Sci-Fi" to listOf("bilim kurgu", "bilimkurgu", "sci-fi", "scifi", "science fiction"),
+        "Fantasy" to listOf("fantastik", "fantasy", "fantezi"),
+        "Romance" to listOf("romantik", "romance", "romantic", "aşk"),
+        "Animation" to listOf("animasyon", "animation", "anime", "çizgi"),
+        "Documentary" to listOf("belgesel", "documentary", "docu"),
+        "Crime" to listOf("suç", "crime", "mafya", "gangster"),
+        "Family" to listOf("aile", "family", "çocuk", "kids", "children"),
+        "War" to listOf("savaş", "war"),
         "Western" to listOf("western", "kovboy", "cowboy"),
-        "Müzikal" to listOf("müzikal", "musical", "müzik", "music"),
-        "Spor" to listOf("spor", "sport", "futbol", "football", "soccer", "nba", "maç")
+        "Musical" to listOf("müzikal", "musical", "müzik", "music"),
+        "Sports" to listOf("spor", "sport", "futbol", "football", "soccer", "nba", "maç")
     )
 
     /** Ham metinden (ad + kategori) kanonik tür seti. Eşleşme yoksa boş. */

@@ -33,7 +33,7 @@ object Recommender {
         return aff
     }
 
-    /** "Sana Özel" — ağırlıklı skor + tür çeşitliliği + günlük stabil jitter. */
+    /** "For You" — ağırlıklı skor + tür çeşitliliği + günlük stabil jitter. */
     fun recommended(channels: List<Channel>, user: UserData, limit: Int = 30): List<Channel> {
         val movies = channels.filter { it.kind == MediaKind.VOD && it.logo != null }
         if (movies.isEmpty()) return emptyList()

@@ -49,7 +49,7 @@ object Reminders {
 
     fun ensureChannel(ctx: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val ch = NotificationChannel(CHANNEL_ID, "Program hatırlatıcıları", NotificationManager.IMPORTANCE_HIGH)
+            val ch = NotificationChannel(CHANNEL_ID, "Program reminders", NotificationManager.IMPORTANCE_HIGH)
             (ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).createNotificationChannel(ch)
         }
     }
@@ -88,7 +88,7 @@ object Reminders {
         }
         val n = NotificationCompat.Builder(ctx, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_recent_history)
-            .setContentTitle("${r.channelName} · şimdi başlıyor")
+            .setContentTitle("${r.channelName} · starting now")
             .setContentText(r.title)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)

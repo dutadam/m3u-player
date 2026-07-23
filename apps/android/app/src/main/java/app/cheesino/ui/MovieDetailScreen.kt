@@ -113,7 +113,7 @@ fun MovieDetailScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(Icons.Default.PlayArrow, null, tint = Accent, modifier = Modifier.size(18.dp))
-                        Text("Fragmanı İzle", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                        Text("Watch Trailer", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 13.sp,
                             modifier = Modifier.padding(start = 6.dp))
                     }
                 }
@@ -126,33 +126,33 @@ fun MovieDetailScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(Icons.Default.PlayArrow, null, tint = Ground)
-                        Text("Oynat", color = Ground, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 6.dp))
+                        Text("Play", color = Ground, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 6.dp))
                     }
                     IconButton(onClick = onFavorite, modifier = Modifier.padding(start = 8.dp)) {
                         Icon(if (isFavorite) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                            "Daha sonra izle", tint = if (isFavorite) Accent else TextDim)
+                            "Watch later", tint = if (isFavorite) Accent else TextDim)
                     }
                     IconButton(onClick = { onRate(if (rating == 1) 0 else 1) }) {
-                        Icon(Icons.Default.ThumbUp, "Beğen", tint = if (rating == 1) Accent else TextDim)
+                        Icon(Icons.Default.ThumbUp, "Like", tint = if (rating == 1) Accent else TextDim)
                     }
                     IconButton(onClick = { onRate(if (rating == -1) 0 else -1) }) {
-                        Icon(Icons.Default.ThumbDown, "Beğenme", tint = if (rating == -1) Live else TextDim)
+                        Icon(Icons.Default.ThumbDown, "Dislike", tint = if (rating == -1) Live else TextDim)
                     }
                     // Çevrimdışı indirme — duruma göre indir / iniyor / indirildi.
                     when (downloadState) {
                         androidx.media3.exoplayer.offline.Download.STATE_COMPLETED ->
                             IconButton(onClick = onRemoveDownload) {
-                                Icon(Icons.Default.DownloadDone, "İndirildi — kaldır", tint = Accent)
+                                Icon(Icons.Default.DownloadDone, "Downloaded — remove", tint = Accent)
                             }
                         androidx.media3.exoplayer.offline.Download.STATE_DOWNLOADING,
                         androidx.media3.exoplayer.offline.Download.STATE_QUEUED,
                         androidx.media3.exoplayer.offline.Download.STATE_RESTARTING ->
                             IconButton(onClick = onRemoveDownload) {
-                                Icon(Icons.Default.Downloading, "İniyor — iptal", tint = Accent2)
+                                Icon(Icons.Default.Downloading, "Downloading — cancel", tint = Accent2)
                             }
                         else ->
                             IconButton(onClick = onDownload) {
-                                Icon(Icons.Default.Download, "Çevrimdışı indir", tint = TextDim)
+                                Icon(Icons.Default.Download, "Download offline", tint = TextDim)
                             }
                     }
                 }
@@ -162,22 +162,22 @@ fun MovieDetailScreen(
                         modifier = Modifier.padding(top = 16.dp))
                 }
                 (info?.cast ?: tmdbInfo?.cast)?.let {
-                    Text("Oyuncular: $it", color = TextMute, fontSize = 12.sp,
+                    Text("Cast: $it", color = TextMute, fontSize = 12.sp,
                         modifier = Modifier.padding(top = 12.dp))
                 }
                 info?.director?.let {
-                    Text("Yönetmen: $it", color = TextMute, fontSize = 12.sp,
+                    Text("Director: $it", color = TextMute, fontSize = 12.sp,
                         modifier = Modifier.padding(top = 4.dp))
                 }
                 Spacer(Modifier.height(16.dp))
             }
             // Benzerler — TMDB önerisi varsa onu, yoksa tür bazlı listeyi göster.
             val shownSimilar = tmdbSimilar.ifEmpty { similar }
-            if (shownSimilar.isNotEmpty()) PosterRail("Benzerler", shownSimilar, onSimilar)
+            if (shownSimilar.isNotEmpty()) PosterRail("Similar", shownSimilar, onSimilar)
             Spacer(Modifier.height(24.dp))
         }
         IconButton(onClick = onBack, modifier = Modifier.padding(4.dp)) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = Color.White)
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
         }
     }
 }

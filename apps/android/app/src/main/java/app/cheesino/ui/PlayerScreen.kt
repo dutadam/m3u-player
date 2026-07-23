@@ -194,21 +194,21 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
     var controlsVisible by remember { mutableStateOf(true) }
     var hud by remember { mutableStateOf<String?>(null) }
     var showTracks by remember { mutableStateOf(false) }
-    // En-boy oranı: Sığdır → Yakınlaştır → Kapla (siyah bantları kaldır).
+    // Aspect ratio: Fit → Zoom → Fill (remove black bars).
     var resizeIdx by remember { mutableIntStateOf(0) }
     val resizeModes = remember { listOf(
         AspectRatioFrameLayout.RESIZE_MODE_FIT,
         AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
         AspectRatioFrameLayout.RESIZE_MODE_FILL
     ) }
-    val resizeLabels = remember { listOf("Sığdır", "Yakınlaştır", "Kapla") }
+    val resizeLabels = remember { listOf("Fit", "Zoom", "Fill") }
     // Ekran kilidi (kazara dokunuşları önler) + oynatma hızı.
     var locked by remember { mutableStateOf(false) }
     var speed by remember { mutableFloatStateOf(1f) }
     // Uyku zamanlayıcısı (dk; 0 = kapalı) — süre dolunca duraklat.
     var sleepMin by remember { mutableIntStateOf(0) }
     LaunchedEffect(sleepMin) {
-        if (sleepMin > 0) { delay(sleepMin * 60_000L); player.pause(); hud = "😴 Uyku — duraklatıldı"; sleepMin = 0 }
+        if (sleepMin > 0) { delay(sleepMin * 60_000L); player.pause(); hud = "😴 Sleep — paused"; sleepMin = 0 }
     }
 
     // Oynatıcı servise ait; burada yalnız bu öğe için medyayı kur (buffer/kod çözücü ayarları
@@ -379,12 +379,12 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
 
         // Kayıt durum şeridi — üstte, kontroller gizliyken de görünür (donma/boş Kitaplık yerine net geri bildirim).
         val recBanner = when {
-            recordingThis -> "● Kaydediliyor · %.1f MB".format(recMb)
+            recordingThis -> "● Recording · %.1f MB".format(recMb)
             recNote != null -> recNote
             else -> null
         }
         recBanner?.let { note ->
-            val err = listOf("hata", "reddetti", "gelmedi", "alınamadı", "vermedi", "Boş", "başlatılamadı")
+            val err = listOf("error", "refused", "no data", "unavailable", "couldn't", "empty")
                 .any { note.contains(it) }
             Box(
                 Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 10.dp)
@@ -411,12 +411,12 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = { saveNow(); onClose() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Kapat", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Close", tint = Color.White)
                     }
                     Text(item.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp,
                         maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                    IconButton(onClick = { locked = true; hud = "🔒 Kilitli" }) {
-                        Icon(Icons.Default.Lock, "Kilitle", tint = Color.White)
+                    IconButton(onClick = { locked = true; hud = "🔒 Locked" }) {
+                        Icon(Icons.Default.Lock, "Lock", tint = Color.White)
                     }
                 }
 
@@ -426,7 +426,7 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
                     if (!item.isLive) CircleBtn(Icons.Default.Replay10, 52.dp) {
                         player.seekTo((player.currentPosition - SEEK_STEP_MS).coerceAtLeast(0)); hud = "⏪ 10 sn"
                     } else if (onPrev != null) CircleBtn(Icons.Default.SkipPrevious, 52.dp) {
-                        onPrev(); hud = "◀ Önceki kanal"; controlsVisible = true
+                        onPrev(); hud = "◀ Previous channel"; controlsVisible = true
                     }
                     Spacer(Modifier.width(40.dp))
                     CircleBtn(if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, 78.dp) {
@@ -438,7 +438,7 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
                         val dur = player.duration
                         player.seekTo((player.currentPosition + SEEK_STEP_MS).let { if (dur > 0) it.coerceAtMost(dur) else it }); hud = "⏩ 10 sn"
                     } else if (onNext != null) CircleBtn(Icons.Default.SkipNext, 52.dp) {
-                        onNext(); hud = "Sonraki kanal ▶"; controlsVisible = true
+                        onNext(); hud = "Next channel ▶"; controlsVisible = true
                     }
                 }
 
@@ -461,36 +461,36 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
                         CtrlChip(Icons.Default.AspectRatio, resizeLabels[resizeIdx]) {
                             resizeIdx = (resizeIdx + 1) % resizeModes.size; hud = resizeLabels[resizeIdx]; controlsVisible = true
                         }
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) CtrlChip(Icons.Default.PictureInPictureAlt, "Küçük ekran") {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) CtrlChip(Icons.Default.PictureInPictureAlt, "PiP") {
                             controlsVisible = false
                             runCatching { activity?.enterPictureInPictureMode(PictureInPictureParams.Builder().build()) }
                         }
                         if (!item.isLive) CtrlChip(Icons.Default.Speed, "${speed}×") {
                             speed = when (speed) { 1f -> 1.25f; 1.25f -> 1.5f; 1.5f -> 2f; 2f -> 0.75f; else -> 1f }
-                            runCatching { player.setPlaybackSpeed(speed) }; hud = "Hız ${speed}×"; controlsVisible = true
+                            runCatching { player.setPlaybackSpeed(speed) }; hud = "Speed ${speed}×"; controlsVisible = true
                         }
-                        CtrlChip(Icons.Default.Subtitles, "Altyazı") { showTracks = true }
-                        CtrlChip(Icons.Default.Bedtime, if (sleepMin == 0) "Uyku" else "$sleepMin dk",
+                        CtrlChip(Icons.Default.Subtitles, "Subtitles") { showTracks = true }
+                        CtrlChip(Icons.Default.Bedtime, if (sleepMin == 0) "Sleep" else "$sleepMin min",
                             tint = if (sleepMin == 0) Color.White else Accent) {
                             sleepMin = when (sleepMin) { 0 -> 15; 15 -> 30; 30 -> 60; else -> 0 }
-                            hud = if (sleepMin == 0) "Uyku kapalı" else "Uyku: $sleepMin dk"; controlsVisible = true
+                            hud = if (sleepMin == 0) "Sleep off" else "Sleep: $sleepMin min"; controlsVisible = true
                         }
                         if (item.isLive) CtrlChip(
                             if (recordingThis) Icons.Default.Stop else Icons.Default.FiberManualRecord,
-                            if (recordingThis) "Durdur" else "Kaydet",
+                            if (recordingThis) "Stop" else "Record",
                             tint = if (recordingThis) Live else Color.White
                         ) {
-                            if (recordingThis) { vm.stopRecording(); hud = "Kayıt durduruldu" }
+                            if (recordingThis) { vm.stopRecording(); hud = "Recording stopped" }
                             // İzlenen akıştan kaydet — ikinci bağlantı açmaz (tek-bağlantılı sağlayıcıda da çalışır).
-                            else if (recording == null) { vm.startRecordingHere(item.title); hud = "Kayıt başladı" }
-                            else { hud = "Zaten kayıt var" }
+                            else if (recording == null) { vm.startRecordingHere(item.title); hud = "Recording started" }
+                            else { hud = "Already recording" }
                             controlsVisible = true
                         }
                     }
                     if (item.isLive) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(Modifier.size(8.dp).clip(RoundedCornerShape(4.dp)).background(Live))
-                            Text(" CANLI", color = Live, fontWeight = FontWeight.Black, fontSize = 13.sp)
+                            Text(" LIVE", color = Live, fontWeight = FontWeight.Black, fontSize = 13.sp)
                         }
                     } else if (durationMs > 0) {
                         Slider(
@@ -514,7 +514,7 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
         AnimatedVisibility(visible = controlsVisible && locked, enter = fadeIn(), exit = fadeOut()) {
             Box(Modifier.fillMaxSize()) {
                 Box(Modifier.align(Alignment.Center)) {
-                    CircleBtn(Icons.Default.LockOpen, 56.dp) { locked = false; hud = "🔓 Kilit açıldı"; controlsVisible = true }
+                    CircleBtn(Icons.Default.LockOpen, 56.dp) { locked = false; hud = "🔓 Unlocked"; controlsVisible = true }
                 }
             }
         }
@@ -591,7 +591,7 @@ private fun TrackDialog(player: Player, onDismiss: () -> Unit) {
     }
     fun label(group: Tracks.Group, i: Int): String {
         val f = group.getTrackFormat(i)
-        return f.label ?: f.language?.uppercase() ?: "Parça ${i + 1}"
+        return f.label ?: f.language?.uppercase() ?: "Track ${i + 1}"
     }
 
     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.7f)).clickable { onDismiss() },
@@ -599,21 +599,21 @@ private fun TrackDialog(player: Player, onDismiss: () -> Unit) {
         Column(Modifier.width(300.dp).heightIn(max = 460.dp).clip(RoundedCornerShape(16.dp))
             .background(Ground).verticalScroll(rememberScrollState()).padding(16.dp)) {
             if (audio.isNotEmpty()) {
-                Text("Ses", color = Accent2, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Text("Audio", color = Accent2, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                 audio.forEach { g ->
                     for (i in 0 until g.length) if (g.isTrackSupported(i))
                         TrackRow(label(g, i), g.isTrackSelected(i)) { select(g, i) }
                 }
                 Spacer(Modifier.height(12.dp))
             }
-            Text("Altyazı", color = Accent2, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-            TrackRow("Kapalı", textOff) { disableText() }
+            Text("Subtitles", color = Accent2, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            TrackRow("Off", textOff) { disableText() }
             text.forEach { g ->
                 for (i in 0 until g.length) if (g.isTrackSupported(i))
                     TrackRow(label(g, i), g.isTrackSelected(i)) { select(g, i) }
             }
             if (audio.isEmpty() && text.isEmpty())
-                Text("Ek parça yok.", color = TextMute, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
+                Text("No extra tracks.", color = TextMute, fontSize = 12.sp, modifier = Modifier.padding(top = 6.dp))
         }
     }
 }
@@ -636,11 +636,11 @@ private fun ResumeDialog(positionMs: Long, onResume: () -> Unit, onRestart: () -
             Modifier.clip(RoundedCornerShape(16.dp)).background(Ground).padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Kaldığın yerden devam?", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+            Text("Resume where you left off?", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 17.sp)
             Text("%d:%02d".format(mm, ss), color = Accent, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
             Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = onRestart) { Text("Baştan", color = TextHi) }
-                TextButton(onClick = onResume) { Text("Devam Et", color = Accent, fontWeight = FontWeight.Bold) }
+                TextButton(onClick = onRestart) { Text("Restart", color = TextHi) }
+                TextButton(onClick = onResume) { Text("Resume", color = Accent, fontWeight = FontWeight.Bold) }
             }
         }
     }

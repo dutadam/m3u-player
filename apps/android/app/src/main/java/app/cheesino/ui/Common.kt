@@ -16,7 +16,7 @@ import app.cheesino.ui.theme.TextDim
 import app.cheesino.ui.theme.TextMute
 
 @Composable
-fun CenterLoader(label: String = "Yükleniyor…", modifier: Modifier = Modifier.fillMaxSize()) {
+fun CenterLoader(label: String = "Loading…", modifier: Modifier = Modifier.fillMaxSize()) {
     Box(modifier, contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             BrandLoader()

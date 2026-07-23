@@ -89,12 +89,12 @@ class XtreamClient(val creds: XtreamCredentials) {
 
     suspend fun allLive(): List<Channel> {
         val cats = decodeList(api("get_live_categories"), kotlinx.serialization.builtins.ListSerializer(Cat.serializer()))
-            .associate { (it.id ?: "") to (it.name ?: "Canlı") }
+            .associate { (it.id ?: "") to (it.name ?: "Live") }
         return decodeList(api("get_live_streams"), kotlinx.serialization.builtins.ListSerializer(LiveRaw.serializer())).map { s ->
             val id = s.streamId.asInt()
             Channel(
-                id = "live_$id", name = s.name ?: "Kanal", logo = s.icon?.ifBlank { null },
-                group = cats[s.cat ?: ""] ?: "Canlı", url = liveUrl(id),
+                id = "live_$id", name = s.name ?: "Channel", logo = s.icon?.ifBlank { null },
+                group = cats[s.cat ?: ""] ?: "Live", url = liveUrl(id),
                 tvgId = s.epg?.ifBlank { null }, kind = MediaKind.LIVE,
                 supportsCatchup = (s.tvArchive.asInt()) > 0
             )
@@ -103,12 +103,12 @@ class XtreamClient(val creds: XtreamCredentials) {
 
     suspend fun allVod(): List<Channel> {
         val cats = decodeList(api("get_vod_categories"), kotlinx.serialization.builtins.ListSerializer(Cat.serializer()))
-            .associate { (it.id ?: "") to (it.name ?: "Filmler") }
+            .associate { (it.id ?: "") to (it.name ?: "Movies") }
         return decodeList(api("get_vod_streams"), kotlinx.serialization.builtins.ListSerializer(VodRaw.serializer())).map { s ->
             val id = s.streamId.asInt()
             Channel(
-                id = "vod_$id", name = s.name ?: "Film", logo = s.icon?.ifBlank { null },
-                group = cats[s.cat ?: ""] ?: "Filmler", url = vodUrl(id, s.ext ?: "mp4"),
+                id = "vod_$id", name = s.name ?: "Movie", logo = s.icon?.ifBlank { null },
+                group = cats[s.cat ?: ""] ?: "Movies", url = vodUrl(id, s.ext ?: "mp4"),
                 kind = MediaKind.VOD,
                 rating = s.rating.asDoubleOrNull()?.let { if (it > 10) it / 10 else it }?.takeIf { it in 0.001..10.0 },
                 added = s.added.asLongOrNull()
@@ -118,10 +118,10 @@ class XtreamClient(val creds: XtreamCredentials) {
 
     suspend fun allSeries(): List<SeriesRef> {
         val cats = decodeList(api("get_series_categories"), kotlinx.serialization.builtins.ListSerializer(Cat.serializer()))
-            .associate { (it.id ?: "") to (it.name ?: "Diziler") }
+            .associate { (it.id ?: "") to (it.name ?: "Series") }
         return decodeList(api("get_series"), kotlinx.serialization.builtins.ListSerializer(SeriesRaw.serializer())).map { s ->
-            SeriesRef(id = s.seriesId.asInt(), name = s.name ?: "Dizi", cover = s.cover?.ifBlank { null },
-                genre = s.genre, group = cats[s.cat ?: ""] ?: "Diziler",
+            SeriesRef(id = s.seriesId.asInt(), name = s.name ?: "Series", cover = s.cover?.ifBlank { null },
+                genre = s.genre, group = cats[s.cat ?: ""] ?: "Series",
                 rating = s.rating.asDoubleOrNull()?.let { if (it > 10) it / 10 else it }?.takeIf { it in 0.001..10.0 })
         }
     }
@@ -171,7 +171,7 @@ class XtreamClient(val creds: XtreamCredentials) {
                     id = epId, seriesId = ref.id.toString(),
                     season = seasonKey.toIntOrNull() ?: o["season"].asInt(),
                     episodeNum = num,
-                    title = o["title"].asStr()?.ifBlank { null } ?: "Bölüm $num",
+                    title = o["title"].asStr()?.ifBlank { null } ?: "Episode $num",
                     ext = ext,
                     thumb = epInfo?.get("movie_image").asStr()?.ifBlank { null },
                     url = seriesUrl(epId, ext)

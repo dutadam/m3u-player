@@ -42,12 +42,12 @@ fun SportsScreen(
 
     Column(Modifier.fillMaxSize().background(Ground).then(if (embedded) Modifier else Modifier.statusBarsPadding())) {
         if (!embedded) Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi) }
-            Text("Spor Merkezi", color = TextHi, fontWeight = FontWeight.Black, fontSize = 20.sp)
+            IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = TextHi) }
+            Text("Sports Center", color = TextHi, fontWeight = FontWeight.Black, fontSize = 20.sp)
         }
         if (matches.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Bugün için maç bulunamadı (EPG gerekir).", color = TextMute)
+                Text("No matches today (EPG required).", color = TextMute)
             }
             return
         }

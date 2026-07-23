@@ -44,7 +44,7 @@ class AuthManager(context: Context) {
     /** Google hesap seçici → Firebase oturumu. Activity bağlamı gerekir. */
     suspend fun signInWithGoogle(context: Context): Result<Unit> {
         val webId = webClientId(context)
-            ?: return Result.failure(IllegalStateException("Google giriş henüz yapılandırılmadı (konsolda etkinleştir)."))
+            ?: return Result.failure(IllegalStateException("Google sign-in isn't configured yet (enable it in the console)."))
         return try {
             // "Sign in with Google" hesap seçici akışı — düğmeye basınca her zaman hesap listesi
             // açar. (GetGoogleIdOption/One Tap, yetkili hesap yoksa "Cannot find a matching
@@ -57,7 +57,7 @@ class AuthManager(context: Context) {
             auth.signInWithCredential(firebaseCred).await()
             Result.success(Unit)
         } catch (e: NoCredentialException) {
-            Result.failure(IllegalStateException("Cihazda Google hesabı bulunamadı. Ayarlar'dan bir Google hesabı ekleyip tekrar deneyin."))
+            Result.failure(IllegalStateException("No Google account found on device. Add a Google account in Settings and try again."))
         } catch (e: Throwable) {
             // Exception değil Error de olabilir (ör. NoClassDefFoundError / Play Services) — uygulamayı
             // çökertmesin, mesaj olarak dönsün.

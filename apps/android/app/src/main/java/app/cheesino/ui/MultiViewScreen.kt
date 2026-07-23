@@ -62,7 +62,7 @@ fun MultiViewScreen(
         // Düzen seçici — 2 / 4 / 6. (Segment çubuğu zaten üstte; ayrı başlık/geri gerekmez.)
         Row(Modifier.fillMaxWidth().background(Ground).padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically) {
-            Text("Ekran düzeni", color = TextMute, fontWeight = FontWeight.Medium, fontSize = 13.sp,
+            Text("Layout", color = TextMute, fontWeight = FontWeight.Medium, fontSize = 13.sp,
                 modifier = Modifier.weight(1f))
             LAYOUTS.forEach { (label, r, c) ->
                 val on = r == rows && c == cols
@@ -166,10 +166,10 @@ private fun SlotCell(
             Row(Modifier.align(Alignment.TopEnd), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onToggleExpand) {
                     Icon(if (expanded) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
-                        if (expanded) "Küçült" else "Tam ekran", tint = Color.White)
+                        if (expanded) "Collapse" else "Fullscreen", tint = Color.White)
                 }
                 IconButton(onClick = onClear) {
-                    Icon(Icons.Default.Close, "Kaldır", tint = Color.White)
+                    Icon(Icons.Default.Close, "Remove", tint = Color.White)
                 }
             }
             if (active) Text("● SES", color = Accent, fontSize = 10.sp, fontWeight = FontWeight.Bold,
@@ -177,8 +177,8 @@ private fun SlotCell(
         } else {
             Column(Modifier.fillMaxSize().clickable(onClick = onAssign), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center) {
-                Icon(Icons.Default.Add, "Kanal ekle", tint = TextMute)
-                Text("Kanal ekle", color = TextMute, fontSize = 12.sp)
+                Icon(Icons.Default.Add, "Add channel", tint = TextMute)
+                Text("Add channel", color = TextMute, fontSize = 12.sp)
             }
         }
     }
@@ -194,12 +194,12 @@ private fun ChannelPicker(channels: List<Channel>, onPick: (Channel) -> Unit, on
     }
     Column(Modifier.fillMaxSize().background(Ground)) {
         Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onClose) { Icon(Icons.Default.Close, "Kapat", tint = TextHi) }
-            Text("Kanal seç", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+            IconButton(onClick = onClose) { Icon(Icons.Default.Close, "Close", tint = TextHi) }
+            Text("Pick channel", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 17.sp)
         }
         OutlinedTextField(
             value = q, onValueChange = { q = it }, singleLine = true,
-            placeholder = { Text("Ara…") },
+            placeholder = { Text("Search…") },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = TextHi, unfocusedTextColor = TextHi,

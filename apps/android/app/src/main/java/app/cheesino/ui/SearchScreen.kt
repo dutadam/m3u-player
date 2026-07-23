@@ -51,10 +51,10 @@ fun SearchScreen(
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 12.dp, top = 6.dp),
             verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi) }
+            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = TextHi) }
             OutlinedTextField(
                 value = query, onValueChange = { query = it }, singleLine = true,
-                placeholder = { Text("Kanal, film, dizi ara…") },
+                placeholder = { Text("Search channels, movies, series…") },
                 leadingIcon = { Icon(Icons.Default.Search, null) },
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp),
@@ -70,7 +70,7 @@ fun SearchScreen(
         if (q.length < 2 && genres.isNotEmpty()) {
             LazyRow(contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                item { Chip("Tümü", genre == null) { genre = null } }
+                item { Chip("All", genre == null) { genre = null } }
                 lazyItems(genres) { g -> Chip(g, genre == g) { genre = if (genre == g) null else g } }
             }
         }
@@ -80,18 +80,18 @@ fun SearchScreen(
                 q.length >= 2 -> {
                     val chHits = state.visibleChannels.filter { it.name.lowercase().contains(q) }.take(80)
                     val seHits = series.filter { it.name.lowercase().contains(q) }.take(40)
-                    if (chHits.isEmpty() && seHits.isEmpty()) EmptyState("Sonuç yok")
+                    if (chHits.isEmpty() && seHits.isEmpty()) EmptyState("No results")
                     else LazyVerticalGrid(
                         columns = GridCells.Adaptive(112.dp),
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                     ) {
                         if (seHits.isNotEmpty()) {
-                            header("Diziler")
+                            header("Series")
                             items(seHits) { s -> PosterCard(s.name, s.cover) { onSeries(s) } }
                         }
                         if (chHits.isNotEmpty()) {
-                            header("Kanallar & Filmler")
+                            header("Channels & Movies")
                             items(chHits) { c -> PosterCard(c.name, c.logo) { onPlay(c) } }
                         }
                     }
@@ -100,18 +100,18 @@ fun SearchScreen(
                     val g = genre!!
                     val gm = movies.filter { GenreTagger.tags(it.name, it.group).contains(g) }
                     val gs = series.filter { GenreTagger.tags(it.name, it.genre, it.group).contains(g) }
-                    if (gm.isEmpty() && gs.isEmpty()) EmptyState("$g için içerik yok")
+                    if (gm.isEmpty() && gs.isEmpty()) EmptyState("No content for $g")
                     else LazyVerticalGrid(
                         columns = GridCells.Adaptive(112.dp),
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                     ) {
                         if (gs.isNotEmpty()) {
-                            header("$g · Diziler")
+                            header("$g · Series")
                             items(gs) { s -> PosterCard(s.name, s.cover) { onSeries(s) } }
                         }
                         if (gm.isNotEmpty()) {
-                            header("$g · Filmler")
+                            header("$g · Movies")
                             items(gm) { m -> PosterCard(m.name, m.logo) { onPlay(m) } }
                         }
                     }
@@ -121,10 +121,10 @@ fun SearchScreen(
                     val topRated = movies.filter { (it.rating ?: 0.0) >= 7.0 }.sortedByDescending { it.rating }
                     val recent = movies.filter { it.added != null }.sortedByDescending { it.added }
                     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(vertical = 6.dp)) {
-                        item { PosterRail("Yüksek Puanlı", topRated, onPlay) }
+                        item { PosterRail("Top Rated", topRated, onPlay) }
                         item { PosterRail("Son Eklenenler", recent, onPlay) }
-                        item { SeriesRail("Diziler", series, onSeries) }
-                        item { PosterRail("Filmler", movies, onPlay) }
+                        item { SeriesRail("Series", series, onSeries) }
+                        item { PosterRail("Movies", movies, onPlay) }
                     }
                 }
             }

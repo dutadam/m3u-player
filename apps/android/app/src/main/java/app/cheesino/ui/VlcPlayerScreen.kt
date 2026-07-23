@@ -95,7 +95,7 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
     var arIdx by remember(item.id) { mutableStateOf(0) }
     var locked by remember { mutableStateOf(false) }
     var hud by remember { mutableStateOf<String?>(null) }
-    val ratios = remember { listOf<Pair<String, String?>>("Oto" to null, "16:9" to "16:9", "4:3" to "4:3") }
+    val ratios = remember { listOf<Pair<String, String?>>("Auto" to null, "16:9" to "16:9", "4:3" to "4:3") }
 
     // Canlı kayıt (DVR) — tek eşzamanlı kayıt; bu yayın kaydediliyor mu?
     val recording by vm.recordingActive.collectAsStateWithLifecycle()
@@ -202,7 +202,7 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
                             val fwd = off.x > size.width / 2
                             val np = (mediaPlayer.time + if (fwd) 10_000 else -10_000).coerceIn(0, lengthMs)
                             mediaPlayer.time = np; positionMs = np
-                            hud = if (fwd) "»  +10 sn" else "«  -10 sn"
+                            hud = if (fwd) "»  +10 s" else "«  -10 s"
                         }
                     }
                 )
@@ -254,22 +254,22 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
 
         if (failed) Column(Modifier.align(Alignment.Center).padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Yayın açılamadı.", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Text("Kaynak veya bağlantı sorunlu olabilir.", color = TextMute, fontSize = 12.sp,
+            Text("Playback failed.", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text("The source or connection may have a problem.", color = TextMute, fontSize = 12.sp,
                 modifier = Modifier.padding(top = 4.dp))
             if (recording != null) {
                 Text(
-                    "Bir kayıt sürüyor. Çoğu sağlayıcı aynı anda tek bağlantıya izin verir — " +
-                        "kaydı durdurmadan ikinci yayın açılmayabilir.",
+                    "A recording is in progress. Most providers allow only one connection at a time — " +
+                        "a second stream may not open without stopping the recording.",
                     color = Accent2, fontSize = 12.sp,
                     modifier = Modifier.padding(top = 10.dp), textAlign = TextAlign.Center
                 )
                 Row(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    FailBtn("Kaydı durdur ve dene", Live) { vm.stopRecording(); reload() }
-                    FailBtn("Tekrar dene", Accent) { reload() }
+                    FailBtn("Stop recording & retry", Live) { vm.stopRecording(); reload() }
+                    FailBtn("Retry", Accent) { reload() }
                 }
             } else {
-                FailBtn("Tekrar dene", Accent, Modifier.padding(top = 12.dp)) { reload() }
+                FailBtn("Retry", Accent, Modifier.padding(top = 12.dp)) { reload() }
             }
         }
 
@@ -289,15 +289,15 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = { saveNow(); onClose() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Kapat", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Close", tint = Color.White)
                     }
                     Text(item.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp,
                         maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                     Text("VLC", color = Ground, fontSize = 10.sp, fontWeight = FontWeight.Black,
                         modifier = Modifier.padding(end = 4.dp)
                             .background(Accent, RoundedCornerShape(6.dp)).padding(horizontal = 6.dp, vertical = 2.dp))
-                    IconButton(onClick = { locked = true; hud = "🔒 Kilitli"; controlsVisible = true }) {
-                        Icon(Icons.Default.Lock, "Kilitle", tint = Color.White)
+                    IconButton(onClick = { locked = true; hud = "🔒 Locked"; controlsVisible = true }) {
+                        Icon(Icons.Default.Lock, "Lock", tint = Color.White)
                     }
                 }
 
@@ -305,9 +305,9 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
                 Row(Modifier.align(Alignment.Center), verticalAlignment = Alignment.CenterVertically) {
                     if (!item.isLive && lengthMs > 0) VlcCircleBtn(Icons.Default.Replay10, 52.dp) {
                         val np = (mediaPlayer.time - 10_000).coerceIn(0, lengthMs)
-                        mediaPlayer.time = np; positionMs = np; hud = "«  -10 sn"; controlsVisible = true
+                        mediaPlayer.time = np; positionMs = np; hud = "«  -10 s"; controlsVisible = true
                     } else if (item.isLive && onPrev != null) VlcCircleBtn(Icons.Default.SkipPrevious, 52.dp) {
-                        onPrev(); hud = "◀ Önceki kanal"; controlsVisible = true
+                        onPrev(); hud = "◀ Previous channel"; controlsVisible = true
                     }
                     Spacer(Modifier.width(40.dp))
                     VlcCircleBtn(if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, 78.dp) {
@@ -317,9 +317,9 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
                     Spacer(Modifier.width(40.dp))
                     if (!item.isLive && lengthMs > 0) VlcCircleBtn(Icons.Default.Forward10, 52.dp) {
                         val np = (mediaPlayer.time + 10_000).coerceIn(0, lengthMs)
-                        mediaPlayer.time = np; positionMs = np; hud = "»  +10 sn"; controlsVisible = true
+                        mediaPlayer.time = np; positionMs = np; hud = "»  +10 s"; controlsVisible = true
                     } else if (item.isLive && onNext != null) VlcCircleBtn(Icons.Default.SkipNext, 52.dp) {
-                        onNext(); hud = "Sonraki kanal ▶"; controlsVisible = true
+                        onNext(); hud = "Next channel ▶"; controlsVisible = true
                     }
                 }
 
@@ -334,29 +334,29 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
                         VlcCtrlChip(Icons.Default.AspectRatio, ratios[arIdx].first) {
                             arIdx = (arIdx + 1) % ratios.size
                             runCatching { mediaPlayer.setAspectRatio(ratios[arIdx].second); mediaPlayer.scale = 0f }
-                            hud = "En-boy · ${ratios[arIdx].first}"; controlsVisible = true
+                            hud = "Aspect · ${ratios[arIdx].first}"; controlsVisible = true
                         }
                         if (!item.isLive && lengthMs > 0) VlcCtrlChip(Icons.Default.Speed, "${speed}×") {
                             speed = when (speed) { 1f -> 1.25f; 1.25f -> 1.5f; 1.5f -> 2f; 2f -> 0.75f; else -> 1f }
-                            runCatching { mediaPlayer.rate = speed }; hud = "Hız ${speed}×"; controlsVisible = true
+                            runCatching { mediaPlayer.rate = speed }; hud = "Speed ${speed}×"; controlsVisible = true
                         }
-                        VlcCtrlChip(Icons.Default.Audiotrack, "Ses") { showAudio = true }
-                        VlcCtrlChip(Icons.Default.Subtitles, "Altyazı") { showSubs = true }
+                        VlcCtrlChip(Icons.Default.Audiotrack, "Audio") { showAudio = true }
+                        VlcCtrlChip(Icons.Default.Subtitles, "Subtitles") { showSubs = true }
                         if (item.isLive) VlcCtrlChip(
                             if (recordingThis) Icons.Default.Stop else Icons.Default.FiberManualRecord,
-                            if (recordingThis) "Durdur" else "Kaydet",
+                            if (recordingThis) "Stop" else "Record",
                             tint = if (recordingThis) Live else Color.White
                         ) {
-                            if (recordingThis) { vm.stopRecording(); hud = "Kayıt durduruldu" }
-                            else if (recording == null) { vm.startRecording(item.url, item.title); hud = "● Kaydediliyor" }
-                            else { hud = "Zaten kayıt var" }
+                            if (recordingThis) { vm.stopRecording(); hud = "Recording stopped" }
+                            else if (recording == null) { vm.startRecording(item.url, item.title); hud = "● Recording" }
+                            else { hud = "Already recording" }
                             controlsVisible = true
                         }
                     }
                     if (item.isLive) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(Modifier.size(8.dp).clip(RoundedCornerShape(4.dp)).background(Live))
-                            Text(" CANLI", color = Live, fontWeight = FontWeight.Black, fontSize = 13.sp)
+                            Text(" LIVE", color = Live, fontWeight = FontWeight.Black, fontSize = 13.sp)
                         }
                     } else if (lengthMs > 0) {
                         val frac = if (scrubbing) scrubValue
@@ -387,7 +387,7 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
         AnimatedVisibility(visible = controlsVisible && locked, enter = fadeIn(), exit = fadeOut()) {
             Box(Modifier.fillMaxSize()) {
                 Box(Modifier.align(Alignment.Center)) {
-                    VlcCircleBtn(Icons.Default.LockOpen, 56.dp) { locked = false; hud = "🔓 Kilit açıldı"; controlsVisible = true }
+                    VlcCircleBtn(Icons.Default.LockOpen, 56.dp) { locked = false; hud = "🔓 Unlocked"; controlsVisible = true }
                 }
             }
         }
@@ -406,14 +406,14 @@ private fun AudioSheet(mediaPlayer: MediaPlayer, onClose: () -> Unit) {
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
             .background(Elevated, RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
             .navigationBarsPadding().padding(16.dp)) {
-            Text("Ses", color = TextHi, fontWeight = FontWeight.Black, fontSize = 16.sp,
+            Text("Audio", color = TextHi, fontWeight = FontWeight.Black, fontSize = 16.sp,
                 modifier = Modifier.padding(bottom = 8.dp))
             tracks.filter { it.id >= 0 }.forEach { t ->
-                Text(t.name ?: "Parça ${t.id}", color = TextHi, fontSize = 14.sp,
+                Text(t.name ?: "Track ${t.id}", color = TextHi, fontSize = 14.sp,
                     modifier = Modifier.fillMaxWidth()
                         .clickable { mediaPlayer.setAudioTrack(t.id); onClose() }.padding(vertical = 10.dp))
             }
-            if (tracks.none { it.id >= 0 }) Text("Tek ses parçası var.", color = TextMute, fontSize = 12.sp,
+            if (tracks.none { it.id >= 0 }) Text("Only one audio track.", color = TextMute, fontSize = 12.sp,
                 modifier = Modifier.padding(vertical = 8.dp))
         }
     }
@@ -428,16 +428,16 @@ private fun SubtitleSheet(mediaPlayer: MediaPlayer, onClose: () -> Unit) {
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
             .background(Elevated, RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
             .navigationBarsPadding().padding(16.dp)) {
-            Text("Altyazı", color = TextHi, fontWeight = FontWeight.Black, fontSize = 16.sp,
+            Text("Subtitles", color = TextHi, fontWeight = FontWeight.Black, fontSize = 16.sp,
                 modifier = Modifier.padding(bottom = 8.dp))
-            Text("Kapalı", color = TextHi, fontSize = 14.sp, modifier = Modifier.fillMaxWidth()
+            Text("Off", color = TextHi, fontSize = 14.sp, modifier = Modifier.fillMaxWidth()
                 .clickable { mediaPlayer.setSpuTrack(-1); onClose() }.padding(vertical = 10.dp))
             tracks.filter { it.id >= 0 }.forEach { t ->
-                Text(t.name ?: "Parça ${t.id}", color = TextHi, fontSize = 14.sp,
+                Text(t.name ?: "Track ${t.id}", color = TextHi, fontSize = 14.sp,
                     modifier = Modifier.fillMaxWidth()
                         .clickable { mediaPlayer.setSpuTrack(t.id); onClose() }.padding(vertical = 10.dp))
             }
-            if (tracks.none { it.id >= 0 }) Text("Bu yayında altyazı yok.", color = TextMute, fontSize = 12.sp,
+            if (tracks.none { it.id >= 0 }) Text("No subtitles in this stream.", color = TextMute, fontSize = 12.sp,
                 modifier = Modifier.padding(vertical = 8.dp))
         }
     }

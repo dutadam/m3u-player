@@ -49,7 +49,7 @@ fun PaywallScreen(
             Spacer(Modifier.height(14.dp))
             Text("cheesino Pro", color = TextHi, fontSize = 28.sp, fontWeight = FontWeight.Black)
             Text(
-                highlight?.let { "“${it.title}” Pro özelliğidir" } ?: "Tüm gücü aç",
+                highlight?.let { "“${it.title}” is a Pro feature" } ?: "Unlock everything",
                 color = Accent2, fontSize = 14.sp, fontWeight = FontWeight.Medium,
                 modifier = Modifier.padding(top = 4.dp)
             )
@@ -59,8 +59,8 @@ fun PaywallScreen(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Surface).padding(18.dp)
             ) {
                 ProFeature.entries.forEach { f -> Benefit(f.title, f.desc, f == highlight) }
-                Benefit("Cihazlar arası senkron", "Liste, favori ve ilerleme her yerde", false)
-                Benefit("Reklamsız & öncelikli codec", "Geniş codec (VLC) + kesintisiz deneyim", false)
+                Benefit("Cross-device sync", "Liste, favori ve ilerleme her yerde", false)
+                Benefit("Ad-free & priority codecs", "Wide codecs (VLC) + seamless experience", false)
             }
 
             Spacer(Modifier.height(24.dp))
@@ -70,15 +70,15 @@ fun PaywallScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    priceText?.let { "Pro'ya Geç · $it" } ?: "Pro'ya Geç",
+                    priceText?.let { "Go Pro · $it" } ?: "Go Pro",
                     color = Ground, fontWeight = FontWeight.Black, fontSize = 16.sp
                 )
             }
 
-            Text("Satın alımları geri yükle", color = Accent2, fontSize = 13.sp,
+            Text("Restore purchases", color = Accent2, fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.padding(top = 14.dp).clickable(onClick = onRestore))
-            Text("Tek seferlik ödeme · kalıcı kilit açma.", color = TextMute, fontSize = 12.sp,
+            Text("One-time payment · permanent unlock.", color = TextMute, fontSize = 12.sp,
                 modifier = Modifier.padding(top = 10.dp, bottom = 24.dp))
         }
     }

@@ -61,10 +61,10 @@ import app.cheesino.ui.theme.TextHi
 import app.cheesino.ui.theme.TextMute
 
 private enum class Tab(val label: String, val icon: ImageVector) {
-    HOME("Ana Sayfa", Icons.Default.Home),
-    LIVE("Canlı", Icons.Default.LiveTv),
-    CATALOG("Katalog", Icons.Default.Movie),
-    LIBRARY("Kitaplığım", Icons.Default.VideoLibrary),
+    HOME("Home", Icons.Default.Home),
+    LIVE("Live", Icons.Default.LiveTv),
+    CATALOG("Catalog", Icons.Default.Movie),
+    LIBRARY("Library", Icons.Default.VideoLibrary),
     ACCOUNT("Account", Icons.Default.AccountCircle)
 }
 
@@ -228,8 +228,8 @@ fun RootScreen(vm: LibraryViewModel) {
 
                         // CANLI — üstte TV · Rehber · Spor · Çoklu segmenti.
                         Tab.LIVE -> Column(Modifier.fillMaxSize()) {
-                            HubHeader("Canlı")
-                            PillTabs(listOf("Kanallar", "Rehber", "Spor", "Çoklu"), liveSeg) { liveSeg = it }
+                            HubHeader("Live")
+                            PillTabs(listOf("Channels", "Guide", "Sports", "Multi"), liveSeg) { liveSeg = it }
                             when (liveSeg) {
                                 0 -> LiveScreen(state, epg, playChannel,
                                     onGuide = { liveSeg = 1 },
@@ -242,7 +242,7 @@ fun RootScreen(vm: LibraryViewModel) {
                                     onPlay = playChannel,
                                     onCatchup = { ch, entry ->
                                         vm.catchupUrl(ch, entry)?.let { url ->
-                                            playOne(PlayItem("${ch.id}_ts", "${ch.name} · baştan", url, ch.logo, isLive = false))
+                                            playOne(PlayItem("${ch.id}_ts", "${ch.name} · from start", url, ch.logo, isLive = false))
                                         }
                                     },
                                     onClose = { liveSeg = 0 },
@@ -257,9 +257,9 @@ fun RootScreen(vm: LibraryViewModel) {
 
                         // KATALOG — başlık + Filmler/Diziler segmenti + arama, altında Kategori/Mood filtresi.
                         Tab.CATALOG -> Column(Modifier.fillMaxSize()) {
-                            HubHeader("Katalog")
-                            PillTabs(listOf("Filmler", "Diziler"), catSeg) { catSeg = it; catGenre = 0 }
-                            val genreItems = remember(discover.genres) { listOf("Tümü") + discover.genres.take(14) }
+                            HubHeader("Catalog")
+                            PillTabs(listOf("Movies", "Series"), catSeg) { catSeg = it; catGenre = 0 }
+                            val genreItems = remember(discover.genres) { listOf("All") + discover.genres.take(14) }
                             if (genreItems.size > 1)
                                 GenreChips(genreItems, catGenre.coerceIn(0, genreItems.lastIndex)) { catGenre = it }
                             val g = genreItems.getOrNull(catGenre)?.takeIf { catGenre > 0 }
@@ -277,8 +277,8 @@ fun RootScreen(vm: LibraryViewModel) {
 
                         // KİTAPLIĞIM — İndirilenler · Kayıtlar · Listem.
                         Tab.LIBRARY -> Column(Modifier.fillMaxSize()) {
-                            HubHeader("Kitaplığım")
-                            PillTabs(listOf("İndirilenler", "Kayıtlar", "Listem"), libSeg) { libSeg = it }
+                            HubHeader("Library")
+                            PillTabs(listOf("Downloads", "Recordings", "My List"), libSeg) { libSeg = it }
                             when (libSeg) {
                                 0 -> DownloadsScreen(downloads = downloads, onPlay = { playOne(it) },
                                     onRemove = { vm.removeDownload(it) }, onRefresh = { vm.refreshDownloads() }, onClose = {}, embedded = true)
@@ -359,7 +359,7 @@ private fun PlayerHost(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit
 private fun FilteredPosterGrid(items: List<Channel>, onTap: (Channel) -> Unit) {
     if (items.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Bu kategoride içerik yok.", color = TextMute, fontSize = 14.sp)
+            Text("No content in this category.", color = TextMute, fontSize = 14.sp)
         }
         return
     }
@@ -379,7 +379,7 @@ private fun FilteredPosterGrid(items: List<Channel>, onTap: (Channel) -> Unit) {
 private fun FilteredSeriesGrid(items: List<SeriesRef>, onTap: (SeriesRef) -> Unit) {
     if (items.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("Bu kategoride içerik yok.", color = TextMute, fontSize = 14.sp)
+            Text("No content in this category.", color = TextMute, fontSize = 14.sp)
         }
         return
     }
@@ -402,7 +402,7 @@ private fun HubHeader(title: String, onSearch: (() -> Unit)? = null) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(title, color = TextHi, fontWeight = FontWeight.Black, fontSize = 24.sp, modifier = Modifier.weight(1f))
-        if (onSearch != null) IconButton(onClick = onSearch) { Icon(Icons.Default.Search, "Ara", tint = TextHi) }
+        if (onSearch != null) IconButton(onClick = onSearch) { Icon(Icons.Default.Search, "Search", tint = TextHi) }
     }
 }
 

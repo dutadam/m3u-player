@@ -63,14 +63,14 @@ fun LiveScreen(
     // Arama gizli — büyüteç ikonuna dokununca açılır; görünüm toggle'ı yanında.
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (showSearch) SearchField("Kanal ara…", q, Modifier.weight(1f)) { q = it }
+            if (showSearch) SearchField("Search channels…", q, Modifier.weight(1f)) { q = it }
             else Spacer(Modifier.weight(1f))
             IconButton(onClick = { showSearch = !showSearch; if (!showSearch) q = "" }) {
-                Icon(Icons.Default.Search, "Ara", tint = if (showSearch) Accent else TextMute)
+                Icon(Icons.Default.Search, "Search", tint = if (showSearch) Accent else TextMute)
             }
             IconButton(onClick = { listMode = !listMode }) {
                 Icon(if (listMode) Icons.Default.ViewModule else Icons.Default.ViewList,
-                    if (listMode) "Izgara görünüm" else "Liste görünüm", tint = Accent)
+                    if (listMode) "Grid view" else "List view", tint = Accent)
             }
         }
         when {
@@ -78,7 +78,7 @@ fun LiveScreen(
                 val hits = remember(query, state.live) {
                     state.live.filter { it.name.lowercase().contains(query) }.take(300)
                 }
-                if (hits.isEmpty()) EmptyState("Sonuç yok", modifier = Modifier.weight(1f).fillMaxWidth())
+                if (hits.isEmpty()) EmptyState("No results", modifier = Modifier.weight(1f).fillMaxWidth())
                 else LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(bottom = 12.dp)) {
                     lazyItems(hits) { ch ->
                         val list = ch.tvgId?.let { epg[it] }
@@ -87,7 +87,7 @@ fun LiveScreen(
                     }
                 }
             }
-            byCat.isEmpty() -> EmptyState("Canlı kanal yok", "Bu kaynakta canlı yayın görünmüyor.",
+            byCat.isEmpty() -> EmptyState("No live channels", "No live streams in this source.",
                 modifier = Modifier.weight(1f).fillMaxWidth())
             listMode -> LazyColumn(Modifier.weight(1f).fillMaxWidth(), contentPadding = PaddingValues(bottom = 12.dp)) {
                 byCat.forEach { (cat, chans) ->
@@ -133,10 +133,10 @@ private fun LiveListRow(ch: Channel, now: String?, next: String?, onPlay: (Chann
         Column(Modifier.padding(start = 12.dp).weight(1f)) {
             Text(ch.name, color = TextHi, fontWeight = FontWeight.Bold, fontSize = 14.sp,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(now ?: "Program bilgisi yok", color = if (now != null) Accent2 else TextMute,
+            Text(now ?: "No program info", color = if (now != null) Accent2 else TextMute,
                 fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             next?.let {
-                Text("Sırada · $it", color = TextDim, fontSize = 11.sp, maxLines = 1,
+                Text("Next · $it", color = TextDim, fontSize = 11.sp, maxLines = 1,
                     overflow = TextOverflow.Ellipsis)
             }
         }
@@ -180,7 +180,7 @@ private fun LiveChannelCard(ch: Channel, now: String?, onTap: () -> Unit) {
         }
         Text(ch.name, color = TextHi, fontSize = 12.sp, fontWeight = FontWeight.Medium,
             maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
-        Text(now ?: "Program bilgisi yok", color = if (now != null) Accent2 else TextMute, fontSize = 10.sp,
+        Text(now ?: "No program info", color = if (now != null) Accent2 else TextMute, fontSize = 10.sp,
             maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
@@ -201,13 +201,13 @@ fun MoviesScreen(state: LibraryState, movieRails: List<Pair<String, List<Channel
 
     var showSearch by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize()) {
-        SearchToggleRow(showSearch, "Film ara…", q, onQuery = { q = it }) { showSearch = !showSearch; if (!showSearch) q = "" }
+        SearchToggleRow(showSearch, "Search movies…", q, onQuery = { q = it }) { showSearch = !showSearch; if (!showSearch) q = "" }
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when {
-                all.isEmpty() -> EmptyState("Film bulunamadı", "Bu kaynakta film kategorisi görünmüyor.")
+                all.isEmpty() -> EmptyState("No movies found", "No movie category in this source.")
                 query.length >= 2 -> {
                     val hits = all.filter { it.name.lowercase().contains(query) }.take(150)
-                    if (hits.isEmpty()) EmptyState("Sonuç yok") else PosterGrid(hits, onPlay)
+                    if (hits.isEmpty()) EmptyState("No results") else PosterGrid(hits, onPlay)
                 }
                 else -> {
                     // Çok az içerikli (seyrek) kategorileri gizle — "boş/çok az kategori" hissini önler.
@@ -233,7 +233,7 @@ private fun SearchToggleRow(open: Boolean, hint: String, query: String, onQuery:
         if (open) SearchField(hint, query, Modifier.weight(1f), onQuery)
         else Spacer(Modifier.weight(1f))
         IconButton(onClick = onToggle) {
-            Icon(Icons.Default.Search, "Ara", tint = if (open) Accent else TextMute)
+            Icon(Icons.Default.Search, "Search", tint = if (open) Accent else TextMute)
         }
     }
 }
@@ -254,13 +254,13 @@ fun SeriesScreen(state: LibraryState, seriesRails: List<Pair<String, List<Series
 
     var showSearch by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize()) {
-        SearchToggleRow(showSearch, "Dizi ara…", q, onQuery = { q = it }) { showSearch = !showSearch; if (!showSearch) q = "" }
+        SearchToggleRow(showSearch, "Search series…", q, onQuery = { q = it }) { showSearch = !showSearch; if (!showSearch) q = "" }
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when {
-                all.isEmpty() -> EmptyState("Dizi bulunamadı", "Bu kaynakta dizi kategorisi görünmüyor.")
+                all.isEmpty() -> EmptyState("No series found", "No series category in this source.")
                 query.length >= 2 -> {
                     val hits = all.filter { it.name.lowercase().contains(query) }.take(150)
-                    if (hits.isEmpty()) EmptyState("Sonuç yok")
+                    if (hits.isEmpty()) EmptyState("No results")
                     else LazyVerticalGrid(
                         columns = GridCells.Adaptive(112.dp),
                         modifier = Modifier.fillMaxSize(),
@@ -294,7 +294,7 @@ private fun PosterGrid(movies: List<Channel>, onPlay: (Channel) -> Unit) {
 
 private class CardItem(val name: String, val poster: String?, val onClick: () -> Unit)
 
-/** Bir kategorinin tüm içeriği — "Tümü" ile açılan poster grid; arama korunur. */
+/** Bir kategorinin tüm içeriği — "All" ile açılan poster grid; arama korunur. */
 @Composable
 private fun CategoryGrid(title: String, cards: List<CardItem>, query: String, onQuery: (String) -> Unit, onBack: () -> Unit) {
     val q = query.trim().lowercase()
@@ -302,14 +302,14 @@ private fun CategoryGrid(title: String, cards: List<CardItem>, query: String, on
     var showSearch by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi) }
-            if (showSearch) SearchField("$title içinde ara…", query, Modifier.weight(1f), onQuery)
+            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = TextHi) }
+            if (showSearch) SearchField("Search in $title…", query, Modifier.weight(1f), onQuery)
             else {
                 Text(title, color = TextHi, fontWeight = FontWeight.Black, fontSize = 18.sp,
                     maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             }
             IconButton(onClick = { showSearch = !showSearch; if (!showSearch) onQuery("") }) {
-                Icon(Icons.Default.Search, "Ara", tint = if (showSearch) Accent else TextMute)
+                Icon(Icons.Default.Search, "Search", tint = if (showSearch) Accent else TextMute)
             }
         }
         LazyVerticalGrid(

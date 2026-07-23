@@ -64,7 +64,7 @@ fun OnboardingScreen(
             BrandMark(size = 76.dp)
             Spacer(Modifier.height(16.dp))
             Text("cheesino", color = TextHi, fontSize = 32.sp, fontWeight = FontWeight.Black)
-            Text("Premium medya oynatıcı", color = Accent2, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            Text("Premium media player", color = Accent2, fontSize = 14.sp, fontWeight = FontWeight.Medium)
             Spacer(Modifier.height(24.dp))
 
             // Google ile giriş — kendi kaynağın cihazlar arası otomatik gelsin.
@@ -74,14 +74,14 @@ fun OnboardingScreen(
                     modifier = Modifier.fillMaxWidth().height(50.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = TextHi)
-                ) { Text("Google ile Giriş", color = Ground, fontWeight = FontWeight.Bold, fontSize = 15.sp) }
+                ) { Text("Sign in with Google", color = Ground, fontWeight = FontWeight.Bold, fontSize = 15.sp) }
                 Text(
-                    "Girince daha önce eklediğin kaynak otomatik gelir. İstersen aşağıdan elle de ekleyebilirsin.",
+                    "Sign in and your saved source loads automatically. Or add it manually below.",
                     color = TextMute, fontSize = 12.sp,
                     modifier = Modifier.padding(top = 8.dp, start = 4.dp, end = 4.dp)
                 )
             } else {
-                Text("Giriş yapıldı: ${authUser.name ?: authUser.email ?: ""}",
+                Text("Signed in: ${authUser.name ?: authUser.email ?: ""}",
                     color = Accent2, fontSize = 13.sp, fontWeight = FontWeight.Medium)
             }
             authStatus?.let {
@@ -89,7 +89,7 @@ fun OnboardingScreen(
             }
 
             Spacer(Modifier.height(20.dp))
-            Text("veya kaynağını elle ekle", color = TextDim, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+            Text("or add your source manually", color = TextDim, fontSize = 12.sp, fontWeight = FontWeight.Medium)
             Spacer(Modifier.height(12.dp))
 
             // Form kartı.
@@ -101,21 +101,21 @@ fun OnboardingScreen(
                 Spacer(Modifier.height(14.dp))
 
                 if (tab == 0) {
-                    Field("Sunucu (http://host:port)", server) { server = it }
-                    Field("Kullanıcı adı", user) { user = it }
-                    Field("Şifre", pass, password = true) { pass = it }
-                    PrimaryButton("Bağlan", state.loading) {
+                    Field("Server (http://host:port)", server) { server = it }
+                    Field("Username", user) { user = it }
+                    Field("Password", pass, password = true) { pass = it }
+                    PrimaryButton("Connect", state.loading) {
                         XtreamCredentials.normalize(server)?.let { onXtream(XtreamCredentials(it, user, pass)) }
                     }
                 } else {
-                    Field("Kaynak bağlantısı (URL)", m3u) { m3u = it }
-                    PrimaryButton("Yükle", state.loading) { onM3U(m3u) }
+                    Field("Source URL", m3u) { m3u = it }
+                    PrimaryButton("Load", state.loading) { onM3U(m3u) }
                     Box(
                         Modifier.fillMaxWidth().padding(top = 10.dp).clip(RoundedCornerShape(12.dp))
                             .background(Ground).clickable { filePicker.launch("*/*") }
                             .padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center
-                    ) { Text("veya cihazdan bir dosya seç", color = Accent2, fontWeight = FontWeight.Medium, fontSize = 14.sp) }
+                    ) { Text("or pick a file from device", color = Accent2, fontWeight = FontWeight.Medium, fontSize = 14.sp) }
                 }
 
                 state.error?.let {
@@ -129,7 +129,7 @@ fun OnboardingScreen(
 
             Spacer(Modifier.height(24.dp))
             Text(
-                "cheesino içerik barındırmaz — kendi kaynağını getirirsin. Kimlik bilgileri cihazda şifreli saklanır, telemetri yok.",
+                "cheesino hosts no content — you bring your own source. Credentials are stored encrypted on device, no telemetry.",
                 color = TextMute, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 8.dp)
             )
             Spacer(Modifier.height(24.dp))
@@ -142,7 +142,7 @@ private fun SegTabs(selected: Int, onSelect: (Int) -> Unit) {
     Row(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Ground).padding(4.dp)
     ) {
-        listOf("Sunucu", "Bağlantı").forEachIndexed { i, label ->
+        listOf("Server", "Link").forEachIndexed { i, label ->
             val active = selected == i
             Box(
                 Modifier.weight(1f).clip(RoundedCornerShape(9.dp))

@@ -85,7 +85,7 @@ fun SeriesDetailScreen(
         when {
             loading -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = Accent)
             s == null || s.seasons.isEmpty() -> Text(
-                "Bölüm bilgisi alınamadı.", color = TextDim,
+                "Episode info unavailable.", color = TextDim,
                 modifier = Modifier.align(Alignment.Center)
             )
             else -> SeriesContent(s, selectedSeason, { selectedSeason = it }, resumeFor, watchedIds,
@@ -94,7 +94,7 @@ fun SeriesDetailScreen(
                 tmdbSimilar.ifEmpty { similar }, onSimilar)
         }
         IconButton(onClick = onBack, modifier = Modifier.padding(4.dp).align(Alignment.TopStart)) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = Color.White)
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
         }
     }
 }
@@ -156,7 +156,7 @@ private fun SeriesContent(
         }
         if (similar.isNotEmpty()) item {
             Spacer(Modifier.height(8.dp))
-            SeriesRail("Benzer Diziler", similar, onSimilar)
+            SeriesRail("Similar Series", similar, onSimilar)
         }
     }
 }
@@ -191,8 +191,8 @@ private fun Header(
             val meta = buildList {
                 (s.rating ?: tmdb?.rating)?.takeIf { it > 0 }?.let { add("★ ${"%.1f".format(it)}") }
                 (s.genre ?: tmdb?.genres)?.let { add(it) }
-                add("${s.seasons.size} sezon")
-                s.seasons.sumOf { it.episodes.size }.takeIf { it > 0 }?.let { add("$it bölüm") }
+                add("${s.seasons.size} seasons")
+                s.seasons.sumOf { it.episodes.size }.takeIf { it > 0 }?.let { add("$it episodes") }
             }
             if (meta.isNotEmpty())
                 Text(meta.joinToString("  ·  "), color = Accent2, fontSize = 13.sp, fontWeight = FontWeight.Medium)
@@ -214,7 +214,7 @@ private fun Header(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(Icons.Default.PlayArrow, null, tint = Accent, modifier = Modifier.size(18.dp))
-                    Text("Fragmanı İzle", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                    Text("Watch Trailer", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 13.sp,
                         modifier = Modifier.padding(start = 6.dp))
                 }
             }
@@ -228,7 +228,7 @@ private fun Header(
                 ) {
                     Icon(Icons.Default.PlayArrow, null, tint = Ground)
                     Text(
-                        if (isResume && resumeEp != null) "Devam Et · B${resumeEp.episodeNum}" else "Oynat",
+                        if (isResume && resumeEp != null) "Resume · E${resumeEp.episodeNum}" else "Play",
                         color = Ground, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 6.dp)
                     )
                 }
@@ -237,10 +237,10 @@ private fun Header(
                         "Daha sonra izle", tint = if (favorite) Accent else TextDim)
                 }
                 IconButton(onClick = { onRate(if (rating == 1) 0 else 1) }) {
-                    Icon(Icons.Default.ThumbUp, "Beğen", tint = if (rating == 1) Accent else TextDim)
+                    Icon(Icons.Default.ThumbUp, "Like", tint = if (rating == 1) Accent else TextDim)
                 }
                 IconButton(onClick = { onRate(if (rating == -1) 0 else -1) }) {
-                    Icon(Icons.Default.ThumbDown, "Beğenme", tint = if (rating == -1) Live else TextDim)
+                    Icon(Icons.Default.ThumbDown, "Dislike", tint = if (rating == -1) Live else TextDim)
                 }
             }
 
@@ -249,7 +249,7 @@ private fun Header(
                     modifier = Modifier.padding(top = 16.dp))
             }
             tmdb?.cast?.let {
-                Text("Oyuncular: $it", color = TextMute, fontSize = 12.sp,
+                Text("Cast: $it", color = TextMute, fontSize = 12.sp,
                     modifier = Modifier.padding(top = 12.dp))
             }
             Spacer(Modifier.height(4.dp))
@@ -269,7 +269,7 @@ private fun SeasonPicker(seasons: List<Season>, selected: Int, onSelect: (Int) -
                 Modifier.clip(RoundedCornerShape(20.dp)).background(if (active) Accent else Elevated)
                     .clickable { onSelect(season.number) }.padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
-                Text("Sezon ${season.number}", color = if (active) Ground else TextHi,
+                Text("Season ${season.number}", color = if (active) Ground else TextHi,
                     fontWeight = FontWeight.Bold, fontSize = 13.sp)
             }
         }
@@ -302,17 +302,17 @@ private fun EpisodeRow(
             Text("${ep.episodeNum}. ${ep.title}", color = TextHi, fontSize = 14.sp, maxLines = 2,
                 overflow = TextOverflow.Ellipsis)
             if (watched && resume == null)
-                Text("İzlendi", color = Accent2, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp))
+                Text("Watched", color = Accent2, fontSize = 11.sp, modifier = Modifier.padding(top = 2.dp))
         }
         // Çevrimdışı indirme — duruma göre indir / iniyor / indirildi.
         when (downloadState) {
             Download.STATE_COMPLETED ->
-                IconButton(onClick = onRemoveDownload) { Icon(Icons.Default.DownloadDone, "İndirildi", tint = Accent) }
+                IconButton(onClick = onRemoveDownload) { Icon(Icons.Default.DownloadDone, "Downloaded", tint = Accent) }
             Download.STATE_DOWNLOADING, Download.STATE_QUEUED, Download.STATE_RESTARTING ->
-                IconButton(onClick = onRemoveDownload) { Icon(Icons.Default.Downloading, "İniyor", tint = Accent2) }
+                IconButton(onClick = onRemoveDownload) { Icon(Icons.Default.Downloading, "Downloading", tint = Accent2) }
             else ->
-                IconButton(onClick = onDownload) { Icon(Icons.Default.Download, "İndir", tint = TextDim) }
+                IconButton(onClick = onDownload) { Icon(Icons.Default.Download, "Download", tint = TextDim) }
         }
-        Icon(Icons.Default.PlayArrow, "Oynat", tint = Accent)
+        Icon(Icons.Default.PlayArrow, "Play", tint = Accent)
     }
 }

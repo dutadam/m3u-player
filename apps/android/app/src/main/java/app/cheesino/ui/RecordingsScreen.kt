@@ -48,8 +48,8 @@ fun RecordingsScreen(
 
     Column(Modifier.fillMaxSize().background(Ground).then(if (embedded) Modifier else Modifier.statusBarsPadding())) {
         if (!embedded) Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Geri", tint = TextHi) }
-            Text("Kayıtlar", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 18.sp,
+            IconButton(onClick = onClose) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = TextHi) }
+            Text("Recordings", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 18.sp,
                 modifier = Modifier.padding(start = 4.dp))
         }
 
@@ -62,21 +62,21 @@ fun RecordingsScreen(
                 Box(Modifier.size(10.dp).clip(RoundedCornerShape(5.dp)).background(Live))
                 val mb = (runCatching { File(active.path).length() }.getOrDefault(0L)) / (1024.0 * 1024.0)
                 Column(Modifier.weight(1f).padding(start = 10.dp)) {
-                    Text("Kaydediliyor · %.1f MB".format(mb), color = Live, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text("Recording · %.1f MB".format(mb), color = Live, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     Text(active.title, color = TextHi, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                IconButton(onClick = onStopActive) { Icon(Icons.Default.Stop, "Durdur", tint = Live) }
+                IconButton(onClick = onStopActive) { Icon(Icons.Default.Stop, "Stop", tint = Live) }
             }
         }
 
         status?.let {
-            val err = listOf("hata", "reddetti", "gelmedi", "alınamadı", "Boş").any { k -> it.contains(k) }
+            val err = listOf("error", "refused", "no data", "unavailable", "empty", "couldn't").any { k -> it.contains(k) }
             Text(it, color = if (err) Live else Accent2, fontSize = 12.sp,
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp))
         }
         if (recordings.isEmpty() && active == null) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Henüz kayıt yok.\nCanlı yayında oynatıcıdan ● Kaydet'e dokun.",
+                Text("No recordings yet.\nTap ● Record in the player on a live stream.",
                     color = TextMute, fontSize = 14.sp)
             }
         } else {
@@ -104,7 +104,7 @@ private fun RecRow(file: File, onPlay: (PlayItem) -> Unit, onDelete: (File) -> U
         }
         IconButton(onClick = {
             onPlay(PlayItem(id = "rec_${file.name}", title = title, url = Uri.fromFile(file).toString()))
-        }) { Icon(Icons.Default.PlayArrow, "Oynat", tint = Accent) }
+        }) { Icon(Icons.Default.PlayArrow, "Play", tint = Accent) }
         IconButton(onClick = { onDelete(file) }) { Icon(Icons.Default.Delete, "Sil", tint = TextDim) }
     }
 }

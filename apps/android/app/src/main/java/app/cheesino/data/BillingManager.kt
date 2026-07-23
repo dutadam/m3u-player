@@ -88,7 +88,7 @@ class BillingManager(
     /** Satın alma ekranını açar. Ürün henüz yüklenmediyse bilgi mesajı verir. */
     fun purchase(activity: Activity) {
         val product = _proProduct.value ?: run {
-            _status.value = "Ürün henüz yüklenmedi, birazdan tekrar dene."
+            _status.value = "Product not loaded yet, try again shortly."
             start()
             return
         }
@@ -110,7 +110,7 @@ class BillingManager(
             BillingClient.BillingResponseCode.OK -> purchases?.forEach { handlePurchase(it) }
             BillingClient.BillingResponseCode.USER_CANCELED -> _status.value = null
             BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED -> { _status.value = null; queryOwned() }
-            else -> _status.value = "Satın alma tamamlanamadı (kod ${result.responseCode})."
+            else -> _status.value = "Purchase couldn't complete (code ${result.responseCode})."
         }
     }
 
