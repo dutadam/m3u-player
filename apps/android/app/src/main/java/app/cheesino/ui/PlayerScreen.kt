@@ -18,8 +18,10 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
@@ -57,8 +59,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -306,7 +315,42 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
     }
     LaunchedEffect(hud) { if (hud != null) { delay(900); hud = null } }
 
-    Box(Modifier.fillMaxSize().background(Color.Black)) {
+    // Android TV / uzaktan kumanda: oynatıcı dokunmatik değil → D-pad ile kontrol.
+    val tvFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { tvFocus.requestFocus() } }
+    // Donanım GERİ tuşu oynatıcıyı kapatsın (kilitliyse önce kilidi aç).
+    BackHandler { if (locked) { locked = false; hud = "🔓 Unlocked" } else { saveNow(); onClose() } }
+
+    Box(Modifier.fillMaxSize().background(Color.Black)
+        .focusRequester(tvFocus).focusable()
+        .onKeyEvent { ke ->
+            if (ke.type != KeyEventType.KeyDown) return@onKeyEvent false
+            controlsVisible = true
+            if (locked) return@onKeyEvent true
+            when (ke.key) {
+                Key.DirectionCenter, Key.Enter, Key.Spacebar -> {
+                    if (isPlaying) player.pause() else player.play(); true
+                }
+                Key.MediaPlayPause -> { if (isPlaying) player.pause() else player.play(); true }
+                Key.MediaPlay -> { player.play(); true }
+                Key.MediaPause -> { player.pause(); true }
+                Key.DirectionLeft, Key.MediaRewind -> {
+                    if (item.isLive) onPrev?.invoke()
+                    else { player.seekTo((player.currentPosition - SEEK_STEP_MS).coerceAtLeast(0)); hud = "⏪ 10 s" }
+                    true
+                }
+                Key.DirectionRight, Key.MediaFastForward -> {
+                    if (item.isLive) onNext?.invoke()
+                    else { val d = player.duration; player.seekTo((player.currentPosition + SEEK_STEP_MS).let { if (d > 0) it.coerceAtMost(d) else it }); hud = "⏩ 10 s" }
+                    true
+                }
+                Key.MediaNext -> { if (item.isLive) onNext?.invoke(); true }
+                Key.MediaPrevious -> { if (item.isLive) onPrev?.invoke(); true }
+                Key.DirectionUp, Key.DirectionDown -> true
+                else -> false
+            }
+        }
+    ) {
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {

@@ -4,11 +4,13 @@ import android.app.Activity
 import android.content.Context
 import android.net.Uri
 import android.view.WindowManager
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
@@ -41,10 +43,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -192,8 +201,40 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
 
     if (hud != null) LaunchedEffect(hud) { delay(700); hud = null }
 
+    // Android TV / uzaktan kumanda: D-pad kontrolü + GERİ ile kapat.
+    val tvFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { tvFocus.requestFocus() } }
+    BackHandler { if (locked) { locked = false; hud = "🔓 Unlocked" } else { saveNow(); onClose() } }
+
     Box(
         Modifier.fillMaxSize().background(Color.Black)
+            .focusRequester(tvFocus).focusable()
+            .onKeyEvent { ke ->
+                if (ke.type != KeyEventType.KeyDown) return@onKeyEvent false
+                controlsVisible = true
+                if (locked) return@onKeyEvent true
+                when (ke.key) {
+                    Key.DirectionCenter, Key.Enter, Key.Spacebar, Key.MediaPlayPause -> {
+                        if (isPlaying) mediaPlayer.pause() else mediaPlayer.play(); true
+                    }
+                    Key.MediaPlay -> { mediaPlayer.play(); true }
+                    Key.MediaPause -> { mediaPlayer.pause(); true }
+                    Key.DirectionLeft, Key.MediaRewind -> {
+                        if (item.isLive) onPrev?.invoke()
+                        else if (lengthMs > 0) { val np = (mediaPlayer.time - 10_000).coerceIn(0, lengthMs); mediaPlayer.time = np; positionMs = np; hud = "«  -10 s" }
+                        true
+                    }
+                    Key.DirectionRight, Key.MediaFastForward -> {
+                        if (item.isLive) onNext?.invoke()
+                        else if (lengthMs > 0) { val np = (mediaPlayer.time + 10_000).coerceIn(0, lengthMs); mediaPlayer.time = np; positionMs = np; hud = "»  +10 s" }
+                        true
+                    }
+                    Key.MediaNext -> { if (item.isLive) onNext?.invoke(); true }
+                    Key.MediaPrevious -> { if (item.isLive) onPrev?.invoke(); true }
+                    Key.DirectionUp, Key.DirectionDown -> true
+                    else -> false
+                }
+            }
             .pointerInput(item.id, locked) {
                 detectTapGestures(
                     onTap = { controlsVisible = if (locked) true else !controlsVisible },

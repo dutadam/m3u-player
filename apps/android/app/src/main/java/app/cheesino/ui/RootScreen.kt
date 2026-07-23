@@ -424,7 +424,7 @@ private fun PillTabs(items: List<String>, selected: Int, onSelect: (Int) -> Unit
                 fontSize = 13.sp,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
-                modifier = Modifier.weight(1f).clip(RoundedCornerShape(18.dp))
+                modifier = Modifier.weight(1f).focusHighlight(18, scaleFocused = 1.04f).clip(RoundedCornerShape(18.dp))
                     .background(if (on) Accent else Color.Transparent)
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onSelect(i) }
                     .padding(vertical = 9.dp)
@@ -448,7 +448,7 @@ private fun GenreChips(items: List<String>, selected: Int, onSelect: (Int) -> Un
                 color = if (on) Accent else TextMute,
                 fontWeight = if (on) FontWeight.Bold else FontWeight.Medium,
                 fontSize = 12.sp,
-                modifier = Modifier.clip(RoundedCornerShape(14.dp))
+                modifier = Modifier.focusHighlight(14, scaleFocused = 1.08f).clip(RoundedCornerShape(14.dp))
                     .then(if (on) Modifier.background(Accent.copy(alpha = 0.16f)) else Modifier)
                     .border(1.dp, if (on) Accent else GlassBorder, RoundedCornerShape(14.dp))
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onSelect(i) }
