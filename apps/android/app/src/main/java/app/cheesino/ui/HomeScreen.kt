@@ -56,7 +56,8 @@ fun HomeScreen(
     onResume: (ResumeMark) -> Unit,
     onSearch: () -> Unit,
     genres: List<String> = emptyList(),
-    onGenre: (String) -> Unit = {}
+    onGenre: (String) -> Unit = {},
+    weeklyTop: List<Channel> = emptyList()
 ) {
     fun clean(list: List<Channel>): List<Channel> {
         val seenKey = HashSet<String>()
@@ -100,6 +101,7 @@ fun HomeScreen(
         item { ResumeRail("Devam Et", continueW, onResume) }
         item { PosterRail("Sana Özel", recommended, onPlay) }
         item { PosterRail("Daha Sonra İzle", favorites, onPlay) }
+        if (weeklyTop.isNotEmpty()) item { RankedRail("Haftanın Trendleri · Top 10", weeklyTop, onPlay) }
         item { RankedRail("Yüksek Puanlı · Top 10", clean(state.topRated), onPlay) }
         item { PosterRail("Son Eklenenler", clean(state.recentlyAdded), onPlay) }
         // Dinamik tür/senaryo rayları — film ve dizi karışık.

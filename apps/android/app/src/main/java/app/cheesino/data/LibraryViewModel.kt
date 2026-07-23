@@ -51,7 +51,11 @@ data class Discover(
 )
 
 class LibraryViewModel(app: Application) : AndroidViewModel(app) {
+    private val appCtx = app
     private val creds = CredStore(app)
+    // Haftanın Trendleri · Top 10 — TMDB trending (haftalık) kaynağın kütüphaneyle eşleşeni.
+    private val _weeklyTop = MutableStateFlow<List<Channel>>(emptyList())
+    val weeklyTop: StateFlow<List<Channel>> = _weeklyTop.asStateFlow()
     // Kayıtlı kaynak varsa açılışta doğrudan yükleniyor durumu → boş ekran görünmez.
     private val _state = MutableStateFlow(
         creds.load().let { LibraryState(hasSource = it != null, loading = it != null) }
@@ -86,6 +90,24 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
                 c.filter { it.value >= 3 }.keys.sortedBy { GenreTagger.canonical.indexOf(it) }
             }.getOrDefault(emptyList())
             _discover.value = Discover(rec, mRails, sRails, genres)
+        }
+        refreshWeeklyTop()
+    }
+
+    /** TMDB haftalık trend başlıklarını kütüphaneyle eşleştirip Top 10 rayı kurar (anahtar yoksa atlar). */
+    private fun refreshWeeklyTop() {
+        val key = runCatching { appCtx.getString(app.cheesino.R.string.tmdb_api_key) }.getOrDefault("")
+        if (key.isBlank()) return
+        viewModelScope.launch {
+            runCatching {
+                val titles = app.cheesino.core.TmdbClient.trendingTitles(key)
+                if (titles.isEmpty()) return@runCatching
+                val byKey = _state.value.movies.filter { it.logo != null }
+                    .associateBy { app.cheesino.core.railKey(it.name) }
+                val matched = titles.mapNotNull { byKey[app.cheesino.core.railKey(it)] }
+                    .distinctBy { it.id }.take(10)
+                if (matched.isNotEmpty()) _weeklyTop.value = matched
+            }
         }
     }
 
