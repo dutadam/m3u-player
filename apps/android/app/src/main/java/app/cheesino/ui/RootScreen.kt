@@ -93,6 +93,8 @@ fun RootScreen(vm: LibraryViewModel) {
     // Oynatma kuyruğu — tek öğe (kanal/film) ya da dizi bölümleri (otomatik sonraki).
     var playQueue by remember { mutableStateOf<List<PlayItem>>(emptyList()) }
     var playIndex by remember { mutableIntStateOf(0) }
+    // Canlı kanal zaplama — oynatıcıda önceki/sonraki kanal için state.live içindeki konum.
+    var zapIndex by remember { mutableIntStateOf(-1) }
     var detail by remember { mutableStateOf<SeriesRef?>(null) }
     var movieDetail by remember { mutableStateOf<Channel?>(null) }
     var showSearch by remember { mutableStateOf(false) }
@@ -128,7 +130,11 @@ fun RootScreen(vm: LibraryViewModel) {
     fun playOne(item: PlayItem) { playQueue = listOf(item); playIndex = 0 }
     fun ratingOf(id: String) = when { id in user.likes -> 1; id in user.dislikes -> -1; else -> 0 }
     val watchedIds = remember(user.history) { user.history.mapTo(HashSet()) { it.id } }
-    val playChannel: (Channel) -> Unit = { playOne(it.toPlayItem()) }
+    val playChannel: (Channel) -> Unit = { ch ->
+        // Canlı kanalsa zaplama konumunu ayarla (oynatıcıda önceki/sonraki kanal).
+        if (ch.kind == MediaKind.LIVE) zapIndex = state.live.indexOfFirst { it.id == ch.id }
+        playOne(ch.toPlayItem())
+    }
     // İçerik dokunuşu: film → detay, kanal → doğrudan oynat.
     val onContent: (Channel) -> Unit = { ch -> if (ch.kind == MediaKind.VOD) movieDetail = ch else playChannel(ch) }
     val openSeries: (SeriesRef) -> Unit = { detail = it }
@@ -296,10 +302,15 @@ fun RootScreen(vm: LibraryViewModel) {
 
     // Oynatıcı — en üstte. Dizi kuyruğunda bittiğinde otomatik sonraki bölüm.
     playQueue.getOrNull(playIndex)?.let { item ->
+        val canZap = item.isLive && zapIndex in state.live.indices
         PlayerHost(
             item = item, vm = vm,
             onClose = { playQueue = emptyList() },
-            onEnded = { if (playIndex < playQueue.lastIndex) playIndex++ else playQueue = emptyList() }
+            onEnded = { if (playIndex < playQueue.lastIndex) playIndex++ else playQueue = emptyList() },
+            onPrev = if (canZap && zapIndex > 0)
+                ({ zapIndex--; playChannel(state.live[zapIndex]) }) else null,
+            onNext = if (canZap && zapIndex < state.live.lastIndex)
+                ({ zapIndex++; playChannel(state.live[zapIndex]) }) else null
         )
     }
 }
@@ -311,17 +322,19 @@ fun RootScreen(vm: LibraryViewModel) {
  * Otomatik/ExoPlayer'da ExoPlayer oynatamazsa VLC'ye düşer.
  */
 @Composable
-private fun PlayerHost(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEnded: () -> Unit) {
+private fun PlayerHost(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEnded: () -> Unit,
+                       onPrev: (() -> Unit)? = null, onNext: (() -> Unit)? = null) {
     val engine = vm.playerEngine
     // İndirilmiş öğe disk cache'inden ExoPlayer ile oynar (çevrimdışı) — VLC cache'i okumaz.
     val downloaded = remember(item.id) { vm.isDownloaded(item.id) }
     var useVlc by remember(item.id) { mutableStateOf(!downloaded && (engine == 2 || (engine == 0 && !item.isLive))) }
     if (useVlc) {
-        VlcPlayerScreen(item, vm, onClose, onEnded)
+        VlcPlayerScreen(item, vm, onClose, onEnded, onPrev = onPrev, onNext = onNext)
     } else {
         PlayerScreen(item, vm, onClose, onEnded,
             // Çevrimdışı öğede VLC'ye düşme (kaynak URL'i offline erişilemez).
-            onFallback = if (!downloaded && engine == 0) ({ useVlc = true }) else null)
+            onFallback = if (!downloaded && engine == 0) ({ useVlc = true }) else null,
+            onPrev = onPrev, onNext = onNext)
     }
 }
 

@@ -27,6 +27,8 @@ import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay10
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Subtitles
@@ -68,7 +70,8 @@ import org.videolan.libvlc.util.VLCVideoLayout
  * için ikinci motor. Temel kontroller: oynat/duraklat, ara çubuğu (VOD), altyazı seçimi, resume.
  */
 @Composable
-fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEnded: () -> Unit = {}) {
+fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEnded: () -> Unit = {},
+                    onPrev: (() -> Unit)? = null, onNext: (() -> Unit)? = null) {
     val context = LocalContext.current
     val activity = context as? Activity
     val mainHandler = remember { android.os.Handler(android.os.Looper.getMainLooper()) }
@@ -303,6 +306,8 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
                     if (!item.isLive && lengthMs > 0) VlcCircleBtn(Icons.Default.Replay10, 52.dp) {
                         val np = (mediaPlayer.time - 10_000).coerceIn(0, lengthMs)
                         mediaPlayer.time = np; positionMs = np; hud = "«  -10 sn"; controlsVisible = true
+                    } else if (item.isLive && onPrev != null) VlcCircleBtn(Icons.Default.SkipPrevious, 52.dp) {
+                        onPrev(); hud = "◀ Önceki kanal"; controlsVisible = true
                     }
                     Spacer(Modifier.width(40.dp))
                     VlcCircleBtn(if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, 78.dp) {
@@ -313,6 +318,8 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
                     if (!item.isLive && lengthMs > 0) VlcCircleBtn(Icons.Default.Forward10, 52.dp) {
                         val np = (mediaPlayer.time + 10_000).coerceIn(0, lengthMs)
                         mediaPlayer.time = np; positionMs = np; hud = "»  +10 sn"; controlsVisible = true
+                    } else if (item.isLive && onNext != null) VlcCircleBtn(Icons.Default.SkipNext, 52.dp) {
+                        onNext(); hud = "Sonraki kanal ▶"; controlsVisible = true
                     }
                 }
 

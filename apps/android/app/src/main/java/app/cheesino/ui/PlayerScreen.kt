@@ -39,6 +39,8 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay10
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Subtitles
@@ -116,12 +118,12 @@ private const val SEEK_STEP_MS = 10_000L
  */
 @Composable
 fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEnded: () -> Unit = {},
-                 onFallback: (() -> Unit)? = null) {
+                 onFallback: (() -> Unit)? = null, onPrev: (() -> Unit)? = null, onNext: (() -> Unit)? = null) {
     val controller = rememberMediaController()
     if (controller == null) {
         Box(Modifier.fillMaxSize().background(Color.Black)) { BrandLoader(modifier = Modifier.align(Alignment.Center)) }
     } else {
-        PlayerScreenContent(controller, item, vm, onClose, onEnded, onFallback)
+        PlayerScreenContent(controller, item, vm, onClose, onEnded, onFallback, onPrev, onNext)
     }
 }
 
@@ -145,7 +147,7 @@ private fun rememberMediaController(): MediaController? {
 @Composable
 private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: LibraryViewModel,
                  onClose: () -> Unit, onEnded: () -> Unit = {},
-                 onFallback: (() -> Unit)? = null) {
+                 onFallback: (() -> Unit)? = null, onPrev: (() -> Unit)? = null, onNext: (() -> Unit)? = null) {
     val context = LocalContext.current
     val activity = context as? Activity
     // Canlı kayıt (DVR) — tek eşzamanlı kayıt; bu kanal kaydediliyor mu?
@@ -414,8 +416,11 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
 
                 // Merkez oynat/duraklat + ±10 — büyük dokunma hedefleri, ferah aralık.
                 Row(Modifier.align(Alignment.Center), verticalAlignment = Alignment.CenterVertically) {
+                    // VOD: ±10 sn · Canlı: önceki kanal (zap).
                     if (!item.isLive) CircleBtn(Icons.Default.Replay10, 52.dp) {
                         player.seekTo((player.currentPosition - SEEK_STEP_MS).coerceAtLeast(0)); hud = "⏪ 10 sn"
+                    } else if (onPrev != null) CircleBtn(Icons.Default.SkipPrevious, 52.dp) {
+                        onPrev(); hud = "◀ Önceki kanal"; controlsVisible = true
                     }
                     Spacer(Modifier.width(40.dp))
                     CircleBtn(if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, 78.dp) {
@@ -426,6 +431,8 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
                     if (!item.isLive) CircleBtn(Icons.Default.Forward10, 52.dp) {
                         val dur = player.duration
                         player.seekTo((player.currentPosition + SEEK_STEP_MS).let { if (dur > 0) it.coerceAtMost(dur) else it }); hud = "⏩ 10 sn"
+                    } else if (onNext != null) CircleBtn(Icons.Default.SkipNext, 52.dp) {
+                        onNext(); hud = "Sonraki kanal ▶"; controlsVisible = true
                     }
                 }
 
