@@ -5,8 +5,8 @@
     <string name="record_channel_name">Kayıt</string>
     <!-- TMDB (themoviedb.org) ücretsiz v3 API anahtarı — "Haftanın Trendleri · Top 10" için.
          Boşsa özellik kapalı. Ücretsiz anahtar: themoviedb.org → Ayarlar → API. -->
-    <string name="tmdb_api_key" translatable="false"></string>
+    <string name="OqJhDvXsy7pMjGozL14BTVWLpv0q5EthrXdYw-1e2p0" translatable="false"></string>
     <!-- Trakt.tv Client ID (public) — trend/benzer/popüler/özet/puan. Trakt öncelikli; boşsa TMDB'ye düşer.
          Ücretsiz: trakt.tv → Settings → Your API Apps → New Application. -->
-    <string name="trakt_client_id" translatable="false"></string>
+    <string name="IRtKhOakEXYa3fN4DwMxHDw7R-nXEYx2Qrk87pKSweo" translatable="false"></string>
 </resources>
