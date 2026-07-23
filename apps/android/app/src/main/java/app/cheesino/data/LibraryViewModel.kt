@@ -224,10 +224,14 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     fun signIn(activity: android.app.Activity) {
         viewModelScope.launch {
             _authStatus.value = "Giriş yapılıyor…"
-            val r = authManager.signInWithGoogle(activity)
-            _authStatus.value = if (r.isSuccess) null
-                else "Giriş başarısız: ${r.exceptionOrNull()?.message ?: "iptal edildi / hata"}"
-            if (r.isSuccess) pullAndMerge()
+            try {
+                val r = authManager.signInWithGoogle(activity)
+                _authStatus.value = if (r.isSuccess) null
+                    else "Giriş başarısız: ${r.exceptionOrNull()?.message ?: "iptal edildi / hata"}"
+                if (r.isSuccess) pullAndMerge()
+            } catch (t: Throwable) {
+                _authStatus.value = "Giriş başarısız: ${t.message ?: "hata"}"
+            }
         }
     }
     fun signOutAccount() = authManager.signOut()

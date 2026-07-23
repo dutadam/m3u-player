@@ -58,8 +58,10 @@ class AuthManager(context: Context) {
             Result.success(Unit)
         } catch (e: NoCredentialException) {
             Result.failure(IllegalStateException("Cihazda Google hesabı bulunamadı. Ayarlar'dan bir Google hesabı ekleyip tekrar deneyin."))
-        } catch (e: Exception) {
-            Result.failure(e)
+        } catch (e: Throwable) {
+            // Exception değil Error de olabilir (ör. NoClassDefFoundError / Play Services) — uygulamayı
+            // çökertmesin, mesaj olarak dönsün.
+            Result.failure(RuntimeException(e.message ?: e.javaClass.simpleName, e))
         }
     }
 
