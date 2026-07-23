@@ -16,6 +16,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -234,6 +236,26 @@ fun SettingsScreen(vm: LibraryViewModel, onClose: () -> Unit, onSignedOut: () ->
         }
 
         msg?.let { Text(it, color = Accent2, fontSize = 13.sp, modifier = Modifier.padding(16.dp)) }
+
+        // Tanılama — son çökme kaydı (varsa) kopyalanıp paylaşılabilir.
+        var crash by remember { mutableStateOf(app.cheesino.data.CrashLog.last(ctx)) }
+        val clipboard = LocalClipboardManager.current
+        crash?.let { c ->
+            Section("Tanılama") {
+                Text("Son çökme kaydı bulundu — kopyalayıp geliştiriciyle paylaşabilirsin.",
+                    color = TextMute, fontSize = 12.sp)
+                Text(c.take(1500), color = TextDim, fontSize = 10.sp, modifier = Modifier.padding(top = 8.dp))
+                Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { clipboard.setText(AnnotatedString(c)); msg = "Çökme kaydı panoya kopyalandı" },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Accent)
+                    ) { Text("Kopyala", color = Ground, fontWeight = FontWeight.Bold) }
+                    OutlinedButton(onClick = { app.cheesino.data.CrashLog.clear(ctx); crash = null },
+                        shape = RoundedCornerShape(10.dp)) { Text("Temizle", color = TextHi) }
+                }
+            }
+        }
 
         Section("Hakkında") {
             Text("cheesino · sürüm 0.1.0", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 14.sp)
