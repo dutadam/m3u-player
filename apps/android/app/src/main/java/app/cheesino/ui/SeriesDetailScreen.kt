@@ -120,41 +120,46 @@ private fun SeriesContent(
     onSimilar: (SeriesRef) -> Unit = {}
 ) {
     val season = s.seasons.firstOrNull { it.number == selectedSeason } ?: s.seasons.first()
-    val queue = remember(season, s.name) {
-        season.episodes.map { ep ->
+    // Kuyruk tüm sezonların bölümlerini sırayla kapsar → otomatik sonraki bölüm sezon sınırını
+    // da geçer (son bölüm bitince bir sonraki sezonun 1. bölümü).
+    val allEpisodes = remember(s) { s.seasons.sortedBy { it.number }.flatMap { it.episodes } }
+    val queue = remember(allEpisodes, s.name) {
+        allEpisodes.map { ep ->
             PlayItem("ep_${ep.id}", "${s.name} — ${ep.title}", ep.url, s.cover, s.genre,
                 false, true, s.id.toIntOrNull(), s.name)
         }
     }
+    val globalIndex = remember(allEpisodes) { allEpisodes.withIndex().associate { (i, ep) -> ep.id to i } }
     // Devam edilecek bölüm: yarım kalan (bitmeye yakın OLMAYAN) bölüm; yoksa izlenen ya da
     // bitmeye çok yakın son bölümün bir sonrası → "devam et" bitmiş bölümü tekrar açmaz.
     val resumeIndex = run {
-        val ip = season.episodes.indexOfFirst { resumeFor("ep_${it.id}")?.let { r -> !r.nearEnd } == true }
+        val ip = allEpisodes.indexOfFirst { resumeFor("ep_${it.id}")?.let { r -> !r.nearEnd } == true }
         if (ip >= 0) ip else {
-            val lw = season.episodes.indexOfLast {
+            val lw = allEpisodes.indexOfLast {
                 "ep_${it.id}" in watchedIds || resumeFor("ep_${it.id}")?.nearEnd == true
             }
-            if (lw in 0 until season.episodes.lastIndex) lw + 1 else -1
+            if (lw in 0 until allEpisodes.lastIndex) lw + 1 else -1
         }
     }
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
         item {
             Header(s, favorite, rating, onFavorite, onRate,
-                resumeEp = season.episodes.getOrNull(resumeIndex.coerceAtLeast(0)),
+                resumeEp = allEpisodes.getOrNull(resumeIndex.coerceAtLeast(0)),
                 isResume = resumeIndex >= 0,
                 onPlay = { onPlayQueue(queue, resumeIndex.coerceAtLeast(0)) },
                 omdb = omdb, tmdb = tmdb)
         }
         if (s.seasons.size > 1) item { SeasonPicker(s.seasons, selectedSeason, onSelectSeason) }
-        itemsIndexed(season.episodes) { i, ep ->
+        itemsIndexed(season.episodes) { _, ep ->
             val key = "ep_${ep.id}"
+            val gi = globalIndex[ep.id] ?: 0
             EpisodeRow(
                 ep, resumeFor(key), key in watchedIds,
                 downloadState = downloadStateFor(key),
-                onDownload = { onDownloadEpisode(queue[i]) },
+                onDownload = { onDownloadEpisode(queue[gi]) },
                 onRemoveDownload = { onRemoveDownload(key) },
-                onPlay = { onPlayQueue(queue, i) }
+                onPlay = { onPlayQueue(queue, gi) }
             )
         }
         if (similar.isNotEmpty()) item {
