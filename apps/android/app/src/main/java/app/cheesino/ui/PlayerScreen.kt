@@ -428,8 +428,9 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
             else -> null
         }
         recBanner?.let { note ->
-            val err = listOf("error", "refused", "no data", "unavailable", "couldn't", "empty")
-                .any { note.contains(it) }
+            val nl = note.lowercase()
+            val err = listOf("error", "refused", "no data", "unavailable", "couldn't", "empty", "blocked")
+                .any { nl.contains(it) }
             Box(
                 Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 10.dp)
                     .clip(RoundedCornerShape(20.dp)).background(Color.Black.copy(alpha = 0.7f))

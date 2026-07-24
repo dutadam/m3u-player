@@ -70,7 +70,7 @@ fun RecordingsScreen(
         }
 
         status?.let {
-            val err = listOf("error", "refused", "no data", "unavailable", "empty", "couldn't").any { k -> it.contains(k) }
+            val err = listOf("error", "refused", "no data", "unavailable", "empty", "couldn't", "blocked").any { k -> it.lowercase().contains(k) }
             Text(it, color = if (err) Live else Accent2, fontSize = 12.sp,
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 4.dp))
         }

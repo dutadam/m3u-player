@@ -163,7 +163,8 @@ fun RootScreen(vm: LibraryViewModel) {
         val isTv = isTvDevice()
         val contentFocus = remember { FocusRequester() }
         LaunchedEffect(isTv, state.hasSource, detail, movieDetail, showSearch) {
-            if (isTv) { kotlinx.coroutines.delay(350); runCatching { contentFocus.requestFocus() } }
+            // Arama açıkken kendi alanı odağı alır — çakışmasın.
+            if (isTv && !showSearch) { kotlinx.coroutines.delay(350); runCatching { contentFocus.requestFocus() } }
         }
         Box(Modifier.fillMaxSize().padding(pad).focusRequester(contentFocus).focusGroup()) {
             val md = movieDetail

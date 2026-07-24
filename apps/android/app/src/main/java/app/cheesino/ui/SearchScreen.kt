@@ -28,6 +28,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -86,6 +88,9 @@ fun SearchScreen(
     }
 
     val context = LocalContext.current
+    // Arama açılınca kutuya odaklan (klavye/yazım hemen; TV'de de alan seçili).
+    val fieldFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { fieldFocus.requestFocus() } }
     // Sesli arama (özellikle TV) — sistem konuşma tanıyıcısı; sonucu arama kutusuna yazar.
     val voiceLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
         res.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
@@ -108,7 +113,7 @@ fun SearchScreen(
                 value = query, onValueChange = { query = it }, singleLine = true,
                 placeholder = { Text("Search channels, movies, series…") },
                 leadingIcon = { Icon(Icons.Default.Search, null) },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).focusRequester(fieldFocus),
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = TextHi, unfocusedTextColor = TextHi,
