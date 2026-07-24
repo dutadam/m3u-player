@@ -126,11 +126,14 @@ private fun SeriesContent(
                 false, true, s.id.toIntOrNull(), s.name)
         }
     }
-    // Devam edilecek bölüm: yarım kalan ya da son izlenenin bir sonrası.
+    // Devam edilecek bölüm: yarım kalan (bitmeye yakın OLMAYAN) bölüm; yoksa izlenen ya da
+    // bitmeye çok yakın son bölümün bir sonrası → "devam et" bitmiş bölümü tekrar açmaz.
     val resumeIndex = run {
-        val ip = season.episodes.indexOfFirst { resumeFor("ep_${it.id}") != null }
+        val ip = season.episodes.indexOfFirst { resumeFor("ep_${it.id}")?.let { r -> !r.nearEnd } == true }
         if (ip >= 0) ip else {
-            val lw = season.episodes.indexOfLast { "ep_${it.id}" in watchedIds }
+            val lw = season.episodes.indexOfLast {
+                "ep_${it.id}" in watchedIds || resumeFor("ep_${it.id}")?.nearEnd == true
+            }
             if (lw in 0 until season.episodes.lastIndex) lw + 1 else -1
         }
     }

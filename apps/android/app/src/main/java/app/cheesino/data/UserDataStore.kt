@@ -23,6 +23,8 @@ data class ResumeMark(
     val fraction: Float get() = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
     /** Neredeyse bitmiş (>%92) içerik "devam et" listesinden düşer. */
     val finished: Boolean get() = fraction >= 0.92f
+    /** Bitmeye çok yakın (>%85 ya da son ~3 dk) — dizide "devam et" bir sonraki bölüme atlar. */
+    val nearEnd: Boolean get() = fraction >= 0.85f || (durationMs > 0 && durationMs - positionMs <= 180_000L)
 }
 
 /** İzleme olayı — tür afinitesi için (id + tür etiketleri + zaman). */

@@ -128,12 +128,13 @@ private const val SEEK_STEP_MS = 10_000L
  */
 @Composable
 fun PlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEnded: () -> Unit = {},
-                 onFallback: (() -> Unit)? = null, onPrev: (() -> Unit)? = null, onNext: (() -> Unit)? = null) {
+                 onFallback: (() -> Unit)? = null, onPrev: (() -> Unit)? = null, onNext: (() -> Unit)? = null,
+                 hasNext: Boolean = false, nextTitle: String? = null) {
     val controller = rememberMediaController()
     if (controller == null) {
         Box(Modifier.fillMaxSize().background(Color.Black)) { BrandLoader(modifier = Modifier.align(Alignment.Center)) }
     } else {
-        PlayerScreenContent(controller, item, vm, onClose, onEnded, onFallback, onPrev, onNext)
+        PlayerScreenContent(controller, item, vm, onClose, onEnded, onFallback, onPrev, onNext, hasNext, nextTitle)
     }
 }
 
@@ -157,7 +158,8 @@ private fun rememberMediaController(): MediaController? {
 @Composable
 private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: LibraryViewModel,
                  onClose: () -> Unit, onEnded: () -> Unit = {},
-                 onFallback: (() -> Unit)? = null, onPrev: (() -> Unit)? = null, onNext: (() -> Unit)? = null) {
+                 onFallback: (() -> Unit)? = null, onPrev: (() -> Unit)? = null, onNext: (() -> Unit)? = null,
+                 hasNext: Boolean = false, nextTitle: String? = null) {
     val context = LocalContext.current
     val activity = context as? Activity
     // Canlı kayıt (DVR) — tek eşzamanlı kayıt; bu kanal kaydediliyor mu?
@@ -196,6 +198,8 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
 
     var buffering by remember { mutableStateOf(true) }
     var startedOnce by remember(item.id) { mutableStateOf(false) }
+    // Dizi bölümü bitince "sıradaki bölüm" geri sayımı (kuyrukta sonraki bölüm varsa).
+    var autoNext by remember(item.id) { mutableStateOf(false) }
     var isPlaying by remember { mutableStateOf(true) }
     var positionMs by remember { mutableStateOf(0L) }
     var durationMs by remember { mutableStateOf(0L) }
@@ -244,7 +248,7 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
             override fun onPlaybackStateChanged(state: Int) {
                 buffering = state == Player.STATE_BUFFERING
                 if (state == Player.STATE_READY) { attempts = 0; startedOnce = true }
-                if (state == Player.STATE_ENDED && !item.isLive) onEnded()
+                if (state == Player.STATE_ENDED && !item.isLive) { if (hasNext) autoNext = true else onEnded() }
             }
             override fun onIsPlayingChanged(playing: Boolean) { isPlaying = playing }
             override fun onPlayerError(error: PlaybackException) {
@@ -326,6 +330,11 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
         .onKeyEvent { ke ->
             if (ke.type != KeyEventType.KeyDown) return@onKeyEvent false
             controlsVisible = true
+            // Geri sayım ekranında OK/ileri → hemen sonraki bölüm; diğer tuşlar geri sayımı sürdürür.
+            if (autoNext) return@onKeyEvent when (ke.key) {
+                Key.DirectionCenter, Key.Enter, Key.MediaPlay, Key.MediaFastForward, Key.MediaNext -> { onEnded(); true }
+                else -> true
+            }
             if (locked) return@onKeyEvent true
             when (ke.key) {
                 Key.DirectionCenter, Key.Enter, Key.Spacebar -> {
@@ -565,6 +574,13 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
         }
 
         if (showTracks) TrackDialog(player) { showTracks = false }
+
+        // Dizi bölümü bitti → sıradaki bölüm geri sayımı (kuyrukta sonraki bölüm varsa).
+        if (autoNext) NextEpisodeCountdown(
+            nextTitle = nextTitle,
+            onPlayNext = onEnded,
+            onCancel = { autoNext = false; onClose() }
+        )
 
         if (askResume && existing != null) {
             ResumeDialog(

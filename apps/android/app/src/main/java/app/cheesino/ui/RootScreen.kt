@@ -329,10 +329,14 @@ fun RootScreen(vm: LibraryViewModel) {
     // Oynatıcı — en üstte. Dizi kuyruğunda bittiğinde otomatik sonraki bölüm.
     playQueue.getOrNull(playIndex)?.let { item ->
         val canZap = item.isLive && zapIndex in state.live.indices
+        // Dizi kuyruğunda sonraki bölüm varsa oynatıcıda "sıradaki bölüm" geri sayımı göster.
+        val hasNext = item.isSeries && playIndex < playQueue.lastIndex
+        val nextTitle = if (hasNext) playQueue.getOrNull(playIndex + 1)?.title else null
         PlayerHost(
             item = item, vm = vm,
             onClose = { playQueue = emptyList() },
             onEnded = { if (playIndex < playQueue.lastIndex) playIndex++ else playQueue = emptyList() },
+            hasNext = hasNext, nextTitle = nextTitle,
             onPrev = if (canZap && zapIndex > 0)
                 ({ zapIndex--; playChannel(state.live[zapIndex]) }) else null,
             onNext = if (canZap && zapIndex < state.live.lastIndex)
@@ -349,18 +353,20 @@ fun RootScreen(vm: LibraryViewModel) {
  */
 @Composable
 private fun PlayerHost(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEnded: () -> Unit,
-                       onPrev: (() -> Unit)? = null, onNext: (() -> Unit)? = null) {
+                       onPrev: (() -> Unit)? = null, onNext: (() -> Unit)? = null,
+                       hasNext: Boolean = false, nextTitle: String? = null) {
     val engine = vm.playerEngine
     // İndirilmiş öğe disk cache'inden ExoPlayer ile oynar (çevrimdışı) — VLC cache'i okumaz.
     val downloaded = remember(item.id) { vm.isDownloaded(item.id) }
     var useVlc by remember(item.id) { mutableStateOf(!downloaded && (engine == 2 || (engine == 0 && !item.isLive))) }
     if (useVlc) {
-        VlcPlayerScreen(item, vm, onClose, onEnded, onPrev = onPrev, onNext = onNext)
+        VlcPlayerScreen(item, vm, onClose, onEnded, onPrev = onPrev, onNext = onNext,
+            hasNext = hasNext, nextTitle = nextTitle)
     } else {
         PlayerScreen(item, vm, onClose, onEnded,
             // Çevrimdışı öğede VLC'ye düşme (kaynak URL'i offline erişilemez).
             onFallback = if (!downloaded && engine == 0) ({ useVlc = true }) else null,
-            onPrev = onPrev, onNext = onNext)
+            onPrev = onPrev, onNext = onNext, hasNext = hasNext, nextTitle = nextTitle)
     }
 }
 

@@ -80,7 +80,8 @@ import org.videolan.libvlc.util.VLCVideoLayout
  */
 @Composable
 fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, onEnded: () -> Unit = {},
-                    onPrev: (() -> Unit)? = null, onNext: (() -> Unit)? = null) {
+                    onPrev: (() -> Unit)? = null, onNext: (() -> Unit)? = null,
+                    hasNext: Boolean = false, nextTitle: String? = null) {
     val context = LocalContext.current
     val activity = context as? Activity
     val mainHandler = remember { android.os.Handler(android.os.Looper.getMainLooper()) }
@@ -104,6 +105,8 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
     var arIdx by remember(item.id) { mutableStateOf(0) }
     var locked by remember { mutableStateOf(false) }
     var hud by remember { mutableStateOf<String?>(null) }
+    // Dizi bölümü bitince "sıradaki bölüm" geri sayımı (kuyrukta sonraki bölüm varsa).
+    var autoNext by remember(item.id) { mutableStateOf(false) }
     val ratios = remember { listOf<Pair<String, String?>>("Auto" to null, "16:9" to "16:9", "4:3" to "4:3") }
 
     // Canlı kayıt (DVR) — tek eşzamanlı kayıt; bu yayın kaydediliyor mu?
@@ -163,7 +166,7 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
                 MediaPlayer.Event.LengthChanged -> lengthMs = ev.lengthChanged
                 // onEnded ekranın kapanmasını (player.release) tetikler → VLC callback thread'inde
                 // release deadlock yapar; ana thread'e taşı.
-                MediaPlayer.Event.EndReached -> if (!item.isLive) mainHandler.post { onEnded() }
+                MediaPlayer.Event.EndReached -> if (!item.isLive) mainHandler.post { if (hasNext) autoNext = true else onEnded() }
                 MediaPlayer.Event.EncounteredError -> failed = true
             }
         }
@@ -212,6 +215,11 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
             .onKeyEvent { ke ->
                 if (ke.type != KeyEventType.KeyDown) return@onKeyEvent false
                 controlsVisible = true
+                // Geri sayım ekranında OK/ileri → hemen sonraki bölüm; diğer tuşlar geri sayımı sürdürür.
+                if (autoNext) return@onKeyEvent when (ke.key) {
+                    Key.DirectionCenter, Key.Enter, Key.MediaPlay, Key.MediaFastForward, Key.MediaNext -> { onEnded(); true }
+                    else -> true
+                }
                 if (locked) return@onKeyEvent true
                 when (ke.key) {
                     Key.DirectionCenter, Key.Enter, Key.Spacebar, Key.MediaPlayPause -> {
@@ -432,6 +440,13 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
                 }
             }
         }
+
+        // Dizi bölümü bitti → sıradaki bölüm geri sayımı (kuyrukta sonraki bölüm varsa).
+        if (autoNext) NextEpisodeCountdown(
+            nextTitle = nextTitle,
+            onPlayNext = onEnded,
+            onCancel = { autoNext = false; onClose() }
+        )
 
         if (showSubs) SubtitleSheet(mediaPlayer, onClose = { showSubs = false })
         if (showAudio) AudioSheet(mediaPlayer, onClose = { showAudio = false })
