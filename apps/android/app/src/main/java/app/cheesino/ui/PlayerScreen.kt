@@ -690,7 +690,7 @@ private fun TrackRow(label: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun ResumeDialog(positionMs: Long, onResume: () -> Unit, onRestart: () -> Unit) {
+fun ResumeDialog(positionMs: Long, onResume: () -> Unit, onRestart: () -> Unit) {
     val mm = positionMs / 60000; val ss = (positionMs / 1000) % 60
     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.7f)), contentAlignment = Alignment.Center) {
         Column(

@@ -90,6 +90,10 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
     val startAtMs = remember(item.id) {
         existing?.takeIf { it.positionMs > 30_000 && !it.finished }?.positionMs ?: 0L
     }
+    // Kaldığın-yerden-devam sorusu (ExoPlayer ile aynı UX): resume noktası varsa ilk karede
+    // duraklat, Devam Et / Baştan sor. pausedForResume tek seferlik tetik.
+    var askResume by remember(item.id) { mutableStateOf(startAtMs > 0) }
+    var pausedForResume by remember(item.id) { mutableStateOf(false) }
 
     var buffering by remember(item.id) { mutableStateOf(true) }
     var isPlaying by remember { mutableStateOf(true) }
@@ -160,7 +164,11 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
         mediaPlayer.setEventListener { ev ->
             when (ev.type) {
                 MediaPlayer.Event.Buffering -> buffering = ev.buffering < 100f
-                MediaPlayer.Event.Playing -> { isPlaying = true; buffering = false }
+                MediaPlayer.Event.Playing -> {
+                    isPlaying = true; buffering = false
+                    // Resume noktası varsa ilk oynatmada duraklat → kullanıcı Devam Et/Baştan seçsin.
+                    if (askResume && !pausedForResume) { pausedForResume = true; mainHandler.post { mediaPlayer.pause() } }
+                }
                 MediaPlayer.Event.Paused -> isPlaying = false
                 MediaPlayer.Event.TimeChanged -> if (!scrubbing) positionMs = ev.timeChanged
                 MediaPlayer.Event.LengthChanged -> lengthMs = ev.lengthChanged
@@ -446,6 +454,14 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
             nextTitle = nextTitle,
             onPlayNext = onEnded,
             onCancel = { autoNext = false; onClose() }
+        )
+
+        // Kaldığın yerden devam? (ExoPlayer ile aynı diyalog) — media zaten start-time ile
+        // resume noktasında; Devam Et sadece oynatır, Baştan başa sarar.
+        if (askResume && existing != null) ResumeDialog(
+            positionMs = existing.positionMs,
+            onResume = { askResume = false; mediaPlayer.play() },
+            onRestart = { askResume = false; mediaPlayer.time = 0; positionMs = 0; mediaPlayer.play() }
         )
 
         if (showSubs) SubtitleSheet(mediaPlayer, onClose = { showSubs = false })
