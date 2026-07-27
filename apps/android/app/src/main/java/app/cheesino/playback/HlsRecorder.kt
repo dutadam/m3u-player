@@ -28,8 +28,16 @@ object HlsRecorder {
         val seen = HashSet<String>()
         out.outputStream().buffered().use { output ->
             var ended = false
+            var fails = 0
             while (!isStopped() && !ended) {
-                val text = httpText(client, mediaUrl) ?: break
+                // Playlist çekilemezse (geçici ağ hatası) kaydı hemen bırakma — bir süre yeniden dene.
+                val text = httpText(client, mediaUrl)
+                if (text == null) {
+                    if (++fails >= 20) break
+                    if (!isStopped()) runCatching { Thread.sleep(1000L) }
+                    continue
+                }
+                fails = 0
                 val lines = text.lines()
                 val targetDur = lines.firstOrNull { it.startsWith("#EXT-X-TARGETDURATION:") }
                     ?.substringAfter(':')?.trim()?.toIntOrNull() ?: 6
@@ -45,7 +53,9 @@ object HlsRecorder {
                         line.startsWith("#EXT-X-ENDLIST") -> ended = true
                         line.isNotEmpty() && !line.startsWith("#") -> {
                             val segUrl = resolve(mediaUrl, line)
-                            if (seen.add(segUrl)) writeSegment(client, segUrl, key, seq, output)
+                            // Yalnız başarılı indirmede "görüldü" işaretle → geçici hatada gelecek
+                            // pollingde segment yeniden denenir (kayıtta boşluk kalmaz).
+                            if (segUrl !in seen && writeSegment(client, segUrl, key, seq, output)) seen.add(segUrl)
                             seq++
                         }
                     }
@@ -57,11 +67,13 @@ object HlsRecorder {
         }
     }
 
-    private fun writeSegment(client: OkHttpClient, url: String, key: Key?, seq: Long, out: OutputStream) {
-        val bytes = httpBytes(client, url) ?: return
+    /** Segment indirilip yazıldıysa true; indirme başarısızsa false (yeniden denenebilsin). */
+    private fun writeSegment(client: OkHttpClient, url: String, key: Key?, seq: Long, out: OutputStream): Boolean {
+        val bytes = httpBytes(client, url) ?: return false
         val plain = if (key != null && key.method == "AES-128" && key.bytes != null)
             decryptAes(bytes, key.bytes, key.iv ?: ivFromSeq(seq)) else bytes
         out.write(plain)
+        return true
     }
 
     /** Master playlist ise en yüksek bant genişlikli varyantı seçer; medya playlist ise aynen döner. */
