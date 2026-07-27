@@ -69,6 +69,11 @@ fun SearchScreen(
     val movies = remember(state.visibleChannels) { state.visibleChannels.filter { it.kind == MediaKind.VOD && it.logo != null } }
     val series = remember(state.visibleSeries) { state.visibleSeries.filter { it.cover != null } }
 
+    // Normalize edilmiş isimleri kütüphane değişince BİR kez hesapla → her tuşta (hot path)
+    // tüm kanalları yeniden normalize etmek yerine hazır formu filtrele (büyük listede takılmaz).
+    val chIndex = remember(state.visibleChannels) { state.visibleChannels.map { it to norm(it.name) } }
+    val seIndex = remember(series) { series.map { it to norm(it.name) } }
+
     // Tahmin/otomatik-tamamlama dizini: tüm başlıklar + normalize edilmiş biçim.
     val index = remember(state.visibleChannels, series) {
         (state.visibleChannels.map { it.name } + series.map { it.name })
@@ -145,8 +150,8 @@ fun SearchScreen(
         Box(Modifier.weight(1f).fillMaxWidth()) {
             when {
                 nq.length >= 2 -> {
-                    val chHits = state.visibleChannels.filter { norm(it.name).contains(nq) }.take(80)
-                    val seHits = series.filter { norm(it.name).contains(nq) }.take(40)
+                    val chHits = chIndex.asSequence().filter { it.second.contains(nq) }.take(80).map { it.first }.toList()
+                    val seHits = seIndex.asSequence().filter { it.second.contains(nq) }.take(40).map { it.first }.toList()
                     if (chHits.isEmpty() && seHits.isEmpty()) EmptyState("No results")
                     else LazyVerticalGrid(
                         columns = GridCells.Adaptive(112.dp),
