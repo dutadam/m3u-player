@@ -17,8 +17,15 @@ object M3UParser {
                 attr.findAll(line).forEach { if (it.groupValues[1].equals("url-tvg", true) || it.groupValues[1].equals("x-tvg-url", true)) epgUrl = it.groupValues[2] }
             } else if (line.startsWith("#EXTINF")) {
                 val attrs = attr.findAll(line).associate { it.groupValues[1].lowercase() to it.groupValues[2] }
-                val name = line.substringAfterLast(",").trim()
-                val url = lines.getOrNull(i + 1)?.takeIf { it.isNotEmpty() && !it.startsWith("#") }
+                // İsim = tırnak dışındaki İLK virgülden sonrası → virgüllü başlıklar ("Film, 2. Bölüm")
+                // ve virgüllü öznitelik değerleri bozulmaz (substringAfterLast bunları kesiyordu).
+                val nameComma = nameCommaIndex(line)
+                val name = (if (nameComma >= 0) line.substring(nameComma + 1) else "").trim()
+                // URL'i bul — araya giren #EXTGRP/#EXTVLCOPT gibi etiketleri atla, ama sıradaki
+                // #EXTINF'in URL'ini çalma (aksi halde araya etiket giren kanallar tümden düşüyordu).
+                var j = i + 1
+                while (j < lines.size && lines[j].startsWith("#") && !lines[j].startsWith("#EXTINF")) j++
+                val url = lines.getOrNull(j)?.takeIf { it.isNotEmpty() && !it.startsWith("#") }
                 if (url != null) {
                     val group = attrs["group-title"] ?: "Genel"
                     out.add(Channel(
@@ -30,12 +37,23 @@ object M3UParser {
                         tvgId = attrs["tvg-id"]?.ifBlank { null },
                         kind = detectKind(name, group, url)
                     ))
-                    i++
+                    i = j
                 }
             }
             i++
         }
         return Result(out, epgUrl)
+    }
+
+    /** Öznitelik/isim ayıracı: tırnak dışındaki ilk virgülün konumu (yoksa -1). */
+    private fun nameCommaIndex(s: String): Int {
+        var inQuotes = false
+        for (idx in s.indices) {
+            val c = s[idx]
+            if (c == '"') inQuotes = !inQuotes
+            else if (c == ',' && !inQuotes) return idx
+        }
+        return -1
     }
 
     private fun detectKind(name: String, group: String, url: String): MediaKind {
