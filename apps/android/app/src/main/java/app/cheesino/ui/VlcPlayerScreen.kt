@@ -145,6 +145,7 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
             val m = Media(libVlc, Uri.parse(u)).apply {
                 setHWDecoderEnabled(true, false)
                 addOption(":network-caching=$cacheMs")
+                addOption(":http-user-agent=${vm.userAgent}")
             }
             mediaPlayer.media = m; m.release()
             failed = false; buffering = true
@@ -157,6 +158,7 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
         val media = Media(libVlc, Uri.parse(url)).apply {
             setHWDecoderEnabled(true, false)
             addOption(":network-caching=$cacheMs")
+            addOption(":http-user-agent=${vm.userAgent}")
             if (startAtMs > 0) addOption(":start-time=${startAtMs / 1000}")
         }
         mediaPlayer.media = media

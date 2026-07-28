@@ -8,6 +8,7 @@ import androidx.media3.datasource.cache.NoOpCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadNotificationHelper
+import app.cheesino.data.AppSettings
 import java.io.File
 import java.util.concurrent.Executors
 
@@ -40,6 +41,13 @@ object Downloads {
     private fun db(context: Context): StandaloneDatabaseProvider =
         db ?: StandaloneDatabaseProvider(context.applicationContext).also { db = it }
 
+    /** Kullanıcının ayarladığı User-Agent'ı taşıyan HTTP kaynağı — indirme + oynatma upstream'i.
+     *  Çoğu sağlayıcı belirli bir UA ister; ayardaki değer artık gerçekten uygulanıyor. */
+    private fun httpFactory(context: Context): DefaultHttpDataSource.Factory =
+        DefaultHttpDataSource.Factory()
+            .setUserAgent(AppSettings(context.applicationContext).userAgent)
+            .setAllowCrossProtocolRedirects(true)
+
     @Synchronized
     fun cache(context: Context): SimpleCache =
         cacheRef ?: SimpleCache(
@@ -56,7 +64,7 @@ object Downloads {
             ctx,
             db(ctx),
             cache(ctx),
-            DefaultHttpDataSource.Factory(),
+            httpFactory(ctx),
             Executors.newFixedThreadPool(3)
         ).apply {
             maxParallelDownloads = 2
@@ -69,7 +77,7 @@ object Downloads {
     fun cacheDataSourceFactory(context: Context): CacheDataSource.Factory =
         CacheDataSource.Factory()
             .setCache(cache(context))
-            .setUpstreamDataSourceFactory(DefaultHttpDataSource.Factory())
+            .setUpstreamDataSourceFactory(httpFactory(context))
             .setCacheWriteDataSinkFactory(null)   // oynatırken yazma yok → salt-okunur
             .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
 }
