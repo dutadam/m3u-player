@@ -69,7 +69,12 @@ fun MultiViewScreen(
                 Box(
                     Modifier.padding(start = 6.dp).clip(RoundedCornerShape(8.dp))
                         .background(if (on) Accent else Elevated)
-                        .clickable { rows = r; cols = c; persist() }
+                        .clickable {
+                            rows = r; cols = c
+                            // Küçük düzene geçince aktif slot görünür kalsın (yoksa ses tümden susar).
+                            activeSlot = activeSlot.coerceIn(0, r * c - 1)
+                            persist()
+                        }
                         .padding(horizontal = 14.dp, vertical = 8.dp)
                 ) { Text(label, color = if (on) Ground else TextHi, fontWeight = FontWeight.Bold) }
             }
@@ -172,7 +177,7 @@ private fun SlotCell(
                     Icon(Icons.Default.Close, "Remove", tint = Color.White)
                 }
             }
-            if (active) Text("● SES", color = Accent, fontSize = 10.sp, fontWeight = FontWeight.Bold,
+            if (active) Text("● AUDIO", color = Accent, fontSize = 10.sp, fontWeight = FontWeight.Bold,
                 modifier = Modifier.align(Alignment.BottomStart).padding(4.dp))
         } else {
             Column(Modifier.fillMaxSize().clickable(onClick = onAssign), horizontalAlignment = Alignment.CenterHorizontally,
