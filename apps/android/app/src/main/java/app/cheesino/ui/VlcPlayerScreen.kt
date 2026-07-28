@@ -228,6 +228,8 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
             .focusRequester(tvFocus).focusable()
             .onKeyEvent { ke ->
                 if (ke.type != KeyEventType.KeyDown) return@onKeyEvent false
+                // Altyazı/ses ya da "kaldığın yerden" diyaloğu açıkken tuşları YUTMA → dialog D-pad ile gezilsin.
+                if (showSubs || showAudio || askResume) return@onKeyEvent false
                 controlsVisible = true
                 // Geri sayım ekranında OK/ileri → hemen sonraki bölüm; diğer tuşlar geri sayımı sürdürür.
                 if (autoNext) return@onKeyEvent when (ke.key) {

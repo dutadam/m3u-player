@@ -333,6 +333,9 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
         .focusRequester(tvFocus).focusable()
         .onKeyEvent { ke ->
             if (ke.type != KeyEventType.KeyDown) return@onKeyEvent false
+            // Altyazı/parça ya da "kaldığın yerden" diyaloğu açıkken tuşları YUTMA → dialog D-pad ile
+            // gezilebilsin (yoksa oynatıcı OK'i play/pause sanıp diyaloğu kullanılamaz yapıyordu).
+            if (showTracks || askResume) return@onKeyEvent false
             controlsVisible = true
             // Geri sayım ekranında OK/ileri → hemen sonraki bölüm; diğer tuşlar geri sayımı sürdürür.
             if (autoNext) return@onKeyEvent when (ke.key) {
