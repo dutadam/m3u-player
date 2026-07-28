@@ -313,10 +313,14 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
             // Firestore SDK'sından gelebilecek her türlü hatayı (Error dahil) yut — giriş sonrası çökmesin.
             runCatching {
                 syncRepo.pull(uid)?.let { r ->
-                    val merged = _user.value.copy(
-                        favorites = _user.value.favorites + r.favorites,
-                        likes = _user.value.likes + r.likes,
-                        dislikes = _user.value.dislikes + r.dislikes
+                    val cur = _user.value
+                    val likes = cur.likes + r.likes
+                    val merged = cur.copy(
+                        favorites = cur.favorites + r.favorites,
+                        likes = likes,
+                        // Beğeni/beğenmeme karşılıklı dışlamalı kalsın: birleşince ikisinde birden
+                        // görünen öğeyi beğeni say (setRating'in koruduğu değişmez bozulmasın).
+                        dislikes = (cur.dislikes + r.dislikes) - likes
                     )
                     _user.value = merged
                     userStore.save(merged)
