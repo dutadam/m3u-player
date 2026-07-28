@@ -278,7 +278,11 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
         onDispose {
-            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            window?.let { w ->
+                w.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                // Jestle değişen parlaklığı sistem değerine geri bırak (oynatıcıdan çıkınca app kararmasın).
+                w.attributes = w.attributes.apply { screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE }
+            }
             controller?.show(WindowInsetsCompat.Type.systemBars())
         }
     }
