@@ -66,7 +66,7 @@ fun SportsScreen(
                         if (m.isLiveNow) Box(
                             Modifier.padding(top = 4.dp).clip(RoundedCornerShape(4.dp))
                                 .background(Live).padding(horizontal = 6.dp, vertical = 1.dp)
-                        ) { Text("CANLI", color = TextHi, fontSize = 9.sp, fontWeight = FontWeight.Black) }
+                        ) { Text("LIVE", color = TextHi, fontSize = 9.sp, fontWeight = FontWeight.Black) }
                     }
                     Column(Modifier.weight(1f).padding(start = 8.dp)) {
                         Text(m.title, color = TextHi, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)

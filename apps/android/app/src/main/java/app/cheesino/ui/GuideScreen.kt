@@ -222,7 +222,7 @@ private fun ChannelSchedule(
                         Text(p.title, color = if (past) TextMute else TextHi,
                             fontWeight = if (live) FontWeight.Black else FontWeight.Medium, fontSize = 14.sp,
                             maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        if (live) Text("● CANLI", color = Live, fontSize = 10.sp, fontWeight = FontWeight.Black,
+                        if (live) Text("● LIVE", color = Live, fontSize = 10.sp, fontWeight = FontWeight.Black,
                             modifier = Modifier.padding(top = 2.dp))
                     }
                     when {
