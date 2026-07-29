@@ -1,5 +1,7 @@
 package app.cheesino.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.fadeIn
@@ -105,20 +107,54 @@ fun RootScreen(vm: LibraryViewModel) {
     var showSearch by remember { mutableStateOf(false) }
     val epg by vm.epg.collectAsStateWithLifecycle()
 
-    // Kaynak yoksa onboarding tam ekran.
+    // Kaynak yoksa: Pro DEĞİLSE ağ-kaynak ekranını hiç gösterme → yerel oynatıcı açılışı.
+    // Ağ kaynağı eklemek (provider/playlist) Pro'ya kilitli; her "kilidi aç" yönlendirmesi paywall'a çıkar.
     if (!state.hasSource) {
         val authUser by vm.authUser.collectAsStateWithLifecycle()
         val authStatus by vm.authStatus.collectAsStateWithLifecycle()
-        OnboardingScreen(
-            state = state,
-            authUser = authUser,
-            authStatus = authStatus,
-            onGoogleSignIn = { activity?.let { vm.signIn(it) } },
-            onProvider = { vm.loadProvider(it) },
-            onPlaylist = { url ->
-                if (url.startsWith("http", true)) vm.loadPlaylistUrl(url) else vm.loadPlaylist(url)
+        Box(Modifier.fillMaxSize()) {
+            if (isPro) {
+                OnboardingScreen(
+                    state = state,
+                    authUser = authUser,
+                    authStatus = authStatus,
+                    onGoogleSignIn = { activity?.let { vm.signIn(it) } },
+                    onProvider = { vm.loadProvider(it) },
+                    onPlaylist = { url ->
+                        if (url.startsWith("http", true)) vm.loadPlaylistUrl(url) else vm.loadPlaylist(url)
+                    }
+                )
+            } else {
+                var showGate by remember { mutableStateOf(false) }
+                FreeLanding(
+                    proPrice = proPrice,
+                    authStatus = authStatus,
+                    onPlayLocal = { uri, title ->
+                        playQueue = listOf(PlayItem("local_${uri.hashCode()}", title, uri, isLive = false)); playIndex = 0
+                    },
+                    onUnlock = { showGate = true },
+                    onRestore = { vm.restorePurchases() },
+                    onSignIn = { activity?.let { vm.signIn(it) } }
+                )
+                AnimatedVisibility(visible = showGate, enter = fadeIn(), exit = fadeOut()) {
+                    PaywallScreen(
+                        highlight = app.cheesino.data.ProFeature.MULTI_SOURCE,
+                        priceText = proPrice,
+                        onUpgrade = { activity?.let { vm.purchasePro(it) }; showGate = false },
+                        onRestore = { vm.restorePurchases() },
+                        onClose = { showGate = false }
+                    )
+                }
             }
-        )
+            // Yerel video oynatma katmanı — free kullanıcı cihazındaki videoyu buradan oynatır.
+            playQueue.getOrNull(playIndex)?.let { item ->
+                PlayerHost(
+                    item = item, vm = vm,
+                    onClose = { playQueue = emptyList() },
+                    onEnded = { if (playIndex < playQueue.lastIndex) playIndex++ else playQueue = emptyList() }
+                )
+            }
+        }
         return
     }
 
@@ -358,7 +394,9 @@ private fun PlayerHost(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit
     val engine = vm.playerEngine
     // İndirilmiş öğe disk cache'inden ExoPlayer ile oynar (çevrimdışı) — VLC cache'i okumaz.
     val downloaded = remember(item.id) { vm.isDownloaded(item.id) }
-    var useVlc by remember(item.id) { mutableStateOf(!downloaded && (engine == 2 || (engine == 0 && !item.isLive))) }
+    // Yerel dosya (content://) ExoPlayer ile oynar — content URI'yi güvenle açar (VLC'de sorunlu olabilir).
+    val isLocal = item.url.startsWith("content://") || item.url.startsWith("file://")
+    var useVlc by remember(item.id) { mutableStateOf(!downloaded && !isLocal && (engine == 2 || (engine == 0 && !item.isLive))) }
     if (useVlc) {
         VlcPlayerScreen(item, vm, onClose, onEnded, onPrev = onPrev, onNext = onNext,
             hasNext = hasNext, nextTitle = nextTitle)
@@ -367,6 +405,76 @@ private fun PlayerHost(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit
             // Çevrimdışı öğede VLC'ye düşme (kaynak URL'i offline erişilemez).
             onFallback = if (!downloaded && engine == 0) ({ useVlc = true }) else null,
             onPrev = onPrev, onNext = onNext, hasNext = hasNext, nextTitle = nextTitle)
+    }
+}
+
+/**
+ * Free açılış — cihazdaki videoyu oynatan yerel medya oynatıcı girişi + ağ kaynaklarını açma (paywall).
+ * Ağ-kaynak (provider/playlist) formu Pro olmadan HİÇ gösterilmez; "kilidi aç" paywall'a yönlendirir.
+ */
+@Composable
+private fun FreeLanding(
+    proPrice: String?,
+    authStatus: String?,
+    onPlayLocal: (String, String) -> Unit,
+    onUnlock: () -> Unit,
+    onRestore: () -> Unit,
+    onSignIn: () -> Unit
+) {
+    val context = LocalContext.current
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            val name = runCatching {
+                context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
+                    if (it.moveToFirst()) it.getString(0) else null
+                }
+            }.getOrNull() ?: uri.lastPathSegment ?: "Video"
+            onPlayLocal(uri.toString(), name)
+        }
+    }
+    Column(
+        Modifier.fillMaxSize().background(Ground).statusBarsPadding().padding(28.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        BrandMark(size = 76.dp)
+        Text("cheesino", color = TextHi, fontWeight = FontWeight.Black, fontSize = 26.sp,
+            modifier = Modifier.padding(top = 14.dp))
+        Text("Your media player", color = TextMute, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
+
+        // Ücretsiz: cihazdaki videoyu oynat.
+        Row(
+            Modifier.padding(top = 28.dp).clip(RoundedCornerShape(14.dp)).background(Accent)
+                .clickable { runCatching { picker.launch(arrayOf("video/*")) } }
+                .padding(horizontal = 26.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Play a video from your device", color = Ground, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+        }
+
+        // Pro: ağ kaynakları + katalog/canlı/rehber/DVR/çoklu-ekran.
+        Column(
+            Modifier.padding(top = 14.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                .background(Elevated).clickable(onClick = onUnlock).padding(18.dp)
+        ) {
+            Text("Unlock network sources — Pro", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(
+                "Add your provider or playlist: catalog, live, guide, recording, multi-view." +
+                    (if (!proPrice.isNullOrBlank()) "  ·  $proPrice" else ""),
+                color = TextMute, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+
+        Row(Modifier.padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+            Text("Restore purchase", color = Accent, fontSize = 13.sp, fontWeight = FontWeight.Medium,
+                modifier = Modifier.clickable(onClick = onRestore))
+            Text("Sign in", color = Accent, fontSize = 13.sp, fontWeight = FontWeight.Medium,
+                modifier = Modifier.clickable(onClick = onSignIn))
+        }
+        authStatus?.let { Text(it, color = TextMute, fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp)) }
     }
 }
 
