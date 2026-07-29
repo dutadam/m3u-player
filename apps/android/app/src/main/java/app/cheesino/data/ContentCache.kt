@@ -20,7 +20,7 @@ data class CachedContent(
 
 /**
  * İçerik disk önbelleği. Kanal/dizi listesi büyük olabildiği için SharedPreferences yerine
- * dosyaya JSON yazılır. Kaynağa (Xtream sunucu+kullanıcı / M3U) göre anahtarlanır ki
+ * dosyaya JSON yazılır. Kaynağa (provider sunucu+kullanıcı / playlist) göre anahtarlanır ki
  * hesap değişince eski önbellek gösterilmesin.
  */
 class ContentCache(context: Context) {

@@ -1,7 +1,7 @@
 package app.cheesino.core
 
-// #EXTINF ayrıştırma — iOS M3UParser ile aynı mantık.
-object M3UParser {
+// #EXTINF ayrıştırma — iOS PlaylistParser ile aynı mantık.
+object PlaylistParser {
     data class Result(val channels: List<Channel>, val epgUrl: String?)
 
     private val attr = Regex("([a-zA-Z0-9-]+)=\"([^\"]*)\"")

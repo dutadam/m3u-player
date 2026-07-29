@@ -58,7 +58,7 @@ class RecordingService : Service() {
     // Süren HTTP çağrısı — bekçi/durdurma bunu iptal ederek bloke okumayı (readTimeout=0) keser.
     @Volatile private var currentCall: okhttp3.Call? = null
 
-    // Çoğu IPTV sunucusu User-Agent olmayan isteği 403 ile reddeder → kayıt boş kalır.
+    // Çoğu streaming sunucusu User-Agent olmayan isteği 403 ile reddeder → kayıt boş kalır.
     // Oynatıcılarla uyumlu bir UA gönder.
     private val userAgent = "VLC/3.0.20 LibVLC/3.0.20"
 

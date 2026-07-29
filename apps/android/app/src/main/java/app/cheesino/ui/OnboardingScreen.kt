@@ -22,7 +22,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.cheesino.core.XtreamCredentials
+import app.cheesino.core.ProviderCredentials
 import app.cheesino.data.AuthUser
 import app.cheesino.data.LibraryState
 import app.cheesino.ui.theme.*
@@ -33,10 +33,10 @@ fun OnboardingScreen(
     authUser: AuthUser?,
     authStatus: String?,
     onGoogleSignIn: () -> Unit,
-    onXtream: (XtreamCredentials) -> Unit,
-    onM3U: (String) -> Unit
+    onProvider: (ProviderCredentials) -> Unit,
+    onPlaylist: (String) -> Unit
 ) {
-    var tab by remember { mutableIntStateOf(0) }   // 0 Xtream, 1 M3U
+    var tab by remember { mutableIntStateOf(0) }   // 0 provider, 1 playlist
     var server by remember { mutableStateOf("") }
     var user by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
@@ -46,7 +46,7 @@ fun OnboardingScreen(
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
             runCatching { context.contentResolver.openInputStream(it)?.bufferedReader()?.use { r -> r.readText() } }
-                .getOrNull()?.let { text -> onM3U(text) }
+                .getOrNull()?.let { text -> onPlaylist(text) }
         }
     }
 
@@ -105,11 +105,11 @@ fun OnboardingScreen(
                     Field("Username", user) { user = it }
                     Field("Password", pass, password = true) { pass = it }
                     PrimaryButton("Connect", state.loading) {
-                        XtreamCredentials.normalize(server)?.let { onXtream(XtreamCredentials(it, user, pass)) }
+                        ProviderCredentials.normalize(server)?.let { onProvider(ProviderCredentials(it, user, pass)) }
                     }
                 } else {
                     Field("Source URL", m3u) { m3u = it }
-                    PrimaryButton("Load", state.loading) { onM3U(m3u) }
+                    PrimaryButton("Load", state.loading) { onPlaylist(m3u) }
                     Box(
                         Modifier.fillMaxWidth().padding(top = 10.dp).clip(RoundedCornerShape(12.dp))
                             .background(Ground).clickable { filePicker.launch("*/*") }

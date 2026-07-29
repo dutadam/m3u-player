@@ -16,7 +16,7 @@ import javax.crypto.spec.SecretKeySpec
  * AES-128 ile şifreliyse çözülür ve tek bir `.ts` dosyasına **ardışık eklenir**. MPEG-TS segmentleri
  * birleştirilebilir olduğu için sonuç tek parça oynatılabilir kayıt olur.
  *
- * Kapsam: MPEG-TS segmentli HLS (yaygın IPTV). fMP4/CMAF segmentli HLS düzgün mux gerektirir →
+ * Kapsam: MPEG-TS segmentli HLS (yaygın streaming). fMP4/CMAF segmentli HLS düzgün mux gerektirir →
  * bu basit ekleme onlarda çalışmaz.
  */
 object HlsRecorder {

@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit
 
 private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true; isLenient = true }
 
-// Xtream sunucuları int alanları bazen String döndürür → esnek okuyucular
+// provider sunucuları int alanları bazen String döndürür → esnek okuyucular
 private fun JsonElement?.asInt(): Int = (this as? JsonPrimitive)?.let { it.longOrNull ?: it.contentOrNull?.toLongOrNull() }?.toInt() ?: 0
 private fun JsonElement?.asDoubleOrNull(): Double? = (this as? JsonPrimitive)?.let { it.doubleOrNull ?: it.contentOrNull?.toDoubleOrNull() }
 private fun JsonElement?.asLongOrNull(): Long? = (this as? JsonPrimitive)?.let { it.longOrNull ?: it.contentOrNull?.toLongOrNull() }
@@ -52,7 +52,7 @@ private fun JsonElement?.asStr(): String? = (this as? JsonPrimitive)?.contentOrN
 )
 
 /** player_api.php istemcisi — CORS/proxy YOK (native). */
-class XtreamClient(val creds: XtreamCredentials) {
+class ProviderClient(val creds: ProviderCredentials) {
     private val http = OkHttpClient.Builder()
         .connectTimeout(20, TimeUnit.SECONDS).readTimeout(20, TimeUnit.SECONDS).build()
 

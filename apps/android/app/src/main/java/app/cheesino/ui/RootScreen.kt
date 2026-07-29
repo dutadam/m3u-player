@@ -114,9 +114,9 @@ fun RootScreen(vm: LibraryViewModel) {
             authUser = authUser,
             authStatus = authStatus,
             onGoogleSignIn = { activity?.let { vm.signIn(it) } },
-            onXtream = { vm.loadXtream(it) },
-            onM3U = { url ->
-                if (url.startsWith("http", true)) vm.loadM3UUrl(url) else vm.loadM3U(url)
+            onProvider = { vm.loadProvider(it) },
+            onPlaylist = { url ->
+                if (url.startsWith("http", true)) vm.loadPlaylistUrl(url) else vm.loadPlaylist(url)
             }
         )
         return

@@ -65,12 +65,12 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     )
     val state: StateFlow<LibraryState> = _state.asStateFlow()
 
-    /** Xtream oturumu — dizi detayı/bölüm çekmek için canlı tutulur (M3U kaynağında null). */
-    private var client: XtreamClient? = null
+    /** provider oturumu — dizi detayı/bölüm çekmek için canlı tutulur (playlist kaynağında null). */
+    private var client: ProviderClient? = null
 
     /** İçerik disk önbelleği — açılışta anında gösterim, ağ arka planda tazeler. */
     private val contentCache = ContentCache(app)
-    private fun xtKey(c: XtreamCredentials) = "xt:${c.server}:${c.username}"
+    private fun xtKey(c: ProviderCredentials) = "xt:${c.server}:${c.username}"
 
     // ---- Keşif (arka planda hesaplanır; kullanıcı değişiminde DEĞİL, içerik yüklenince yenilenir) ----
     private val _discover = MutableStateFlow(Discover())
@@ -134,7 +134,7 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // ---- EPG (rehber) ----
-    private var epgSourceUrl: String? = null   // M3U url-tvg (Xtream'de xmltv.php kullanılır)
+    private var epgSourceUrl: String? = null   // playlist url-tvg (provider'de xmltv.php kullanılır)
     private val _epg = MutableStateFlow<Map<String, List<EpgEntry>>>(emptyMap())
     val epg: StateFlow<Map<String, List<EpgEntry>>> = _epg.asStateFlow()
 
@@ -154,7 +154,7 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Canlı kanalın geçmiş programını baştan izleme (timeshift) URL'i — yalnız Xtream + arşiv. */
+    /** Canlı kanalın geçmiş programını baştan izleme (timeshift) URL'i — yalnız provider + arşiv. */
     // ---- Pro yetkilendirme + Play Billing ----
     private val entitlements = Entitlements(app)
     val isPro: StateFlow<Boolean> = entitlements.isPro
@@ -292,7 +292,7 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
                 if (!_state.value.hasSource) {
                     _authStatus.value = "Fetching source from your account…"
                     val remote = syncRepo.pullSource(uid)
-                    if (remote != null) { loadXtream(remote); _authStatus.value = null }
+                    if (remote != null) { loadProvider(remote); _authStatus.value = null }
                     else _authStatus.value = "No saved source on the account — add your source once, it will load automatically on the next device."
                 }
             }
@@ -372,15 +372,15 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
         val c = creds.load() ?: return
         val cached = contentCache.load(xtKey(c))
         if (cached != null && cached.channels.isNotEmpty()) {
-            client = XtreamClient(c)   // detay (dizi/film) çekimleri için canlı istemci
+            client = ProviderClient(c)   // detay (dizi/film) çekimleri için canlı istemci
             _epg.value = emptyMap()
             val stale = System.currentTimeMillis() - cached.savedAt > DAY_MS
             _state.value = LibraryState(channels = cached.channels, series = cached.series,
                 loading = false, refreshing = stale, hasSource = true, parentalOn = settings.parentalEnabled)
             rebuildDiscover()
-            if (stale) loadXtream(c, background = true)   // günde bir kez otomatik tazele
+            if (stale) loadProvider(c, background = true)   // günde bir kez otomatik tazele
         } else {
-            loadXtream(c)
+            loadProvider(c)
         }
     }
 
@@ -389,20 +389,20 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     /** Manuel yenileme (ayarlardan). İçerik varsa ekranı boşaltmadan arka planda tazeler. */
     fun reload() {
         val c = creds.load() ?: return
-        loadXtream(c, background = _state.value.channels.isNotEmpty())
+        loadProvider(c, background = _state.value.channels.isNotEmpty())
     }
 
     /**
-     * Xtream içeriğini çeker. [background] true ise (önbellek zaten gösteriliyorken tazeleme)
+     * provider içeriğini çeker. [background] true ise (önbellek zaten gösteriliyorken tazeleme)
      * tam ekran yükleyici yerine "refreshing" göstergesi kullanılır ve hata sessizce yutulur.
      */
-    fun loadXtream(c: XtreamCredentials, background: Boolean = false) {
+    fun loadProvider(c: ProviderCredentials, background: Boolean = false) {
         _state.value =
             if (background) _state.value.copy(refreshing = true, error = null)
             else _state.value.copy(loading = true, error = null)
         viewModelScope.launch {
             try {
-                val cl = XtreamClient(c)
+                val cl = ProviderClient(c)
                 if (!cl.authenticateActive()) {
                     _state.value = _state.value.copy(loading = false, refreshing = false,
                         error = if (background) null else "Subscription is not active.")
@@ -496,7 +496,7 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
         return r
     }
 
-    /** Dizi detayını (sezon/bölüm) tembel çeker + önbellekler. M3U'da null. */
+    /** Dizi detayını (sezon/bölüm) tembel çeker + önbellekler. playlist'da null. */
     suspend fun seriesDetail(ref: SeriesRef): Series? {
         seriesCache[ref.id]?.let { return it }
         return client?.seriesInfo(ref)?.also { seriesCache[ref.id] = it }
@@ -508,9 +508,9 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
         return client?.vodInfo(ch)?.also { movieCache[ch.id] = it }
     }
 
-    fun loadM3U(text: String) {
-        val result = M3UParser.parse(text)
-        if (result.channels.isEmpty()) { _state.value = _state.value.copy(error = "No channels found in the M3U."); return }
+    fun loadPlaylist(text: String) {
+        val result = PlaylistParser.parse(text)
+        if (result.channels.isEmpty()) { _state.value = _state.value.copy(error = "No channels found in the playlist."); return }
         epgSourceUrl = result.epgUrl
         _epg.value = emptyMap()
         _state.value = LibraryState(channels = result.channels, loading = false,
@@ -518,14 +518,14 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
         rebuildDiscover()
     }
 
-    fun loadM3UUrl(url: String) {
+    fun loadPlaylistUrl(url: String) {
         _state.value = _state.value.copy(loading = true, error = null)
         viewModelScope.launch {
             try {
                 val text = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                     java.net.URL(url).readText()
                 }
-                loadM3U(text)
+                loadPlaylist(text)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(loading = false, error = "Could not load the playlist.")
             }

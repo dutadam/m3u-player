@@ -1,6 +1,6 @@
 package app.cheesino.data
 
-import app.cheesino.core.XtreamCredentials
+import app.cheesino.core.ProviderCredentials
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
@@ -47,10 +47,10 @@ class SyncRepository {
         (v as? List<*>)?.mapNotNull { it as? String }?.toSet() ?: emptySet()
 
     /**
-     * Kullanıcının KENDİ Xtream kaynağını hesabına yazar (cihazlar arası otomatik gelsin diye).
+     * Kullanıcının KENDİ provider kaynağını hesabına yazar (cihazlar arası otomatik gelsin diye).
      * Yalnız kendi uid belgesine yazılır; Firestore güvenlik kuralları başkasının okumasını engeller.
      */
-    suspend fun pushSource(uid: String, c: XtreamCredentials): Result<Unit> = try {
+    suspend fun pushSource(uid: String, c: ProviderCredentials): Result<Unit> = try {
         doc(uid).set(
             mapOf("source" to mapOf("server" to c.server, "user" to c.username, "pass" to c.password)),
             SetOptions.merge()
@@ -60,13 +60,13 @@ class SyncRepository {
         Result.failure(e)
     }
 
-    /** Hesaba kayıtlı Xtream kaynağını getirir (yeni cihazda otomatik yükleme için). */
-    suspend fun pullSource(uid: String): XtreamCredentials? = try {
+    /** Hesaba kayıtlı provider kaynağını getirir (yeni cihazda otomatik yükleme için). */
+    suspend fun pullSource(uid: String): ProviderCredentials? = try {
         val m = doc(uid).get().await().get("source") as? Map<*, *> ?: return null
         val s = m["server"] as? String ?: return null
         val u = m["user"] as? String ?: return null
         val p = m["pass"] as? String ?: return null
-        XtreamCredentials(s, u, p)
+        ProviderCredentials(s, u, p)
     } catch (e: Exception) {
         null
     }

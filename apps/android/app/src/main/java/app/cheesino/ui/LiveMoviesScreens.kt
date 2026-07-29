@@ -185,7 +185,7 @@ private fun LiveChannelCard(ch: Channel, now: String?, onTap: () -> Unit) {
     }
 }
 
-/** Filmler — arama + dinamik tür/senaryo rayları + Xtream kategorileri (poster'a dokun → detay). */
+/** Filmler — arama + dinamik tür/senaryo rayları + provider kategorileri (poster'a dokun → detay). */
 @Composable
 fun MoviesScreen(state: LibraryState, movieRails: List<Pair<String, List<Channel>>>, onPlay: (Channel) -> Unit) {
     var q by remember { mutableStateOf("") }

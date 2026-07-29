@@ -2,7 +2,7 @@ package app.cheesino.core
 
 import kotlinx.serialization.Serializable
 
-// iOS Core paketinin Kotlin karşılığı. Paylaşılan sözleşme: docs/spec/xtream-m3u-epg.md
+// iOS Core paketinin Kotlin karşılığı. Paylaşılan sözleşme: docs/spec/provider-m3u-epg.md
 
 enum class MediaKind { LIVE, VOD, SERIES }
 
@@ -64,7 +64,7 @@ data class Series(val id: String, val name: String, val cover: String?, val plot
                   val genre: String?, val seasons: List<Season>, val rating: Double? = null)
 
 @Serializable
-data class XtreamCredentials(val server: String, val username: String, val password: String) {
+data class ProviderCredentials(val server: String, val username: String, val password: String) {
     companion object {
         /** iOS normalize ile aynı: sondaki / temizlenir, şema yoksa http:// eklenir. */
         fun normalize(raw: String): String? {
