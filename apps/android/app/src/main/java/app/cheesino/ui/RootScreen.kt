@@ -1,7 +1,16 @@
 package app.cheesino.ui
 
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.ui.layout.ContentScale
+import coil.ImageLoader
+import coil.compose.AsyncImage
+import coil.decode.VideoFrameDecoder
+import app.cheesino.data.LocalVideo
+import app.cheesino.data.LocalMediaStore
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.fadeIn
@@ -112,10 +121,14 @@ fun RootScreen(vm: LibraryViewModel) {
     if (!isPro) {
         val authStatus by vm.authStatus.collectAsStateWithLifecycle()
         var showGate by remember { mutableStateOf(false) }
+        val recentLocal = remember(user.resume) {
+            user.resume.values.filter { it.id.startsWith("local_") && !it.finished }.sortedByDescending { it.updatedAt }
+        }
         Box(Modifier.fillMaxSize()) {
             FreeLanding(
                 proPrice = proPrice,
                 authStatus = authStatus,
+                recentLocal = recentLocal,
                 onPlayLocal = { uri, title ->
                     playQueue = listOf(PlayItem("local_${uri.hashCode()}", title, uri, isLive = false)); playIndex = 0
                 },
@@ -412,24 +425,34 @@ private fun PlayerHost(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit
 }
 
 /**
- * Free açılış — cihazdaki videoyu oynatan yerel medya oynatıcı girişi + ağ kaynaklarını açma (paywall).
- * Ağ-kaynak (provider/playlist) formu Pro olmadan HİÇ gösterilmez; "kilidi aç" paywall'a yönlendirir.
+ * Free açılış = cihazdaki video kütüphanesini oynatan yerel medya oynatıcı (MediaStore).
+ * Ağ-kaynak (provider/playlist) ekranı Pro olmadan HİÇ gösterilmez; "kilidi aç" paywall'a yönlendirir.
  */
 @Composable
 private fun FreeLanding(
     proPrice: String?,
     authStatus: String?,
+    recentLocal: List<ResumeMark>,
     onPlayLocal: (String, String) -> Unit,
     onUnlock: () -> Unit,
     onRestore: () -> Unit,
     onSignIn: () -> Unit
 ) {
     val context = LocalContext.current
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+    val perm = if (Build.VERSION.SDK_INT >= 33) android.Manifest.permission.READ_MEDIA_VIDEO
+               else android.Manifest.permission.READ_EXTERNAL_STORAGE
+    var granted by remember {
+        mutableStateOf(ContextCompat.checkSelfPermission(context, perm) == android.content.pm.PackageManager.PERMISSION_GRANTED)
+    }
+    var videos by remember { mutableStateOf<List<LocalVideo>>(emptyList()) }
+    val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
+    LaunchedEffect(granted) { if (granted) videos = LocalMediaStore.videos(context) }
+    // Coil: video karesini küçük resim olarak çöz.
+    val thumbLoader = remember { ImageLoader.Builder(context).components { add(VideoFrameDecoder.Factory()) }.build() }
+    // Belirli bir dosyayı aç (izin gerekmez — SAF).
+    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
-            runCatching {
-                context.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
+            runCatching { context.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
             val name = runCatching {
                 context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
                     if (it.moveToFirst()) it.getString(0) else null
@@ -438,47 +461,102 @@ private fun FreeLanding(
             onPlayLocal(uri.toString(), name)
         }
     }
-    Column(
-        Modifier.fillMaxSize().background(Ground).statusBarsPadding().padding(28.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(150.dp),
+        modifier = Modifier.fillMaxSize().background(Ground),
+        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp)
     ) {
-        BrandMark(size = 76.dp)
-        Text("cheesino", color = TextHi, fontWeight = FontWeight.Black, fontSize = 26.sp,
-            modifier = Modifier.padding(top = 14.dp))
-        Text("Your media player", color = TextMute, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp))
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            Column(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 6.dp, end = 6.dp, top = 12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    BrandMark(size = 40.dp)
+                    Column(Modifier.padding(start = 10.dp)) {
+                        Text("cheesino", color = TextHi, fontWeight = FontWeight.Black, fontSize = 22.sp)
+                        Text("Your media player", color = TextMute, fontSize = 12.sp)
+                    }
+                }
+                Column(
+                    Modifier.padding(top = 14.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                        .background(Elevated).clickable(onClick = onUnlock).padding(16.dp)
+                ) {
+                    Text("Unlock network sources — Pro", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text(
+                        "Add your provider or playlist: catalog, live, guide, recording, multi-view." +
+                            (if (!proPrice.isNullOrBlank()) "  ·  $proPrice" else ""),
+                        color = TextMute, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+                Row(Modifier.padding(top = 12.dp).fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    LandingChip("Open a file") { runCatching { filePicker.launch(arrayOf("video/*")) } }
+                    if (!granted) LandingChip("Allow video access") { permLauncher.launch(perm) }
+                    LandingChip("Restore") { onRestore() }
+                    LandingChip("Sign in") { onSignIn() }
+                }
+                authStatus?.let { Text(it, color = TextMute, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
 
-        // Ücretsiz: cihazdaki videoyu oynat.
-        Row(
-            Modifier.padding(top = 28.dp).clip(RoundedCornerShape(14.dp)).background(Accent)
-                .clickable { runCatching { picker.launch(arrayOf("video/*")) } }
-                .padding(horizontal = 26.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Play a video from your device", color = Ground, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-        }
+                if (recentLocal.isNotEmpty()) {
+                    Text("Continue watching", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                        modifier = Modifier.padding(top = 18.dp, bottom = 6.dp))
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        recentLocal.take(12).forEach { m ->
+                            LocalThumb(m.url, m.title, m.fraction, thumbLoader, width = 150.dp) { onPlayLocal(m.url, m.title) }
+                        }
+                    }
+                }
 
-        // Pro: ağ kaynakları + katalog/canlı/rehber/DVR/çoklu-ekran.
-        Column(
-            Modifier.padding(top = 14.dp).fillMaxWidth().clip(RoundedCornerShape(14.dp))
-                .background(Elevated).clickable(onClick = onUnlock).padding(18.dp)
-        ) {
-            Text("Unlock network sources — Pro", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            Text(
-                "Add your provider or playlist: catalog, live, guide, recording, multi-view." +
-                    (if (!proPrice.isNullOrBlank()) "  ·  $proPrice" else ""),
-                color = TextMute, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp)
-            )
+                Text(
+                    if (granted && videos.isNotEmpty()) "On this device · ${videos.size}" else "Videos on this device",
+                    color = TextHi, fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                    modifier = Modifier.padding(top = 18.dp, bottom = 8.dp)
+                )
+                if (!granted) Text("Allow video access to list the videos on your device.", color = TextMute, fontSize = 13.sp)
+                else if (videos.isEmpty()) Text("No videos found.", color = TextMute, fontSize = 13.sp)
+            }
         }
-
-        Row(Modifier.padding(top = 18.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-            Text("Restore purchase", color = Accent, fontSize = 13.sp, fontWeight = FontWeight.Medium,
-                modifier = Modifier.clickable(onClick = onRestore))
-            Text("Sign in", color = Accent, fontSize = 13.sp, fontWeight = FontWeight.Medium,
-                modifier = Modifier.clickable(onClick = onSignIn))
+        items(videos, key = { it.uri }) { v ->
+            LocalThumb(v.uri, v.title, null, thumbLoader, sub = fmtDur(v.durationMs)) { onPlayLocal(v.uri, v.title) }
         }
-        authStatus?.let { Text(it, color = TextMute, fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp)) }
     }
+}
+
+@Composable
+private fun LandingChip(label: String, onClick: () -> Unit) {
+    Text(label, color = TextHi, fontSize = 13.sp, fontWeight = FontWeight.Medium,
+        modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Elevated)
+            .clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 8.dp))
+}
+
+/** Yerel video küçük kartı — video karesi (thumb) + başlık + süre/ilerleme çubuğu. */
+@Composable
+private fun LocalThumb(
+    uri: String, title: String, fraction: Float?, loader: ImageLoader,
+    width: androidx.compose.ui.unit.Dp = 0.dp, sub: String? = null, onClick: () -> Unit
+) {
+    val mod = if (width > 0.dp) Modifier.width(width) else Modifier.fillMaxWidth()
+    Column(mod.padding(4.dp).clickable(onClick = onClick)) {
+        Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(10.dp)).background(Elevated),
+            contentAlignment = Alignment.Center) {
+            AsyncImage(model = uri, contentDescription = title, imageLoader = loader,
+                modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            if (fraction != null) Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp)
+                .background(Color.Black.copy(alpha = 0.4f))) {
+                Box(Modifier.fillMaxWidth(fraction).height(3.dp).background(Accent))
+            }
+        }
+        Text(title, color = TextHi, fontSize = 12.sp, maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 5.dp, start = 2.dp))
+        sub?.let { Text(it, color = TextMute, fontSize = 11.sp, modifier = Modifier.padding(start = 2.dp)) }
+    }
+}
+
+private fun fmtDur(ms: Long): String {
+    if (ms <= 0) return ""
+    val s = ms / 1000; val h = s / 3600; val m = (s % 3600) / 60; val sec = s % 60
+    return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%d:%02d".format(m, sec)
 }
 
 /** Kategori filtresi seçilince gösterilen film grid'i. */
