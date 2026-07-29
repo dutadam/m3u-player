@@ -1,7 +1,7 @@
 {
   "name": "cheesino",
   "short_name": "cheesino",
-  "description": "cheesino — M3U ve Xtream Codes oynatıcı: HLS, EPG, favoriler, son izlenenler, PWA",
+  "description": "cheesino — medya oynatıcı: HLS, EPG, favoriler, son izlenenler, PWA",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
