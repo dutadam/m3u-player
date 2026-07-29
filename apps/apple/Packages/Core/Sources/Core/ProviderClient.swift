@@ -1,13 +1,13 @@
 import Foundation
 
-/// Xtream Codes `player_api.php` istemcisi. Spec: docs/spec/xtream-m3u-epg.md §3.
+/// Provider Codes `player_api.php` istemcisi. Spec: docs/spec/provider-playlist-epg.md §3.
 /// Native URLSession — CORS/proxy YOK (PWA'daki `loadURL` proxy zinciri gereksiz).
 /// PWA'daki "dizi bölümü için JSON indir-seç" workaround'unu (index.html:1522) tamamen değiştirir.
-public struct XtreamClient: Sendable {
-    public let creds: XtreamCredentials
+public struct ProviderClient: Sendable {
+    public let creds: ProviderCredentials
     private let session: URLSession
 
-    public init(creds: XtreamCredentials, session: URLSession = .shared) {
+    public init(creds: ProviderCredentials, session: URLSession = .shared) {
         self.creds = creds
         self.session = session
     }
@@ -94,7 +94,7 @@ public struct XtreamClient: Sendable {
 
     // MARK: - Ağ çağrıları
 
-    public enum XtreamError: Error { case badResponse, decoding }
+    public enum ProviderError: Error { case badResponse, decoding }
 
     /// Ham JSON verisi getirir (timeout + hata kontrolü).
     public func fetchData(_ url: URL, timeout: TimeInterval = 20) async throws -> Data {
@@ -102,7 +102,7 @@ public struct XtreamClient: Sendable {
         req.timeoutInterval = timeout
         let (data, resp) = try await session.data(for: req)
         guard let http = resp as? HTTPURLResponse, 200..<300 ~= http.statusCode else {
-            throw XtreamError.badResponse
+            throw ProviderError.badResponse
         }
         return data
     }
@@ -112,7 +112,7 @@ public struct XtreamClient: Sendable {
     public func authenticate() async throws -> AccountInfo {
         let data = try await fetchData(apiURL(.accountInfo))
         do { return try JSONDecoder().decode(AccountInfo.self, from: data) }
-        catch { throw XtreamError.decoding }
+        catch { throw ProviderError.decoding }
     }
 }
 

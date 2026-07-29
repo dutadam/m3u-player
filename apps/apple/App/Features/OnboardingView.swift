@@ -6,18 +6,18 @@ import Design
 /// Güven-öncelikli: kimlik bilgisi Keychain'de (entegrasyon notu), nötr oynatıcı mesajı.
 struct OnboardingView: View {
     @EnvironmentObject private var library: LibraryStore
-    enum Tab: String, CaseIterable { case m3u = "M3U URL", xtream = "Xtream", file = "Dosya", discover = "Keşfet" }
+    enum Tab: String, CaseIterable { case m3u = "M3U URL", provider = "Provider", file = "Dosya", discover = "Keşfet" }
 
-    // iptv-org ücretsiz katalog kaynakları (yasal free-to-air topluluk listeleri).
+    // ücretsiz topluluk katalog kaynakları (yasal free-to-air topluluk listeleri).
     static let discoverSources: [(name: String, code: String, flag: String)] = [
         ("Türkiye", "tr", "🇹🇷"), ("ABD", "us", "🇺🇸"), ("İngiltere", "uk", "🇬🇧"),
         ("Almanya", "de", "🇩🇪"), ("Tüm dünya", "index", "🌍")
     ]
-    static func iptvOrgURL(_ code: String) -> String {
+    static func communityCatalogURL(_ code: String) -> String {
         code == "index" ? "https://iptv-org.github.io/iptv/index.m3u"
                         : "https://iptv-org.github.io/iptv/countries/\(code).m3u"
     }
-    @State private var tab: Tab = .xtream
+    @State private var tab: Tab = .provider
     @State private var name = ""
     @State private var m3uURL = ""
     @State private var server = ""
@@ -74,13 +74,13 @@ struct OnboardingView: View {
                 connectButton("Yükle") {
                     if let u = URL(string: m3uURL) { await library.addM3U(name: name, url: u) }
                 }
-            case .xtream:
+            case .provider:
                 field("SUNUCU", text: $server)
                 field("KULLANICI ADI", text: $user)
                 field("ŞİFRE", text: $pass, secure: true)
                 connectButton("Bağlan") {
-                    if let s = XtreamCredentials.normalize(server) {
-                        await library.addXtream(name: name, creds: .init(server: s, username: user, password: pass))
+                    if let s = ProviderCredentials.normalize(server) {
+                        await library.addProvider(name: name, creds: .init(server: s, username: user, password: pass))
                     }
                 }
             case .file:
@@ -101,11 +101,11 @@ struct OnboardingView: View {
                 #endif
             case .discover:
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("iptv-org — ücretsiz, yasal, topluluk kanalları. Kendi kaynağın olmadan hemen dene.")
+                    Text("Ücretsiz, yasal topluluk kanalları. Kendi kaynağın olmadan hemen dene.")
                         .font(.caption).foregroundStyle(Color.sgDim)
                     ForEach(Self.discoverSources, id: \.code) { src in
                         Button {
-                            if let u = URL(string: Self.iptvOrgURL(src.code)) { Task { await library.addM3U(name: "iptv-org · \(src.name)", url: u) } }
+                            if let u = URL(string: Self.communityCatalogURL(src.code)) { Task { await library.addM3U(name: "iptv-org · \(src.name)", url: u) } }
                         } label: {
                             HStack {
                                 Text(src.flag).font(.title3)

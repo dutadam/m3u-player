@@ -381,7 +381,7 @@ body{height:var(--vh);background:var(--bg);color:var(--text);
 .url-prog-dot.curr{background:var(--accent);transform:scale(1.3)}
 .url-prog-cancel{margin-top:4px;padding:10px 28px;border-radius:10px;border:1px solid var(--border);background:none;color:var(--text-dim);font-size:14px;cursor:pointer;touch-action:manipulation;-webkit-appearance:none}
 .url-prog-cancel:active{background:var(--elevated)}
-/* XTREAM form */
+/* provider form */
 .xt-btn{width:100%;padding:12px 18px;border-radius:10px;border:none;cursor:pointer;font-size:15px;font-weight:600;background:linear-gradient(135deg,var(--accent) 0%,#7B5BFF 100%);color:white;touch-action:manipulation;-webkit-appearance:none;transition:opacity .15s,transform .1s}
 .xt-btn:active{opacity:.82;transform:scale(.97)}
 .xt-btn:disabled{opacity:.5;pointer-events:none}
@@ -453,7 +453,7 @@ body{height:var(--vh);background:var(--bg);color:var(--text);
       <button class="add-tab" data-tab="xt">Sağlayıcı</button>
     </div>
     <div class="add-pane" id="add-pane-url">
-      <input class="url-input" id="m3u-url-input" type="url" inputmode="url" autocomplete="url" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="https://… M3U linki veya Xtream get.php">
+      <input class="url-input" id="m3u-url-input" type="url" inputmode="url" autocomplete="url" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="https://… playlist ya da sağlayıcı linki">
       <button class="btn btn-primary" id="m3u-url-btn" style="width:100%">Yükle</button>
     </div>
     <div class="add-pane" id="add-pane-file" style="display:none">
@@ -596,7 +596,7 @@ body{height:var(--vh);background:var(--bg);color:var(--text);
         <button class="btn-refresh primary" id="settings-refresh-btn">Yenile</button>
       </div>
       <div class="settings-hint">
-        Xtream Codes formatı:<br>
+        Sağlayıcı formatı:<br>
         <code>http://sunucu:8080/get.php?username=KULLANICI&amp;password=ŞİFRE&amp;type=m3u_plus</code><br><br>
         <strong style="color:var(--accent)">💡 GitHub ile otomatik güncelleme:</strong> Playlist dosyasını GitHub'a yükle, raw URL'yi buraya yapıştır. Uygulama her açılışta arka planda günceller.<br>
         Örnek: <code>https://raw.githubusercontent.com/kullanıcı/repo/main/playlist.m3u</code><br><br>
@@ -1290,7 +1290,7 @@ function playChannel(ch){
     const rp=getResume(origUrl);
     if(rp>0)video.addEventListener('loadedmetadata',()=>{video.currentTime=rp;},{once:true});
     video.play().then(()=>showPlayerLoading(false)).catch(e=>{
-      // On iOS Safari, Xtream Codes URLs need .m3u8 suffix for native HLS
+      // On iOS Safari, provider URLs need .m3u8 suffix for native HLS
       const hasMediaExt=/\.(m3u8|mp4|ts|mkv|avi|flv)(\?|$)/i.test(src);
       if(isIOS&&!hasMediaExt&&!tried){
         const m3u8=src.split('?')[0]+'.m3u8'+(src.includes('?')?'?'+src.split('?').slice(1).join('?'):'');
@@ -1489,7 +1489,7 @@ dropZone.addEventListener('dragleave',e=>{if(!dropZone.contains(e.relatedTarget)
 dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag-over');const f=e.dataTransfer.files[0];if(f){switchAddTab('file');readFile(f);}});
 document.getElementById('file-input').addEventListener('change',e=>{const f=e.target.files[0];if(f)readFile(f);e.target.value='';});
 function readFile(f){setP(20);const r=new FileReader();r.onload=e=>loadText(e.target.result,{type:'file',name:f.name,ts:Date.now()});r.onerror=()=>showToast('Dosya okunamadı','info');r.readAsText(f,'utf-8');}
-// Xtream Codes
+// provider
 function _xtNorm(s){s=s.trim();while(s.endsWith('/'))s=s.slice(0,-1);if(!s.startsWith('http'))s='http://'+s;return s;}
 function loadXtream(server,user,pass){
   server=_xtNorm(server);
@@ -1586,7 +1586,7 @@ document.getElementById('series-info-file').addEventListener('change',e=>{
   e.target.value='';
 });
 // ── /Series Detail Overlay ────────────────────────────────────────────────
-// Pre-fill Xtream form from saved credentials
+// Pre-fill provider form from saved credentials
 const _savedXt=S.get('xtream_creds',null);
 if(_savedXt){
   const si=document.getElementById('xt-server'),ui=document.getElementById('xt-user'),pi=document.getElementById('xt-pass');

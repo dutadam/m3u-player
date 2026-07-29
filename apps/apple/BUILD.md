@@ -95,7 +95,7 @@ cd apps/apple/Packages/Core && swift test
 4. App Store Connect'te **Internal Testing** grubuna ekle (inceleme yok, 100 kişiye kadar).
 5. Export compliance: `Info.plist`'te `ITSAppUsesNonExemptEncryption=false` var → soru sorulmaz.
 > External TestFlight / App Store için: [`../../docs/compliance/APP-STORE.md`](../../docs/compliance/APP-STORE.md)
-> (App Review notları, iptv-org demo linki, nutrition label, kontrol listesi).
+> (App Review notları, topluluk katalog demo linki, nutrition label, kontrol listesi).
 
 ---
 

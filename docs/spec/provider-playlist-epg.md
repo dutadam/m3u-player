@@ -1,4 +1,4 @@
-# Çekirdek Şartname — M3U · Xtream Codes · EPG · Stream Fallback
+# Çekirdek Şartname — M3U · provider Codes · EPG · Stream Fallback
 
 > Faz 0 mühendislik temeli. Bu doküman, **Apple (SwiftUI)** ve **Android (Kotlin/Compose)** stack'lerinin
 > ortak sözleşmesidir. Amaç: her iki tarafın da aynı davranışı üretmesi. Mevcut PWA (`index.html`) referans
@@ -10,7 +10,7 @@
 ## 1. Veri Modelleri
 
 ```
-Playlist { id, name, type: m3u_url | m3u_file | xtream, url?, xtream?{server,user,pass}, count, updatedAt }
+Playlist { id, name, type: m3u_url | m3u_file | provider, url?, provider?{server,user,pass}, count, updatedAt }
 Channel  { id, name, logo?, group, url, tvgId?, epgChannelId?, kind: live|vod|series, quality?: 4K|FHD|HD|SD }
 Series   { seriesId, name, cover?, plot?, genre?, seasons:[Season] }
 Season   { number, episodes:[Episode] }
@@ -34,11 +34,11 @@ Referans: `parseM3U` (`index.html:724`). Kurallar:
 - **Kalite tespiti** kanal adından: `4K|UHD → 4K`, `FHD|FULLHD → FHD`, `HD → HD`, `SD → SD` (ref: `dq` `index.html:717`).
 - **VOD/Dizi tespiti**: `detectSeries` (`index.html:739`) — `SxxExx`, `Sezon N Bölüm M` desenleri; aynı diziyi grupla (`groupBySeries` `:778`).
 - `#EXTGRP`, `#KODIPROP`, `url-tvg`/`x-tvg-url`/`tvg-url` (EPG kaynağı) header'ları okunur.
-- **User-Agent / Referer** başlık override desteği (iptvnator'dan): bazı portallar özel UA ister.
+- **User-Agent / Referer** başlık override desteği (streamingnator'dan): bazı portallar özel UA ister.
 
 ---
 
-## 3. Xtream Codes API (`player_api.php`)
+## 3. provider Codes API (`player_api.php`)
 
 Native'de CORS yok → doğrudan çağrılır. Base = normalize edilmiş server (ref: `_xtNorm` `index.html:1491`;
 sondaki `/` temizle, şema yoksa `http://` ekle). Auth query: `?username=U&password=P`.
@@ -62,7 +62,7 @@ Canlı :  {server}/live/{user}/{pass}/{stream_id}.{ts|m3u8}
 VOD   :  {server}/movie/{user}/{pass}/{stream_id}.{ext}
 Dizi  :  {server}/series/{user}/{pass}/{episode_id}.{ext}     // ext = container_extension (mkv/mp4)
 ```
-Not: iOS native HLS için Xtream canlı yayınlarda `.m3u8` son eki tercih; `.ts` fallback (ref: `tryNative` `index.html:1285`).
+Not: iOS native HLS için provider canlı yayınlarda `.m3u8` son eki tercih; `.ts` fallback (ref: `tryNative` `index.html:1285`).
 
 ### Catchup / Timeshift (yeni — PWA'da yok)
 ```
@@ -74,7 +74,7 @@ Kanal `tv_archive=1` ise EPG bloğundan geçmişe kaydırınca timeshift URL ür
 
 ## 4. EPG (XMLTV)
 
-Kaynaklar (öncelik sırası): Xtream `xmltv.php?username=&password=` → playlist header `url-tvg`/`x-tvg-url` →
+Kaynaklar (öncelik sırası): provider `xmltv.php?username=&password=` → playlist header `url-tvg`/`x-tvg-url` →
 kullanıcı-tanımlı URL. Referans: `parseXMLTV` (`index.html:851`), `getEPGNow` (`:868`).
 
 - `<programme start="..." stop="..." channel="...">` → `parseXMLTVDate` (`index.html:843`): `YYYYMMDDHHMMSS ±ZZZZ`.
@@ -93,11 +93,11 @@ PWA'daki `streamSources` (`index.html:1246`) + `playChannel` (`:1260`) mantığ�
    (native'de mixed-content engeli YOK — bu satır PWA'da sadece http-page'de çalışıyordu; native'de her zaman geçerli).
 2. **Oynatıcı seçimi**: HLS/MP4 → **AVPlayer** (Apple) / **Media3/ExoPlayer** (Android). Başarısız veya exotic codec
    (MKV/AVI/…) → **VLCKit** (Apple) / **libVLC veya mpv** (Android).
-3. **Xtream canlı & uzantısız URL** + iOS → `.m3u8` son eki dene (ref: `tryNative` iOS dalı `index.html:1289`).
+3. **provider canlı & uzantısız URL** + iOS → `.m3u8` son eki dene (ref: `tryNative` iOS dalı `index.html:1289`).
 4. **Watchdog**: MANIFEST/ilk-frame için timeout (~12–15 sn, ref: hls.js config `index.html:1270`). Takılırsa
    sıradaki kaynağa geç. Oynatma sırasında stall → otomatik yeniden bağlan (GSE'nin "60 sn'de donma" regresyonunu hedefler).
 5. **Net hata teşhisi**: kaynak tükendiğinde kullanıcıya anlaşılır mesaj (URL geçersiz / sunucu yanıt vermiyor /
-   codec desteklenmiyor) — genel "playback failed" değil (iptv-org #14534 dersi).
+   codec desteklenmiyor) — genel "playback failed" değil (streaming-org #14534 dersi).
 
 ---
 
@@ -116,7 +116,7 @@ PWA'daki `streamSources` (`index.html:1246`) + `playChannel` (`:1260`) mantığ�
 |---|---|---|
 | HTTP yayın | Mixed-content engeli | **Sorunsuz oynatılır** |
 | CORS | 5 public proxy zinciri (`loadURL` `:1411`) | **Gereksiz — kaldırıldı** |
-| Xtream | Sadece m3u_plus linki | **Tam `player_api.php`** |
+| provider | Sadece m3u_plus linki | **Tam `player_api.php`** |
 | Dizi bölümleri | JSON indir → manuel seç | **Otomatik `get_series_info`** |
 | EPG | Manuel XMLTV dosya | **Otomatik xmltv.php + fuzzy eşleme** |
 | Codec | Sadece HLS (hls.js) | **AVPlayer + VLCKit / ExoPlayer + libVLC** |

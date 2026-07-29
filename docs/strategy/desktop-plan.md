@@ -9,7 +9,7 @@
 | Katman | Dosyalar | Masaüstü uyumu |
 |---|---|---|
 | **core** | Models, M3UParser, GenreTagger, AdultFilter, SportsFinder, StreamResolver, Recommender, RailEngine | ✅ Saf Kotlin — doğrudan taşınır |
-| core | Xtream, OmdbClient (OkHttp) | ✅ OkHttp JVM — Android+Desktop ortak (jvmMain) |
+| core | provider, OmdbClient (OkHttp) | ✅ OkHttp JVM — Android+Desktop ortak (jvmMain) |
 | core | **XmltvParser** (`android.util.Xml`, `org.xmlpull`) | ⚠️ Android XML → JVM `javax.xml`/kotlinx ile değiştir |
 | **data** | CredStore/UserDataStore/AppSettings/ContentCache/MultiViewStore (SharedPreferences, filesDir), Reminders (AlarmManager), LibraryViewModel (AndroidViewModel) | ⚠️ Depolama + ViewModel soyutlanmalı |
 | **ui** | Compose ekranlar | 🟡 Material3 çoklu-platform; ama Coil + AndroidView oynatıcılar değişmeli |

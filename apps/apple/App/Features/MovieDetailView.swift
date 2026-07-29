@@ -3,7 +3,7 @@ import Core
 import Design
 
 /// Film (VOD) detayı — backdrop hero + poster + özet + oyuncu/yönetmen + TMDB künyesi.
-/// Xtream get_vod_info ile lazy yüklenir; grid'den doğrudan oynatma yerine sinematik detay.
+/// Provider get_vod_info ile lazy yüklenir; grid'den doğrudan oynatma yerine sinematik detay.
 struct MovieDetailView: View {
     let channel: Channel
     @EnvironmentObject private var library: LibraryStore

@@ -1,8 +1,8 @@
 import Foundation
 
-/// M3U / M3U8 ayrıştırıcı. Spec: docs/spec/xtream-m3u-epg.md §2.
+/// M3U / M3U8 ayrıştırıcı. Spec: docs/spec/provider-playlist-epg.md §2.
 /// PWA referansı: `parseM3U()` (index.html:724).
-public enum M3UParser {
+public enum PlaylistParser {
 
     /// Ayrıştırma sonucu: kanallar + (varsa) playlist-seviyesi EPG kaynak URL'i (`url-tvg` vb.).
     public struct Result: Sendable {

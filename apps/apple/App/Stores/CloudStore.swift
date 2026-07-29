@@ -3,7 +3,7 @@ import Foundation
 /// iCloud key-value senkronizasyonu (favori/son izlenen/ilerleme). Spec §6.
 /// Küçük kullanıcı durumu için CloudKit'e gerek yok — NSUbiquitousKeyValueStore otomatik senkronlar
 /// (1MB / 1024 anahtar sınırı bizim veriye fazlasıyla yeter). Kanal kataloğu senkronlanmaz; her cihaz
-/// kendi Xtream/M3U kaynağından çeker. Kimlik bilgisi buraya YAZILMAZ (o Keychain'de).
+/// kendi Provider/M3U kaynağından çeker. Kimlik bilgisi buraya YAZILMAZ (o Keychain'de).
 ///
 /// NOT: KVS'ye yalnız iCloud kullanılabilirken dokunulur. Aksi halde `.default`'a erişmek
 /// "BUG IN CLIENT OF KVS: … without a store identifier" uyarısı üretir (entitlement yoksa).

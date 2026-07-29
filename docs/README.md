@@ -1,12 +1,12 @@
-# cheesino — Cross-Platform IPTV Uygulaması (Docs)
+# cheesino — Cross-Platform streaming Uygulaması (Docs)
 
-iOS öncelikli, native-per-ecosystem bir IPTV oynatıcı (**cheesino**). Bu klasör Faz 0 (temel & tasarım) çıktılarını içerir.
+iOS öncelikli, native-per-ecosystem bir streaming oynatıcı (**cheesino**). Bu klasör Faz 0 (temel & tasarım) çıktılarını içerir.
 
 ## İçindekiler
 
 - **[Tasarım Şartnamesi (görsel)](./design/ui-preview.html)** — iOS UI/UX prototipi ("Signal" yönü).
   Tarayıcıda aç; native SwiftUI implementasyonunun görsel referansı. Palet, tipografi, anahtar ekranlar, tasarım sistemi.
-- **[Çekirdek Spec](./spec/xtream-m3u-epg.md)** — M3U/Xtream/EPG sözleşmesi + stream fallback algoritması + PWA→native geçiş tablosu.
+- **[Çekirdek Spec](./spec/provider-playlist-epg.md)** — M3U/provider/EPG sözleşmesi + stream fallback algoritması + PWA→native geçiş tablosu.
 - **Uyum** — [gizlilik politikası (TR/EN)](./compliance/PRIVACY.md) · [App Store rehberi](./compliance/APP-STORE.md) (App Review notları, nutrition label, export compliance, kontrol listesi).
 - **Tam ürün/teknik plan** — oturum planı (`effervescent-weaving` plan dosyası): rakip analizi, Reddit içgörüleri, mimari, yol haritası.
 
@@ -14,7 +14,7 @@ iOS öncelikli, native-per-ecosystem bir IPTV oynatıcı (**cheesino**). Bu klas
 
 ```
 Paylaşılan Çekirdek (spec → ileride KMP/Rust)
-  M3U parser · Xtream API client · XMLTV/EPG · modeller · stream fallback
+  M3U parser · provider API client · XMLTV/EPG · modeller · stream fallback
         │
    ┌────┴─────────────────────────┐
 Apple (SwiftUI)              Android/Desktop (Kotlin/Compose)
@@ -35,14 +35,14 @@ index.html       Mevcut PWA (korunur — hızlı web girişi / landing)
 
 ## Öncelikler
 
-Gelişmiş özellikler · Premium UI/UX & stabilite · Tam Xtream API entegrasyonu · Akıllı içerik & EPG.
+Gelişmiş özellikler · Premium UI/UX & stabilite · Tam provider API entegrasyonu · Akıllı içerik & EPG.
 
 ## Farklılaşma (kısa)
 
-Rakiplerin (IPTV Smarters, GSE) en zayıf noktaları — **stabilite, arayüz, EPG** — ana saldırı vektörü.
+Rakiplerin (streaming Smarters, GSE) en zayıf noktaları — **stabilite, arayüz, EPG** — ana saldırı vektörü.
 Ek: çoklu ekran + spor merkezi, iCloud sync, gerçek PiP/AirPlay, nötr & gizlilik-öncelikli konumlandırma
 (mağaza telif-uyumu için de kritik).
 
 ## Sonraki adım
 
-Faz 1 — Apple MVP: SwiftUI iskelet + tam Xtream API + native oynatıcı + otomatik EPG. Tasarım şartnamesinden türetilir.
+Faz 1 — Apple MVP: SwiftUI iskelet + tam provider API + native oynatıcı + otomatik EPG. Tasarım şartnamesinden türetilir.

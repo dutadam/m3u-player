@@ -2,7 +2,7 @@ import SwiftUI
 import Core
 import Design
 
-/// Kategori yönetimi — Xtream/M3U'dan gelen kategorileri gizle/göster. Gizlenenler tüm listelerde
+/// Kategori yönetimi — Provider/M3U'dan gelen kategorileri gizle/göster. Gizlenenler tüm listelerde
 /// (Canlı/Filmler/Diziler/Ana Sayfa) saklanır. Tercih kalıcı + iCloud senkronludur.
 struct CategoryManagerView: View {
     @EnvironmentObject private var library: LibraryStore

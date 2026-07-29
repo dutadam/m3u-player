@@ -1,7 +1,7 @@
 import Foundation
 
-// Xtream `player_api.php` yanıt modelleri. Spec: docs/spec/xtream-m3u-epg.md §3.
-// NOT: Xtream sunucuları tipleri tutarsız döndürür (Int alanlar bazen String). Bu yüzden
+// Provider `player_api.php` yanıt modelleri. Spec: docs/spec/provider-playlist-epg.md §3.
+// NOT: Provider sunucuları tipleri tutarsız döndürür (Int alanlar bazen String). Bu yüzden
 // id/sayı alanlarında `LenientInt` kullanılır.
 
 /// Int değeri Int veya String olarak decode edebilen yardımcı.
@@ -35,7 +35,7 @@ public struct LenientDouble: Codable, Hashable, Sendable {
     }
 }
 
-public struct XtreamCategory: Codable, Hashable, Sendable {
+public struct ProviderCategory: Codable, Hashable, Sendable {
     public let categoryId: String
     public let categoryName: String
     enum CodingKeys: String, CodingKey {
@@ -44,7 +44,7 @@ public struct XtreamCategory: Codable, Hashable, Sendable {
     }
 }
 
-public struct XtreamLiveStream: Codable, Hashable, Sendable {
+public struct ProviderLiveStream: Codable, Hashable, Sendable {
     public let name: String
     public let streamId: LenientInt
     public let streamIcon: String?
@@ -62,7 +62,7 @@ public struct XtreamLiveStream: Codable, Hashable, Sendable {
     public var hasCatchup: Bool { (tvArchive?.value ?? 0) > 0 }
 }
 
-public struct XtreamVodStream: Codable, Hashable, Sendable {
+public struct ProviderVodStream: Codable, Hashable, Sendable {
     public let name: String
     public let streamId: LenientInt
     public let streamIcon: String?
@@ -81,7 +81,7 @@ public struct XtreamVodStream: Codable, Hashable, Sendable {
     public var addedDate: Date? { added.map { Date(timeIntervalSince1970: TimeInterval($0.value)) } }
 }
 
-public struct XtreamSeriesItem: Codable, Hashable, Sendable {
+public struct ProviderSeriesItem: Codable, Hashable, Sendable {
     public let name: String
     public let seriesId: LenientInt
     public let cover: String?
@@ -96,7 +96,7 @@ public struct XtreamSeriesItem: Codable, Hashable, Sendable {
 }
 
 /// get_vod_info yanıtı — film detay ekranı için (poster/backdrop/özet/oyuncu/TMDB).
-public struct XtreamVodInfo: Codable, Sendable {
+public struct ProviderVodInfo: Codable, Sendable {
     public struct Info: Codable, Sendable {
         public let movieImage: String?
         public let backdropPath: [String]?
@@ -117,7 +117,7 @@ public struct XtreamVodInfo: Codable, Sendable {
             case releaseDate = "releasedate"
             case youtubeTrailer = "youtube_trailer"
         }
-        // Xtream `rating`/`tmdb_id` bazen sayı döndürür — esnek decode.
+        // Provider `rating`/`tmdb_id` bazen sayı döndürür — esnek decode.
         public init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
             movieImage = try? c.decodeIfPresent(String.self, forKey: .movieImage)
@@ -144,7 +144,7 @@ public struct XtreamVodInfo: Codable, Sendable {
 }
 
 /// get_series_info yanıtı — PWA'daki manuel JSON-indir-seç akışının (index.html:1535) yerine geçer.
-public struct XtreamSeriesInfo: Codable, Sendable {
+public struct ProviderSeriesInfo: Codable, Sendable {
     public struct Info: Codable, Sendable {
         public let name: String?
         public let cover: String?

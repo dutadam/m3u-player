@@ -3,7 +3,7 @@ import Core
 import Design
 
 /// Kategori-bazlı gözatma — kategori çipleri + filtreli grid. Binlerce kanallı gerçek
-/// IPTV listeleri için ölçeklenir (düz tek-grid yerine). Canlı ve VOD için ortak kullanılır.
+/// streaming listeleri için ölçeklenir (düz tek-grid yerine). Canlı ve VOD için ortak kullanılır.
 struct CategoryBrowseView: View {
     @EnvironmentObject private var library: LibraryStore
     let title: String

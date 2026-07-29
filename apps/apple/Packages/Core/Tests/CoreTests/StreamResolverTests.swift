@@ -35,7 +35,7 @@ final class StreamResolverTests: XCTestCase {
     }
 
     func testM3U8AddsTSVLCFallback() {
-        // Xtream canlı: .m3u8 → AVPlayer adayı + .ts VLC fallback
+        // Provider canlı: .m3u8 → AVPlayer adayı + .ts VLC fallback
         let c = StreamResolver.candidates(for: URL(string: "http://portal:8080/live/u/p/1001.m3u8")!)
         XCTAssertTrue(c.contains { $0.url.absoluteString.hasSuffix("1001.m3u8") && $0.engine == .avPlayer })
         XCTAssertTrue(c.contains { $0.url.absoluteString.hasSuffix("1001.ts") && $0.engine == .vlcKit })
@@ -50,17 +50,17 @@ final class StreamResolverTests: XCTestCase {
     }
 }
 
-final class XtreamClientTests: XCTestCase {
+final class ProviderClientTests: XCTestCase {
 
-    private var client: XtreamClient {
-        let server = XtreamCredentials.normalize("portal.example.com:8080/")!
-        return XtreamClient(creds: XtreamCredentials(server: server, username: "u", password: "p"))
+    private var client: ProviderClient {
+        let server = ProviderCredentials.normalize("portal.example.com:8080/")!
+        return ProviderClient(creds: ProviderCredentials(server: server, username: "u", password: "p"))
     }
 
     func testServerNormalization() {
-        XCTAssertEqual(XtreamCredentials.normalize("portal.example.com:8080/")?.absoluteString,
+        XCTAssertEqual(ProviderCredentials.normalize("portal.example.com:8080/")?.absoluteString,
                        "http://portal.example.com:8080")
-        XCTAssertEqual(XtreamCredentials.normalize("https://x.com///")?.absoluteString, "https://x.com")
+        XCTAssertEqual(ProviderCredentials.normalize("https://x.com///")?.absoluteString, "https://x.com")
     }
 
     func testAPIURLBuilding() {

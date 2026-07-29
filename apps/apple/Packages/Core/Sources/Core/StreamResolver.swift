@@ -1,6 +1,6 @@
 import Foundation
 
-/// Oynatma kaynağı çözümleme. Spec: docs/spec/xtream-m3u-epg.md §5.
+/// Oynatma kaynağı çözümleme. Spec: docs/spec/provider-playlist-epg.md §5.
 /// PWA referansı: `streamSources()` (index.html:1246) — ancak native'de CORS/proxy YOK
 /// ve mixed-content engeli YOK, bu yüzden HTTP kaynağı her zaman aday olarak eklenir.
 public enum StreamResolver {
@@ -24,7 +24,7 @@ public enum StreamResolver {
         var urls: [URL] = []
         func add(_ u: URL?) { if let u, !urls.contains(u) { urls.append(u) } }
 
-        // Native'de ATS HTTP'ye izin verir → ORİJİNALİ ÖNCE dene. Xtream sunucuları genelde
+        // Native'de ATS HTTP'ye izin verir → ORİJİNALİ ÖNCE dene. Provider sunucuları genelde
         // belirli bir portta düz HTTP sunar; HTTPS'e zorlamak "connection refused"/TLS hatası verir.
         add(original)
         if original.scheme?.lowercased() == "http" {
@@ -42,7 +42,7 @@ public enum StreamResolver {
 
         var out = urls.map { Candidate(url: $0, engine: engine(for: $0)) }
 
-        // Xtream canlı: .m3u8 (AVPlayer/HLS) oynamazsa .ts (VLC/MPEG-TS) dene. Çoğu Xtream paneli
+        // Provider canlı: .m3u8 (AVPlayer/HLS) oynamazsa .ts (VLC/MPEG-TS) dene. Çoğu Provider paneli
         // canlıyı MPEG-TS olarak sunar; AVPlayer .ts oynatamaz, VLC oynatır.
         if original.pathExtension.lowercased() == "m3u8" {
             for u in urls {
@@ -55,7 +55,7 @@ public enum StreamResolver {
         return out
     }
 
-    /// iOS Safari/AVPlayer, uzantısız Xtream canlı URL'lerinde `.m3u8` ekiyle daha iyi çalışır.
+    /// iOS Safari/AVPlayer, uzantısız Provider canlı URL'lerinde `.m3u8` ekiyle daha iyi çalışır.
     /// PWA referansı: `tryNative` iOS dalı (index.html:1289).
     public static func iOSHLSVariant(of url: URL) -> URL? {
         let path = url.path.lowercased()

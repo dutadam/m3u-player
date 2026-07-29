@@ -1,6 +1,6 @@
 import Foundation
 
-// MARK: - Temel modeller (spec: docs/spec/xtream-m3u-epg.md §1)
+// MARK: - Temel modeller (spec: docs/spec/provider-playlist-epg.md §1)
 
 public enum MediaKind: String, Codable, Sendable {
     case live, vod, series
@@ -21,7 +21,7 @@ public enum Quality: String, Codable, Sendable {
 }
 
 public struct Channel: Identifiable, Hashable, Codable, Sendable {
-    public var id: String            // stabil kimlik (url veya xtream stream_id)
+    public var id: String            // stabil kimlik (url veya provider stream_id)
     public var name: String
     public var logo: URL?
     public var group: String
@@ -43,7 +43,7 @@ public struct Channel: Identifiable, Hashable, Codable, Sendable {
     }
 }
 
-public struct XtreamCredentials: Codable, Hashable, Sendable {
+public struct ProviderCredentials: Codable, Hashable, Sendable {
     public var server: URL           // normalize edilmiş (bkz. normalize)
     public var username: String
     public var password: String
@@ -65,7 +65,7 @@ public struct XtreamCredentials: Codable, Hashable, Sendable {
 public enum PlaylistSource: Hashable, Codable, Sendable {
     case m3uURL(URL)
     case m3uFile(name: String)
-    case xtream(XtreamCredentials)
+    case provider(ProviderCredentials)
 }
 
 public struct Playlist: Identifiable, Hashable, Codable, Sendable {

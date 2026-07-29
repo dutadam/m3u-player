@@ -1,7 +1,7 @@
 # cheesino — Android / Android TV
 
-Premium IPTV oynatıcının Android tarafı. iOS (SwiftUI) kod tabanıyla aynı ürün
-dilini ve paylaşılan Xtream/M3U/EPG sözleşmesini (`../../docs/spec/xtream-m3u-epg.md`)
+Premium medya oynatıcının Android tarafı. iOS (SwiftUI) kod tabanıyla aynı ürün
+dilini ve paylaşılan Xtream/M3U/EPG sözleşmesini (`../../docs/spec/provider-playlist-epg.md`)
 takip eder. Tek APK hem telefon/tablet hem Android TV / Google TV'de çalışır.
 
 ## Stack

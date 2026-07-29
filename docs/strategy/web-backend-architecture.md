@@ -11,7 +11,7 @@ Bir web proxy'si videoyu sunucun üzerinden geçirir. Global ölçekte iki duvar
   **5 Gbps sürekli egress**. Bu, ayda on binlerce dolar. Video-relay bir CDN maliyet merkezidir.
 - **CPU:** MKV/AVI transcode ≈ çekirdek başına 1 akış. Binlerce eşzamanlı = transcode çiftliği.
 - **Hukuk:** Yayını **sen ilettiğin an** artık "nötr oynatıcı" değilsin — iletim zincirindesin.
-  IPTV servislerini kapattıran tam olarak budur. Bugüne kadar koruduğumuz "kullanıcı kendi kaynağını
+  streaming servislerini kapattıran tam olarak budur. Bugüne kadar koruduğumuz "kullanıcı kendi kaynağını
   getirir, biz içeriğe dokunmayız" tezi, backend videoyu relay ettiği an **çöker**.
 
 **Sonuç:** Video, mümkün olan her yerde **cihaz → kaynak** doğrudan akmalı. cheesino sunucusu video

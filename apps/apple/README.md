@@ -47,7 +47,7 @@ apps/apple/
 Faz 1–2: Core entegre; tam Xtream API (live/vod/series + get_series_info), tam EPG grid + catchup,
 Keychain kimlik saklama, favori/recent/resume kalıcılık + **iCloud sync**, AVPlayer+VLCKit oynatıcı,
 **çoklu ekran** (4 yayın), dosya seçici. Core/Design paketleri CI'da yeşil (swift test). SwiftUI app
-target'ı ilk kez Xcode'da derlenecek. Sıradaki: App Store uyum paketi, iptv-org keşfet (Faz 4), Android (Faz 3).
+target'ı ilk kez Xcode'da derlenecek. Sıradaki: App Store uyum paketi, topluluk kataloğu keşfet (Faz 4), Android (Faz 3).
 
 ## Ürün ismi
 

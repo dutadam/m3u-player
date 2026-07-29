@@ -12,13 +12,13 @@ _Son güncelleme / Last updated: 2026-07-07_
 **Özet: cheesino hiçbir kişisel veri toplamaz, sunucusuna göndermez. Hesap yok, reklam yok, takip yok, analitik yok.**
 
 ### Toplanan veri
-Hiçbiri. cheesino'nun bize ait bir sunucusu veya arka ucu yoktur. Uygulama yalnızca **sizin girdiğiniz** IPTV
-kaynağına (M3U bağlantısı / Xtream sunucusu) ve isteğe bağlı EPG adresine bağlanır. Bu trafiği biz görmeyiz,
+Hiçbiri. cheesino'nun bize ait bir sunucusu veya arka ucu yoktur. Uygulama yalnızca **sizin girdiğiniz** streaming
+kaynağına (M3U bağlantısı / provider sunucusu) ve isteğe bağlı EPG adresine bağlanır. Bu trafiği biz görmeyiz,
 proxy'lemeyiz, saklamayız.
 
 ### Cihazınızda saklanan veriler
 - Playlist listeniz, favorileriniz, izleme ilerlemeniz, son izlenenler — **cihazınızda** (yerel depolama).
-- Xtream kullanıcı adı/şifreniz — **cihazınızda Keychain ile şifreli**. Hiçbir yere gönderilmez.
+- provider kullanıcı adı/şifreniz — **cihazınızda Keychain ile şifreli**. Hiçbir yere gönderilmez.
 
 ### iCloud
 Favori ve izleme ilerlemenizi **kendi iCloud hesabınız** üzerinden cihazlarınız arasında senkronlayabilirsiniz.
@@ -50,12 +50,12 @@ Gizlilik soruları ve telif bildirimleri için: **<e-posta adresinizi buraya gir
 **Summary: cheesino collects no personal data and sends nothing to us. No accounts, no ads, no tracking, no analytics.**
 
 ### Data collected
-None. cheesino has no server or backend of ours. The app connects only to the IPTV source **you** provide
-(M3U link / Xtream server) and an optional EPG URL. We do not see, proxy, or store that traffic.
+None. cheesino has no server or backend of ours. The app connects only to the streaming source **you** provide
+(M3U link / provider server) and an optional EPG URL. We do not see, proxy, or store that traffic.
 
 ### Data stored on your device
 - Your playlists, favorites, watch progress, and recents — stored **locally on your device**.
-- Your Xtream username/password — stored **encrypted in the Keychain** on your device. Never transmitted.
+- Your provider username/password — stored **encrypted in the Keychain** on your device. Never transmitted.
 
 ### iCloud
 You may sync favorites and watch progress across your devices via **your own iCloud account**. This data lives

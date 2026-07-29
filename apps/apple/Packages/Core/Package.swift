@@ -1,7 +1,7 @@
 // swift-tools-version: 5.9
 import PackageDescription
 
-// Core — platform-bağımsız iş mantığı: M3U/Xtream/EPG ayrıştırma + stream çözümleme.
+// Core — platform-bağımsız iş mantığı: M3U/Provider/EPG ayrıştırma + stream çözümleme.
 // iOS · iPadOS · macOS · tvOS ortak çekirdeği. Harici bağımlılık yok (Foundation).
 let package = Package(
     name: "Core",

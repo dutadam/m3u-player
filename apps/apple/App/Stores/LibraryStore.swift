@@ -32,7 +32,7 @@ final class LibraryStore: ObservableObject {
 
     private var session = LibraryStore.makeSession()
 
-    /// Özel User-Agent varsa onu ekleyen URLSession üretir (bazı IPTV panelleri UA ister).
+    /// Özel User-Agent varsa onu ekleyen URLSession üretir (bazı streaming panelleri UA ister).
     private static func makeSession() -> URLSession {
         let config = URLSessionConfiguration.default
         if let h = AppSettings.uaHeaders { config.httpAdditionalHeaders = h }
@@ -120,7 +120,7 @@ final class LibraryStore: ObservableObject {
     func channel(forURL url: String) -> Channel? { channels.first { $0.url.absoluteString == url } }
     var recentChannels: [Channel] { recents.compactMap { channel(forURL: $0.url) } }
 
-    // MARK: - Kategori gizleme (Xtream'den gelenler dahil)
+    // MARK: - Kategori gizleme (Provider'den gelenler dahil)
     var allCategories: [String] { Set(channels.map(\.group) + series.map(\.group)).sorted() }
     var visibleLive: [Channel] { live.filter { !hiddenCategories.contains($0.group) && adultAllowed($0.group) } }
     var visibleMovies: [Channel] { movies.filter { !hiddenCategories.contains($0.group) && adultAllowed($0.group) } }
@@ -204,14 +204,14 @@ final class LibraryStore: ObservableObject {
         if let pl = activePlaylist { await reload(pl, background: true) }
     }
 
-    /// Bir playlist'in kaynağından içeriği yükler (Xtream veya M3U).
+    /// Bir playlist'in kaynağından içeriği yükler (Provider veya M3U).
     private func reload(_ pl: PlaylistMeta, background: Bool) async {
         switch pl.kind {
-        case .xtream:
-            if let creds = KeychainStore.load(id: pl.id) { await loadXtream(creds, id: pl.id, background: background) }
+        case .provider:
+            if let creds = KeychainStore.load(id: pl.id) { await loadProvider(creds, id: pl.id, background: background) }
             else { errorMessage = "Kaynak kimlik bilgisi bulunamadı." }
         case .m3u:
-            if let u = URL(string: pl.m3uURL ?? "") { await loadM3U(from: u, id: pl.id, background: background) }
+            if let u = URL(string: pl.m3uURL ?? "") { await loadPlaylist(from: u, id: pl.id, background: background) }
         }
     }
 
@@ -232,29 +232,29 @@ final class LibraryStore: ObservableObject {
         }
     }
 
-    /// Bu kaynak için cihazda kimlik bilgisi yok mu (başka cihazdan senkronlanmış Xtream)?
+    /// Bu kaynak için cihazda kimlik bilgisi yok mu (başka cihazdan senkronlanmış Provider)?
     func needsAuth(_ pl: PlaylistMeta) -> Bool {
-        pl.kind == .xtream && KeychainStore.load(id: pl.id) == nil
+        pl.kind == .provider && KeychainStore.load(id: pl.id) == nil
     }
 
-    /// Senkronlanmış Xtream kaynağı için yalnız şifre girip yeniden yetkilendir.
+    /// Senkronlanmış Provider kaynağı için yalnız şifre girip yeniden yetkilendir.
     func reauth(_ id: String, password: String) async {
-        guard let pl = playlists.first(where: { $0.id == id }), pl.kind == .xtream,
+        guard let pl = playlists.first(where: { $0.id == id }), pl.kind == .provider,
               let server = pl.server.flatMap({ URL(string: $0) }), let user = pl.username else { return }
-        let creds = XtreamCredentials(server: server, username: user, password: password)
+        let creds = ProviderCredentials(server: server, username: user, password: password)
         KeychainStore.save(creds, id: id)
-        if activePlaylistId == id { await loadXtream(creds, id: id, background: false) }
+        if activePlaylistId == id { await loadProvider(creds, id: id, background: false) }
     }
 
-    /// Yeni Xtream kaynağı ekle ve aktif yap.
-    func addXtream(name: String, creds: XtreamCredentials) async {
+    /// Yeni Provider kaynağı ekle ve aktif yap.
+    func addProvider(name: String, creds: ProviderCredentials) async {
         let id = UUID().uuidString
-        let nm = name.trimmingCharacters(in: .whitespaces).isEmpty ? (creds.server.host ?? "Xtream") : name
+        let nm = name.trimmingCharacters(in: .whitespaces).isEmpty ? (creds.server.host ?? "Provider") : name
         KeychainStore.save(creds, id: id)
-        playlists.append(PlaylistMeta(id: id, name: nm, kind: .xtream, m3uURL: nil,
+        playlists.append(PlaylistMeta(id: id, name: nm, kind: .provider, m3uURL: nil,
                                       server: creds.server.absoluteString, username: creds.username, createdAt: Date()))
         setActive(id); persistPlaylists()
-        await loadXtream(creds, id: id, background: false)
+        await loadProvider(creds, id: id, background: false)
     }
 
     /// Yeni M3U kaynağı ekle ve aktif yap.
@@ -264,7 +264,7 @@ final class LibraryStore: ObservableObject {
         playlists.append(PlaylistMeta(id: id, name: nm, kind: .m3u, m3uURL: url.absoluteString,
                                       server: nil, username: nil, createdAt: Date()))
         setActive(id); persistPlaylists()
-        await loadM3U(from: url, id: id, background: false)
+        await loadPlaylist(from: url, id: id, background: false)
     }
 
     /// Başka bir kaydedilmiş kaynağa geç.
@@ -297,11 +297,11 @@ final class LibraryStore: ObservableObject {
         }
     }
 
-    /// Eski tek-kaynak (Keychain "xtream") kaydını playlist modeline taşı.
+    /// Eski tek-kaynak (Keychain "provider") kaydını playlist modeline taşı.
     private func migrateLegacyIfNeeded() {
         guard playlists.isEmpty, let creds = KeychainStore.load() else { return }
         let id = UUID().uuidString
-        playlists = [PlaylistMeta(id: id, name: creds.server.host ?? "Kaynağım", kind: .xtream, m3uURL: nil,
+        playlists = [PlaylistMeta(id: id, name: creds.server.host ?? "Kaynağım", kind: .provider, m3uURL: nil,
                                   server: creds.server.absoluteString, username: creds.username, createdAt: Date())]
         KeychainStore.save(creds, id: id)
         ContentCache.migrateLegacy(to: id)
@@ -520,7 +520,7 @@ final class LibraryStore: ObservableObject {
     func seriesResume(for id: String) -> SeriesResume? { seriesResume[id] }
 
     // MARK: - M3U (URL)
-    func loadM3U(from url: URL, id: String, background: Bool = false) async {
+    func loadPlaylist(from url: URL, id: String, background: Bool = false) async {
         if background { isRefreshing = true } else { isLoading = true }
         errorMessage = nil
         defer { if background { isRefreshing = false } else { isLoading = false } }
@@ -530,7 +530,7 @@ final class LibraryStore: ObservableObject {
                   let text = String(data: data, encoding: .utf8) else {
                 errorMessage = "Playlist alınamadı — bağlantıyı kontrol edin."; return
             }
-            let result = M3UParser.parse(text)
+            let result = PlaylistParser.parse(text)
             guard !result.channels.isEmpty else {
                 errorMessage = "M3U içinde kanal bulunamadı."; return
             }
@@ -546,7 +546,7 @@ final class LibraryStore: ObservableObject {
 
     // MARK: - M3U (dosya metni) — yenilenemez, önbellekten kalıcı
     func addM3UFile(name: String, text: String) {
-        let result = M3UParser.parse(text)
+        let result = PlaylistParser.parse(text)
         guard !result.channels.isEmpty else { errorMessage = "M3U içinde kanal bulunamadı."; return }
         let id = UUID().uuidString
         let nm = name.trimmingCharacters(in: .whitespaces).isEmpty ? "M3U Dosyası" : name
@@ -557,16 +557,16 @@ final class LibraryStore: ObservableObject {
         if let epgURL = result.epgURL { Task { await loadEPG(from: epgURL) } }
     }
 
-    // MARK: - Xtream
-    private(set) var xtreamClient: XtreamClient?
+    // MARK: - Provider
+    private(set) var providerClient: ProviderClient?
 
     /// background=true → mevcut içerik ekranda kalır, yalnız isRefreshing yanar; başarıda değiştirilir.
-    func loadXtream(_ creds: XtreamCredentials, id: String, background: Bool = false) async {
+    func loadProvider(_ creds: ProviderCredentials, id: String, background: Bool = false) async {
         if background { isRefreshing = true } else { isLoading = true }
         errorMessage = nil
         defer { if background { isRefreshing = false } else { isLoading = false } }
-        let client = XtreamClient(creds: creds, session: session)
-        xtreamClient = client
+        let client = ProviderClient(creds: creds, session: session)
+        providerClient = client
         do {
             let info = try await client.authenticate()
             guard info.isActive else { errorMessage = "Abonelik aktif değil."; return }
@@ -597,7 +597,7 @@ final class LibraryStore: ObservableObject {
             ContentCache.save(id: id, channels: all, series: refs)   // sonraki açılış için anlık görüntü
             await loadEPG(from: client.xmltvURL)
         } catch {
-            errorMessage = "Xtream girişi başarısız — sunucu/kullanıcı/şifreyi kontrol edin."
+            errorMessage = "Provider girişi başarısız — sunucu/kullanıcı/şifreyi kontrol edin."
         }
     }
 
@@ -610,7 +610,7 @@ final class LibraryStore: ObservableObject {
         LocalStore.save("", key: LocalStore.Key.activePlaylist)
         CloudStore.save([PlaylistMeta](), key: LocalStore.Key.playlists)
         CloudStore.save("", key: LocalStore.Key.activePlaylist)
-        channels = []; series = []; epg = nil; xtreamClient = nil; lastUpdated = nil
+        channels = []; series = []; epg = nil; providerClient = nil; lastUpdated = nil
     }
 
     // MARK: - Ayarlar: User-Agent + önbellek
@@ -686,9 +686,9 @@ final class LibraryStore: ObservableObject {
     }
 
     /// Geçmiş bir EPG programı için catchup/timeshift kanalı üretir (spec §3).
-    /// Xtream stream_id kanal id'sinden ("live_123") ayıklanır; program geçmişte değilse nil.
+    /// Provider stream_id kanal id'sinden ("live_123") ayıklanır; program geçmişte değilse nil.
     func catchupChannel(for ch: Channel, program p: EpgEntry) -> Channel? {
-        guard let client = xtreamClient, p.start < Date(),
+        guard let client = providerClient, p.start < Date(),
               let sid = Int(ch.id.replacingOccurrences(of: "live_", with: "")) else { return nil }
         let dur = max(1, Int(p.stop.timeIntervalSince(p.start) / 60))
         let url = client.timeshiftURL(streamId: sid, durationMin: dur, start: p.start)
@@ -699,13 +699,13 @@ final class LibraryStore: ObservableObject {
 
     /// Bir dizinin bölümlerini getirir (oynatıcı için). PWA'daki manuel akışın yerine geçer.
     func loadSeries(seriesId: Int, name: String) async -> Series? {
-        guard let client = xtreamClient else { return nil }
+        guard let client = providerClient else { return nil }
         return try? await client.fullSeries(seriesId: seriesId, name: name)
     }
 
     /// Film detayı (get_vod_info). vodId, Channel.id "vod_<id>" içinden çıkarılır.
     func loadMovieDetail(vodId: Int) async -> MovieDetail? {
-        guard let client = xtreamClient else { return nil }
+        guard let client = providerClient else { return nil }
         return try? await client.movieDetail(vodId: vodId)
     }
 

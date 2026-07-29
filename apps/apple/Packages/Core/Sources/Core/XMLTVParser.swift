@@ -1,6 +1,6 @@
 import Foundation
 
-/// XMLTV (EPG) ayrıştırıcı. Spec: docs/spec/xtream-m3u-epg.md §4.
+/// XMLTV (EPG) ayrıştırıcı. Spec: docs/spec/provider-playlist-epg.md §4.
 /// PWA referansı: `parseXMLTV()` (index.html:851), `parseXMLTVDate()` (:843).
 /// Foundation `XMLParser` (SAX) — büyük dosyalarda bellek-dostu akış ayrıştırma.
 public final class XMLTVParser: NSObject, XMLParserDelegate {

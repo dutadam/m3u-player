@@ -1,7 +1,7 @@
 # Core — Paylaşılan İş Mantığı (SwiftPM)
 
 Platform-bağımsız çekirdek: M3U/Xtream/EPG ayrıştırma + stream çözümleme. Harici bağımlılık yok (yalnız Foundation).
-iOS · iPadOS · macOS · tvOS ortak modülü. Spec: [`docs/spec/xtream-m3u-epg.md`](../../../../docs/spec/xtream-m3u-epg.md).
+iOS · iPadOS · macOS · tvOS ortak modülü. Spec: [`docs/spec/provider-playlist-epg.md`](../../../../docs/spec/provider-playlist-epg.md).
 
 ## İçerik
 

@@ -1,7 +1,7 @@
 import XCTest
 @testable import Core
 
-final class M3UParserTests: XCTestCase {
+final class PlaylistParserTests: XCTestCase {
 
     private func loadSample() throws -> String {
         let url = try XCTUnwrap(Bundle.module.url(forResource: "sample", withExtension: "m3u",
@@ -10,17 +10,17 @@ final class M3UParserTests: XCTestCase {
     }
 
     func testParsesAllChannels() throws {
-        let result = M3UParser.parse(try loadSample())
+        let result = PlaylistParser.parse(try loadSample())
         XCTAssertEqual(result.channels.count, 6)
     }
 
     func testHeaderEPGURL() throws {
-        let result = M3UParser.parse(try loadSample())
+        let result = PlaylistParser.parse(try loadSample())
         XCTAssertEqual(result.epgURL?.absoluteString, "http://example.com/epg.xml")
     }
 
     func testAttributesAndGroup() throws {
-        let ch = M3UParser.parse(try loadSample()).channels
+        let ch = PlaylistParser.parse(try loadSample()).channels
         XCTAssertEqual(ch[0].name, "beIN SPORTS 1 FHD")
         XCTAssertEqual(ch[0].group, "Spor")
         XCTAssertEqual(ch[0].tvgId, "beinsports1.tr")
@@ -28,7 +28,7 @@ final class M3UParserTests: XCTestCase {
     }
 
     func testEmptyGroupFallsBack() throws {
-        let cnn = M3UParser.parse(try loadSample()).channels.last!
+        let cnn = PlaylistParser.parse(try loadSample()).channels.last!
         XCTAssertEqual(cnn.name, "CNN International")
         XCTAssertEqual(cnn.group, "Diğer")   // group-title="" → "Diğer"
         XCTAssertNil(cnn.quality)
@@ -54,7 +54,7 @@ final class M3UParserTests: XCTestCase {
     }
 
     func testMediaKindClassification() throws {
-        let ch = M3UParser.parse(try loadSample()).channels
+        let ch = PlaylistParser.parse(try loadSample()).channels
         XCTAssertEqual(ch[0].kind, .live)                 // Spor → live
         XCTAssertEqual(ch[2].kind, .vod)                  // Filmler grubu → vod
         XCTAssertEqual(ch[3].kind, .series)               // S01E02 deseni → series

@@ -1,39 +1,39 @@
 import Foundation
 
-// Xtream veri çekme + Channel/Series'e mapping. Spec: docs/spec/xtream-m3u-epg.md §3.
-public extension XtreamClient {
+// Provider veri çekme + Channel/Series'e mapping. Spec: docs/spec/provider-playlist-epg.md §3.
+public extension ProviderClient {
 
     func fetchJSON<T: Decodable>(_ url: URL, as type: T.Type) async throws -> T {
         let data = try await fetchData(url)
         do { return try JSONDecoder().decode(T.self, from: data) }
-        catch { throw XtreamError.decoding }
+        catch { throw ProviderError.decoding }
     }
 
     // MARK: - Ham listeler
 
-    func liveCategories() async throws -> [XtreamCategory] {
-        try await fetchJSON(apiURL(.liveCategories), as: [XtreamCategory].self)
+    func liveCategories() async throws -> [ProviderCategory] {
+        try await fetchJSON(apiURL(.liveCategories), as: [ProviderCategory].self)
     }
-    func liveStreams(categoryId: String? = nil) async throws -> [XtreamLiveStream] {
-        try await fetchJSON(apiURL(.liveStreams, params: catParam(categoryId)), as: [XtreamLiveStream].self)
+    func liveStreams(categoryId: String? = nil) async throws -> [ProviderLiveStream] {
+        try await fetchJSON(apiURL(.liveStreams, params: catParam(categoryId)), as: [ProviderLiveStream].self)
     }
-    func vodCategories() async throws -> [XtreamCategory] {
-        try await fetchJSON(apiURL(.vodCategories), as: [XtreamCategory].self)
+    func vodCategories() async throws -> [ProviderCategory] {
+        try await fetchJSON(apiURL(.vodCategories), as: [ProviderCategory].self)
     }
-    func vodStreams(categoryId: String? = nil) async throws -> [XtreamVodStream] {
-        try await fetchJSON(apiURL(.vodStreams, params: catParam(categoryId)), as: [XtreamVodStream].self)
+    func vodStreams(categoryId: String? = nil) async throws -> [ProviderVodStream] {
+        try await fetchJSON(apiURL(.vodStreams, params: catParam(categoryId)), as: [ProviderVodStream].self)
     }
-    func seriesCategories() async throws -> [XtreamCategory] {
-        try await fetchJSON(apiURL(.seriesCategories), as: [XtreamCategory].self)
+    func seriesCategories() async throws -> [ProviderCategory] {
+        try await fetchJSON(apiURL(.seriesCategories), as: [ProviderCategory].self)
     }
-    func seriesList(categoryId: String? = nil) async throws -> [XtreamSeriesItem] {
-        try await fetchJSON(apiURL(.series, params: catParam(categoryId)), as: [XtreamSeriesItem].self)
+    func seriesList(categoryId: String? = nil) async throws -> [ProviderSeriesItem] {
+        try await fetchJSON(apiURL(.series, params: catParam(categoryId)), as: [ProviderSeriesItem].self)
     }
-    func seriesInfo(seriesId: Int) async throws -> XtreamSeriesInfo {
-        try await fetchJSON(apiURL(.seriesInfo, params: ["series_id": "\(seriesId)"]), as: XtreamSeriesInfo.self)
+    func seriesInfo(seriesId: Int) async throws -> ProviderSeriesInfo {
+        try await fetchJSON(apiURL(.seriesInfo, params: ["series_id": "\(seriesId)"]), as: ProviderSeriesInfo.self)
     }
-    func vodInfo(vodId: Int) async throws -> XtreamVodInfo {
-        try await fetchJSON(apiURL(.vodInfo, params: ["vod_id": "\(vodId)"]), as: XtreamVodInfo.self)
+    func vodInfo(vodId: Int) async throws -> ProviderVodInfo {
+        try await fetchJSON(apiURL(.vodInfo, params: ["vod_id": "\(vodId)"]), as: ProviderVodInfo.self)
     }
 
     private func catParam(_ id: String?) -> [String: String] {

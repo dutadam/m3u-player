@@ -10,7 +10,7 @@ Konumlandırma: **nötr medya oynatıcı** — hiçbir içerik gömülü değil,
 | Alan | Değer |
 |---|---|
 | İsim | cheesino |
-| Alt başlık (subtitle, ≤30) | Premium IPTV oynatıcı |
+| Alt başlık (subtitle, ≤30) | Premium streaming oynatıcı |
 | Birincil kategori | Entertainment |
 | İkincil kategori | Utilities |
 | Yaş sınırı | 17+ (kullanıcı-üretimi içerik / sınırsız web erişimi) |
@@ -19,13 +19,13 @@ Konumlandırma: **nötr medya oynatıcı** — hiçbir içerik gömülü değil,
 
 ### Anahtar kelimeler (≤100 karakter, virgülle)
 ```
-iptv,m3u,xtream,player,epg,playlist,tv,live,vod,series,chromecast,pip,catchup
+streaming,m3u,provider,player,epg,playlist,tv,live,vod,series,chromecast,pip,catchup
 ```
 
 ### Açıklama (EN)
 ```
-cheesino is a premium, privacy-first media player for your own IPTV subscription.
-Bring your Xtream Codes login, M3U URL, or file — cheesino does the rest.
+cheesino is a premium, privacy-first media player for your own streaming subscription.
+Bring your provider Codes login, M3U URL, or file — cheesino does the rest.
 
 • Live TV, Movies & Series with a fast, native SwiftUI interface
 • Automatic EPG guide with now/next, catchup & program reminders
@@ -43,8 +43,8 @@ encrypted in the device Keychain.
 
 ### Açıklama (TR)
 ```
-cheesino, kendi IPTV aboneliğin için premium, gizlilik-öncelikli bir medya oynatıcıdır.
-Xtream girişini, M3U bağlantını veya dosyanı getir — gerisini cheesino halleder.
+cheesino, kendi streaming aboneliğin için premium, gizlilik-öncelikli bir medya oynatıcıdır.
+provider girişini, M3U bağlantını veya dosyanı getir — gerisini cheesino halleder.
 
 • Canlı TV, Film & Dizi — hızlı, native SwiftUI arayüz
 • Otomatik EPG rehberi (şimdi/sıradaki), catchup & program hatırlatıcı
@@ -94,7 +94,7 @@ taraflarla paylaşmaz. Uygulamanın geliştiricinin eriştiği bir sunucusu yokt
 
 2. Cihazda Saklanan Veriler
 Aşağıdakiler yalnızca cihazınızda saklanır:
-- IPTV kaynak bilgileri (M3U URL / Xtream sunucu & kullanıcı adı)
+- streaming kaynak bilgileri (M3U URL / provider sunucu & kullanıcı adı)
 - Şifreler: cihaz Keychain'inde şifreli
 - Favoriler, izleme geçmişi/ilerleme, tercihler, beğeniler
 
@@ -108,7 +108,7 @@ cheesino hiçbir medya içeriği barındırmaz veya sağlamaz. Tüm kanallar/ak�
 kullanıcının kendi sağladığı kaynaktan gelir. Uygulama nötr bir oynatıcıdır.
 
 5. Ağ
-Uygulama yalnızca sizin girdiğiniz IPTV sunucusuna ve (kullanıyorsanız) Apple
+Uygulama yalnızca sizin girdiğiniz streaming sunucusuna ve (kullanıyorsanız) Apple
 iCloud'a bağlanır. Üçüncü-parti proxy veya analitik servis kullanılmaz.
 
 6. Çocuklar
@@ -123,22 +123,22 @@ Sorular için: privacy@cheesino.app
 ## 4. App Review Notes (inceleme ekibine)
 
 ```
-cheesino is a neutral IPTV/media player. It contains NO content, channels, or
-playlists. Users must provide their own source (Xtream Codes account, M3U URL,
+cheesino is a neutral streaming/media player. It contains NO content, channels, or
+playlists. Users must provide their own source (provider Codes account, M3U URL,
 or M3U file) — the same model as VLC.
 
 For reviewers to test: use the built-in "Discover" tab which loads the free,
-legal, community iptv-org catalog (public domain / free-to-air). No account
-needed. [Alternatively we can provide a test Xtream/M3U on request.]
+legal, community streaming-org catalog (public domain / free-to-air). No account
+needed. [Alternatively we can provide a test provider/M3U on request.]
 
-ATS exception (NSAllowsArbitraryLoads): most IPTV portals serve plain HTTP.
+ATS exception (NSAllowsArbitraryLoads): most streaming portals serve plain HTTP.
 The app must connect to user-provided HTTP servers to function. No app-hosted
 content is transmitted over HTTP.
 
 No data is collected. No analytics/ad SDKs. Credentials are stored in Keychain.
 ```
 
-- **Demo için:** Onboarding → **Keşfet** sekmesi (iptv-org) ile hesapsız test edilebilir.
+- **Demo için:** Onboarding → **Keşfet** sekmesi (streaming-org) ile hesapsız test edilebilir.
 
 ---
 
@@ -169,7 +169,7 @@ App Store 2 cihaz boyutu ister (6.7" ve 6.5" ya da güncel eşdeğerleri) + iPad
 6. Spor merkezi / öneriler
 
 > Telifli yayın/logo içeren kareler KULLANMA (Apple 5.2.x). Kendi demo içeriğin
-> veya iptv-org free kanallarıyla çek.
+> veya streaming-org free kanallarıyla çek.
 
 ---
 

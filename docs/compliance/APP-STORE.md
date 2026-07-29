@@ -1,6 +1,6 @@
 # cheesino — App Store / TestFlight Uyum Rehberi
 
-IPTV oynatıcılar mağazalardan telif baskısıyla sık kaldırılır. Onay şansını yükseltmek ve kaldırılma riskini
+streaming oynatıcılar mağazalardan telif baskısıyla sık kaldırılır. Onay şansını yükseltmek ve kaldırılma riskini
 azaltmak için **nötr oynatıcı** konumlandırması ve aşağıdaki hazırlık kritiktir.
 
 ---
@@ -15,7 +15,7 @@ for a streaming service they subscribe to). The app does not host, aggregate, or
 HOW TO TEST:
 On the onboarding screen choose the "Bağlantı" (Link) tab and paste this public, freely-licensed test
 list (a public-domain community list of legal free-to-air channels):
-    https://iptv-org.github.io/iptv/index.m3u
+    https://streaming-org.github.io/streaming/index.m3u
 Then open any channel to verify playback, guide, and multi-view.
 
 WHY "Allow Arbitrary Loads" (ATS): Many providers serve streams over plain HTTP. The exception is
@@ -26,7 +26,7 @@ Background audio is used so live playback continues when the app is backgrounded
 No accounts, no ads, no analytics, no third-party SDKs. Credentials are stored in the Keychain.
 ```
 
-> **Not:** İnceleme için gerçek bir abonelik/paralı içerik VERMEYİN. iptv-org gibi **ücretsiz, yasal** bir
+> **Not:** İnceleme için gerçek bir abonelik/paralı içerik VERMEYİN. streaming-org gibi **ücretsiz, yasal** bir
 > genel M3U kullanın. Böylece incelemeci telifli içerik görmez.
 
 ---
@@ -48,7 +48,7 @@ Tüm kategoriler için cevap: **Data Not Collected**.
 ## 5. Yönerge eşlemesi (App Review Guidelines)
 | Yönerge | Durum |
 |---|---|
-| 2.1 Performance / eksik içerik | İnceleme notundaki iptv-org demo linkiyle çözülür (boş app görünmez) |
+| 2.1 Performance / eksik içerik | İnceleme notundaki streaming-org demo linkiyle çözülür (boş app görünmez) |
 | 4.2 Minimum Functionality | Tam özellikli native oynatıcı (EPG, çoklu ekran, catchup) — jenerik/web-wrapper değil |
 | 5.2.1 / 5.2.3 Fikri Mülkiyet | Gömülü içerik yok; kullanıcı kendi kaynağını getirir; telifli marka/görsel kullanılmaz |
 | 3.1.1 IAP | (İleride premium katman eklenirse) dijital özellikler IAP ile |
@@ -65,14 +65,14 @@ Tüm kategoriler için cevap: **Data Not Collected**.
 
 ## 8. Google Play (paralel, Faz 3 Android)
 - Aynı nötrlük duruşu. Play "Data safety" formu → veri toplanmıyor.
-- IPTV kategorisinde benzer telif hassasiyeti; aynı demo-link + içerik-içermeme argümanı geçerli.
+- streaming kategorisinde benzer telif hassasiyeti; aynı demo-link + içerik-içermeme argümanı geçerli.
 
 ---
 
 ## Yayın öncesi kontrol listesi
 - [ ] Apple Developer Program üyeliği ($99/yıl)
 - [ ] Gizlilik politikası bir URL'de yayında (`docs/compliance/PRIVACY.md` → GitHub Pages/alan adı)
-- [ ] App Review Notes + iptv-org demo linki girildi
+- [ ] App Review Notes + streaming-org demo linki girildi
 - [ ] App Privacy = Data Not Collected
 - [ ] `ITSAppUsesNonExemptEncryption=false` (eklendi)
 - [ ] Yaş sınırı 17+

@@ -118,7 +118,7 @@ struct SettingsView: View {
                 Button("User-Agent'ı Uygula") { Task { await library.applyUserAgent(userAgent) } }
                     .disabled(userAgent == library.userAgent)
             } header: { Text("Bağlantı") } footer: {
-                Text("Bazı IPTV panelleri özel User-Agent ister (örn. VLC/…). Boş bırakırsan varsayılan kullanılır.")
+                Text("Bazı streaming panelleri özel User-Agent ister (örn. VLC/…). Boş bırakırsan varsayılan kullanılır.")
             }
 
             Section("Kaynak") {
@@ -217,7 +217,7 @@ struct PlaylistsView: View {
                         if needsAuth { authFor = pl; authPass = "" } else { Task { await library.switchTo(pl.id) } }
                     } label: {
                         HStack(spacing: 12) {
-                            Image(systemName: pl.kind == .xtream ? "server.rack" : "list.bullet.rectangle")
+                            Image(systemName: pl.kind == .provider ? "server.rack" : "list.bullet.rectangle")
                                 .foregroundStyle(Color.sgAccent2).frame(width: 24)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(pl.name).foregroundStyle(Color.sgText).lineLimit(1)

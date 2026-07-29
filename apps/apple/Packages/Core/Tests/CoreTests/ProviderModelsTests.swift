@@ -1,14 +1,14 @@
 import XCTest
 @testable import Core
 
-final class XtreamModelsTests: XCTestCase {
+final class ProviderModelsTests: XCTestCase {
 
     private func fixture(_ name: String, _ ext: String) throws -> Data {
         let url = try XCTUnwrap(Bundle.module.url(forResource: name, withExtension: ext, subdirectory: "Fixtures"))
         return try Data(contentsOf: url)
     }
 
-    // Xtream'in en riskli yanı: sayı alanları Int veya String gelebilir.
+    // Provider'in en riskli yanı: sayı alanları Int veya String gelebilir.
     func testLenientIntAcceptsIntAndString() throws {
         struct Wrap: Codable { let a: LenientInt; let b: LenientInt }
         let data = Data(#"{"a": 1001, "b": "1002"}"#.utf8)
@@ -18,7 +18,7 @@ final class XtreamModelsTests: XCTestCase {
     }
 
     func testDecodeLiveStreamsMixedTypes() throws {
-        let streams = try JSONDecoder().decode([XtreamLiveStream].self, from: fixture("live_streams", "json"))
+        let streams = try JSONDecoder().decode([ProviderLiveStream].self, from: fixture("live_streams", "json"))
         XCTAssertEqual(streams.count, 2)
         XCTAssertEqual(streams[0].streamId.value, 1001)     // Int
         XCTAssertEqual(streams[1].streamId.value, 1002)     // String → Int
@@ -28,7 +28,7 @@ final class XtreamModelsTests: XCTestCase {
     }
 
     func testDecodeSeriesInfo() throws {
-        let info = try JSONDecoder().decode(XtreamSeriesInfo.self, from: fixture("series_info", "json"))
+        let info = try JSONDecoder().decode(ProviderSeriesInfo.self, from: fixture("series_info", "json"))
         XCTAssertEqual(info.info?.name, "Breaking Bad")
         XCTAssertEqual(info.episodes.count, 2)              // 2 sezon
         let s1 = try XCTUnwrap(info.episodes["1"])
@@ -40,8 +40,8 @@ final class XtreamModelsTests: XCTestCase {
     }
 
     func testStreamURLsFromClient() {
-        let server = XtreamCredentials.normalize("portal.example.com:8080")!
-        let client = XtreamClient(creds: .init(server: server, username: "u", password: "p"))
+        let server = ProviderCredentials.normalize("portal.example.com:8080")!
+        let client = ProviderClient(creds: .init(server: server, username: "u", password: "p"))
         // Canlı → .m3u8 (iOS native HLS tercihi)
         XCTAssertEqual(client.liveURL(streamId: 1001).absoluteString,
                        "http://portal.example.com:8080/live/u/p/1001.m3u8")

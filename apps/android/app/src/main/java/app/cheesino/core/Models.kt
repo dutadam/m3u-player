@@ -2,7 +2,7 @@ package app.cheesino.core
 
 import kotlinx.serialization.Serializable
 
-// iOS Core paketinin Kotlin karşılığı. Paylaşılan sözleşme: docs/spec/provider-m3u-epg.md
+// iOS Core paketinin Kotlin karşılığı. Paylaşılan sözleşme: docs/spec/provider-playlist-epg.md
 
 enum class MediaKind { LIVE, VOD, SERIES }
 

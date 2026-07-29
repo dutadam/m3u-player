@@ -32,18 +32,18 @@ enum LocalStore {
 
 /// Kayıtlı kaynak (playlist) üst verisi. Şifre HARİÇ — o Keychain'de (id ile).
 struct PlaylistMeta: Codable, Identifiable, Hashable {
-    enum Kind: String, Codable { case xtream, m3u }
+    enum Kind: String, Codable { case provider, m3u }
     var id: String                 // UUID
     var name: String
     var kind: Kind
     var m3uURL: String?            // .m3u için
-    var server: String?           // .xtream için (görüntü + yeniden yükleme)
-    var username: String?         // .xtream için (görüntü)
+    var server: String?           // .provider için (görüntü + yeniden yükleme)
+    var username: String?         // .provider için (görüntü)
     var createdAt: Date
 
     var subtitle: String {
         switch kind {
-        case .xtream: return [username, URL(string: server ?? "")?.host].compactMap { $0 }.joined(separator: " · ")
+        case .provider: return [username, URL(string: server ?? "")?.host].compactMap { $0 }.joined(separator: " · ")
         case .m3u: return URL(string: m3uURL ?? "")?.host ?? "M3U"
         }
     }

@@ -26,7 +26,7 @@ struct RootView: View {
         .background(Color.sgGround.ignoresSafeArea())
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: mini.isActive)
         .fullScreenCover(item: $expanded) { PlayerView(channel: $0) }
-        .task { await library.restoreLastSession() }   // kayıtlı Xtream → otomatik giriş
+        .task { await library.restoreLastSession() }   // kayıtlı Provider → otomatik giriş
     }
 }
 

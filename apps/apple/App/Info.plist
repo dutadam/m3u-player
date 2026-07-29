@@ -30,10 +30,10 @@
   <key>ITSAppUsesNonExemptEncryption</key>
   <false/>
 
-  <!-- KRİTİK: IPTV portallarının çoğu düz HTTP. Native'de mixed-content duvarı yok,
+  <!-- KRİTİK: streaming portallarının çoğu düz HTTP. Native'de mixed-content duvarı yok,
        ancak App Transport Security HTTP'yi varsayılan engeller. Bu istisna yayınların
        oynamasını sağlar (PWA'daki asıl tıkanmayı çözen ayar). Mağaza incelemesinde
-       "kullanıcı kendi IPTV kaynağını getirir; HTTP portal desteği gerekir" gerekçesi verilir. -->
+       "kullanıcı kendi streaming kaynağını getirir; HTTP portal desteği gerekir" gerekçesi verilir. -->
   <key>NSAppTransportSecurity</key>
   <dict>
     <key>NSAllowsArbitraryLoads</key>
@@ -48,7 +48,7 @@
 
   <!-- Yerel ağdaki portallar + Chromecast keşfi için (iOS 14+ local network izni). -->
   <key>NSLocalNetworkUsageDescription</key>
-  <string>Yerel ağdaki IPTV sunucularına ve Chromecast cihazlarına bağlanmak için.</string>
+  <string>Yerel ağdaki streaming sunucularına ve Chromecast cihazlarına bağlanmak için.</string>
 
   <!-- Chromecast (Google Cast) cihaz keşfi. Varsayılan medya alıcısı: CC1AD845. -->
   <key>NSBonjourServices</key>
