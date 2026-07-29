@@ -107,44 +107,30 @@ fun RootScreen(vm: LibraryViewModel) {
     var showSearch by remember { mutableStateOf(false) }
     val epg by vm.epg.collectAsStateWithLifecycle()
 
-    // Kaynak yoksa: Pro DEĞİLSE ağ-kaynak ekranını hiç gösterme → yerel oynatıcı açılışı.
-    // Ağ kaynağı eklemek (provider/playlist) Pro'ya kilitli; her "kilidi aç" yönlendirmesi paywall'a çıkar.
-    if (!state.hasSource) {
-        val authUser by vm.authUser.collectAsStateWithLifecycle()
+    // AĞ DENEYİMİNİN TAMAMI PRO'YA KİLİTLİ. Pro değilken hiçbir ağ ekranı (onboarding/katalog/canlı/
+    // rehber) render edilmez → yalnız yerel medya oynatıcı + paywall. "Kilidi aç" paywall'a çıkar.
+    if (!isPro) {
         val authStatus by vm.authStatus.collectAsStateWithLifecycle()
+        var showGate by remember { mutableStateOf(false) }
         Box(Modifier.fillMaxSize()) {
-            if (isPro) {
-                OnboardingScreen(
-                    state = state,
-                    authUser = authUser,
-                    authStatus = authStatus,
-                    onGoogleSignIn = { activity?.let { vm.signIn(it) } },
-                    onProvider = { vm.loadProvider(it) },
-                    onPlaylist = { url ->
-                        if (url.startsWith("http", true)) vm.loadPlaylistUrl(url) else vm.loadPlaylist(url)
-                    }
-                )
-            } else {
-                var showGate by remember { mutableStateOf(false) }
-                FreeLanding(
-                    proPrice = proPrice,
-                    authStatus = authStatus,
-                    onPlayLocal = { uri, title ->
-                        playQueue = listOf(PlayItem("local_${uri.hashCode()}", title, uri, isLive = false)); playIndex = 0
-                    },
-                    onUnlock = { showGate = true },
+            FreeLanding(
+                proPrice = proPrice,
+                authStatus = authStatus,
+                onPlayLocal = { uri, title ->
+                    playQueue = listOf(PlayItem("local_${uri.hashCode()}", title, uri, isLive = false)); playIndex = 0
+                },
+                onUnlock = { showGate = true },
+                onRestore = { vm.restorePurchases() },
+                onSignIn = { activity?.let { vm.signIn(it) } }
+            )
+            AnimatedVisibility(visible = showGate, enter = fadeIn(), exit = fadeOut()) {
+                PaywallScreen(
+                    highlight = app.cheesino.data.ProFeature.MULTI_SOURCE,
+                    priceText = proPrice,
+                    onUpgrade = { activity?.let { vm.purchasePro(it) }; showGate = false },
                     onRestore = { vm.restorePurchases() },
-                    onSignIn = { activity?.let { vm.signIn(it) } }
+                    onClose = { showGate = false }
                 )
-                AnimatedVisibility(visible = showGate, enter = fadeIn(), exit = fadeOut()) {
-                    PaywallScreen(
-                        highlight = app.cheesino.data.ProFeature.MULTI_SOURCE,
-                        priceText = proPrice,
-                        onUpgrade = { activity?.let { vm.purchasePro(it) }; showGate = false },
-                        onRestore = { vm.restorePurchases() },
-                        onClose = { showGate = false }
-                    )
-                }
             }
             // Yerel video oynatma katmanı — free kullanıcı cihazındaki videoyu buradan oynatır.
             playQueue.getOrNull(playIndex)?.let { item ->
@@ -155,6 +141,23 @@ fun RootScreen(vm: LibraryViewModel) {
                 )
             }
         }
+        return
+    }
+
+    // Buradan sonrası Pro. Ağ kaynağı yoksa provider/playlist onboarding.
+    if (!state.hasSource) {
+        val authUser by vm.authUser.collectAsStateWithLifecycle()
+        val authStatus by vm.authStatus.collectAsStateWithLifecycle()
+        OnboardingScreen(
+            state = state,
+            authUser = authUser,
+            authStatus = authStatus,
+            onGoogleSignIn = { activity?.let { vm.signIn(it) } },
+            onProvider = { vm.loadProvider(it) },
+            onPlaylist = { url ->
+                if (url.startsWith("http", true)) vm.loadPlaylistUrl(url) else vm.loadPlaylist(url)
+            }
+        )
         return
     }
 
