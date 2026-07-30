@@ -5,6 +5,8 @@ import android.content.Context
 import android.net.Uri
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -129,6 +131,16 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
         ))
     }
     val mediaPlayer = remember(item.id) { MediaPlayer(libVlc) }
+    // Harici altyazı yükle (VLC addSlave — mid-playback). content:// bazı sürümlerde sorunlu olabilir.
+    val subPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            runCatching { context.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+            val ok = runCatching {
+                mediaPlayer.addSlave(org.videolan.libvlc.interfaces.IMedia.Slave.Type.Subtitle, uri, true)
+            }.getOrDefault(false)
+            hud = if (ok) "Subtitle loaded" else "Couldn't load subtitle"
+        }
+    }
 
     fun saveNow() {
         if (item.isLive) return
@@ -472,7 +484,9 @@ fun VlcPlayerScreen(item: PlayItem, vm: LibraryViewModel, onClose: () -> Unit, o
             onRestart = { askResume = false; mediaPlayer.time = 0; positionMs = 0; mediaPlayer.play() }
         )
 
-        if (showSubs) SubtitleSheet(mediaPlayer, onClose = { showSubs = false })
+        if (showSubs) SubtitleSheet(mediaPlayer,
+            onPickSubtitle = { showSubs = false; runCatching { subPicker.launch(arrayOf("*/*")) } },
+            onClose = { showSubs = false })
         if (showAudio) AudioSheet(mediaPlayer, onClose = { showAudio = false })
     }
 }
@@ -501,8 +515,9 @@ private fun AudioSheet(mediaPlayer: MediaPlayer, onClose: () -> Unit) {
 
 /** Altyazı parça seçici — VLC spu track'leri. */
 @Composable
-private fun SubtitleSheet(mediaPlayer: MediaPlayer, onClose: () -> Unit) {
+private fun SubtitleSheet(mediaPlayer: MediaPlayer, onPickSubtitle: () -> Unit, onClose: () -> Unit) {
     val tracks = remember { mediaPlayer.spuTracks?.toList() ?: emptyList() }
+    var delayMs by remember { mutableStateOf((mediaPlayer.spuDelay / 1000L).toInt()) }
     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.6f))
         .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClose)) {
         Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
@@ -510,6 +525,17 @@ private fun SubtitleSheet(mediaPlayer: MediaPlayer, onClose: () -> Unit) {
             .navigationBarsPadding().padding(16.dp)) {
             Text("Subtitles", color = TextHi, fontWeight = FontWeight.Black, fontSize = 16.sp,
                 modifier = Modifier.padding(bottom = 8.dp))
+            Text("＋  Load subtitle file…", color = Accent, fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                modifier = Modifier.fillMaxWidth().clickable { onPickSubtitle() }.padding(vertical = 10.dp))
+            // Sync / gecikme (VLC native spu-delay, ms). Altyazı önden/sonradan giderse ayarla.
+            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("Delay", color = TextHi, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                Text("−0.5s", color = Accent, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clickable { delayMs -= 500; runCatching { mediaPlayer.spuDelay = delayMs * 1000L } }.padding(8.dp))
+                Text("${delayMs} ms", color = TextMute, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 6.dp))
+                Text("+0.5s", color = Accent, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clickable { delayMs += 500; runCatching { mediaPlayer.spuDelay = delayMs * 1000L } }.padding(8.dp))
+            }
             Text("Off", color = TextHi, fontSize = 14.sp, modifier = Modifier.fillMaxWidth()
                 .clickable { mediaPlayer.setSpuTrack(-1); onClose() }.padding(vertical = 10.dp))
             tracks.filter { it.id >= 0 }.forEach { t ->
