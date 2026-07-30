@@ -99,6 +99,8 @@ import app.cheesino.core.MediaKind
 import app.cheesino.core.StreamResolver
 import app.cheesino.data.LibraryViewModel
 import app.cheesino.data.ResumeMark
+import app.cheesino.data.SubCue
+import app.cheesino.data.Subtitles
 import app.cheesino.playback.PlaybackService
 import app.cheesino.ui.theme.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -205,8 +207,11 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
     var startedOnce by remember(item.id) { mutableStateOf(false) }
     // Dizi bölümü bitince "sıradaki bölüm" geri sayımı (kuyrukta sonraki bölüm varsa).
     var autoNext by remember(item.id) { mutableStateOf(false) }
-    // Harici altyazı (kullanıcının yüklediği .srt/.vtt/.ass) — set edilince medya yeniden kurulur.
-    var externalSub by remember(item.id) { mutableStateOf<Uri?>(null) }
+    // Kendi altyazı katmanımız — motordan bağımsız cue'lar (anlık offset + çift altyazı).
+    var externalSub by remember(item.id) { mutableStateOf<Uri?>(null) }   // çeviri kaynağı (yüklü dosya)
+    var subCues by remember(item.id) { mutableStateOf<List<SubCue>>(emptyList()) }    // orijinal
+    var subCues2 by remember(item.id) { mutableStateOf<List<SubCue>>(emptyList()) }   // çeviri (varsa çift)
+    var subOffsetMs by remember(item.id) { mutableStateOf(0L) }
     val subScope = rememberCoroutineScope()
     val targetLang = remember { java.util.Locale.getDefault().language }
     // Dil paketi cihazda yoksa indirme onayı için bekleyen altyazı (manuel/isteğe bağlı indirme).
@@ -217,6 +222,7 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
         if (uri != null) {
             runCatching { context.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
             externalSub = uri
+            subScope.launch { subCues = Subtitles.read(context, uri); subCues2 = emptyList(); subOffsetMs = 0L }
         }
     }
     var isPlaying by remember { mutableStateOf(true) }
@@ -245,24 +251,11 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
 
     // Oynatıcı servise ait; burada yalnız bu öğe için medyayı kur (buffer/kod çözücü ayarları
     // serviste). Öğe değişince yeniden kur.
-    LaunchedEffect(item.id, externalSub) {
+    LaunchedEffect(item.id) {
         val url = StreamResolver.candidates(item.url).firstOrNull()?.url ?: item.url
-        // Altyazı eklenince medya yeniden kurulur → mevcut konumu koru.
-        val keepMs = if (externalSub != null) player.currentPosition.coerceAtLeast(0) else 0L
-        val builder = MediaItem.Builder().setUri(url)
-        externalSub?.let { sub ->
-            builder.setSubtitleConfigurations(listOf(
-                MediaItem.SubtitleConfiguration.Builder(sub)
-                    .setMimeType(subMime(sub))
-                    .setLanguage("und")
-                    .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
-                    .build()
-            ))
-        }
-        player.setMediaItem(builder.build())
+        player.setMediaItem(MediaItem.fromUri(url))
         player.prepare()
-        if (keepMs > 0) player.seekTo(keepMs)
-        player.playWhenReady = externalSub != null || !askResume
+        player.playWhenReady = !askResume
     }
 
     fun saveNow() {
@@ -342,7 +335,7 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
         while (true) {
             if (!scrubbing) positionMs = player.currentPosition.coerceAtLeast(0)
             durationMs = player.duration.let { if (it > 0) it else 0 }
-            delay(500)
+            delay(250)   // altyazı katmanı bu konumu kullanır → cue'lar zamanında görünsün
         }
     }
     LaunchedEffect(item.id) {
@@ -458,6 +451,15 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
                 hud = "🔊 ${(next * 100 / maxVol)}%"
             }
         }
+
+        // Kendi altyazı katmanımız — cue'ları oynatma konumuna göre çizer (anlık offset + çift altyazı).
+        if (subCues.isNotEmpty() || subCues2.isNotEmpty()) SubtitleOverlay(
+            primary = if (subCues2.isNotEmpty()) subCues2 else subCues,
+            secondary = if (subCues2.isNotEmpty()) subCues else null,
+            positionMs = positionMs,
+            offsetMs = subOffsetMs,
+            scale = vm.subtitleScale, textColor = vm.subtitleColor, bgColor = vm.subtitleBg
+        )
 
         // Marka loader — yalnız ilk yüklemede (sardırırken/rebuffer'da gösterme).
         if (buffering && !askResume && !startedOnce) BrandLoader(modifier = Modifier.align(Alignment.Center))
@@ -623,14 +625,18 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
                         val r = app.cheesino.data.SubtitleTranslate.translate(context, sub, targetLang, allowDownload = false)
                         subBusy = null
                         when (r) {
-                            is app.cheesino.data.SubtitleTranslate.Result.Done -> { externalSub = r.uri; hud = "Subtitles translated" }
+                            is app.cheesino.data.SubtitleTranslate.Result.Done -> { subCues2 = Subtitles.read(context, r.uri); hud = "Subtitles translated" }
                             app.cheesino.data.SubtitleTranslate.Result.NeedsDownload -> pendingTranslateSub = sub
                             app.cheesino.data.SubtitleTranslate.Result.Unsupported -> hud = "Language not supported"
                             app.cheesino.data.SubtitleTranslate.Result.Failed -> hud = "Couldn't translate"
                         }
                     }
                 }
-            }
+            },
+            offsetMs = subOffsetMs,
+            onOffset = if (subCues.isNotEmpty() || subCues2.isNotEmpty()) ({ d -> subOffsetMs += d }) else null,
+            onClearExternal = if (subCues.isNotEmpty() || subCues2.isNotEmpty())
+                ({ subCues = emptyList(); subCues2 = emptyList(); subOffsetMs = 0L }) else null
         ) { showTracks = false }
 
         // Dil paketi indirme onayı — manuel/isteğe bağlı (sessiz indirme yok).
@@ -651,7 +657,7 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
                                 val r = app.cheesino.data.SubtitleTranslate.translate(context, sub, targetLang, allowDownload = true)
                                 subBusy = null
                                 when (r) {
-                                    is app.cheesino.data.SubtitleTranslate.Result.Done -> { externalSub = r.uri; hud = "Subtitles translated" }
+                                    is app.cheesino.data.SubtitleTranslate.Result.Done -> { subCues2 = Subtitles.read(context, r.uri); hud = "Subtitles translated" }
                                     else -> hud = "Couldn't translate"
                                 }
                             }
@@ -739,7 +745,11 @@ private fun GestureZone(modifier: Modifier, onVerticalDrag: (Float) -> Unit) {
 }
 
 @Composable
-private fun TrackDialog(player: Player, onPickSubtitle: () -> Unit, onTranslate: (() -> Unit)? = null, onDismiss: () -> Unit) {
+private fun TrackDialog(
+    player: Player, onPickSubtitle: () -> Unit, onTranslate: (() -> Unit)? = null,
+    offsetMs: Long = 0L, onOffset: ((Long) -> Unit)? = null, onClearExternal: (() -> Unit)? = null,
+    onDismiss: () -> Unit
+) {
     val tracks = player.currentTracks
     val audio = tracks.groups.filter { it.type == C.TRACK_TYPE_AUDIO && it.isSupported }
     val text = tracks.groups.filter { it.type == C.TRACK_TYPE_TEXT && it.isSupported }
@@ -776,7 +786,18 @@ private fun TrackDialog(player: Player, onPickSubtitle: () -> Unit, onTranslate:
             Text("Subtitles", color = Accent2, fontWeight = FontWeight.Bold, fontSize = 13.sp)
             TrackRow("＋  Load subtitle file…", false) { onPickSubtitle() }
             onTranslate?.let { t -> TrackRow("⇄  Translate subtitles (offline)", false) { t() } }
-            TrackRow("Off", textOff) { disableText() }
+            // Anlık sync/gecikme — kendi katmanımızda offset (rebuffer yok).
+            onOffset?.let { cb ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Delay", color = TextHi, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                    Text("−0.5s", color = Accent, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable { cb(-500L) }.padding(8.dp))
+                    Text("${offsetMs} ms", color = TextMute, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 6.dp))
+                    Text("+0.5s", color = Accent, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable { cb(500L) }.padding(8.dp))
+                }
+            }
+            TrackRow("Off", textOff) { disableText(); onClearExternal?.invoke() }
             text.forEach { g ->
                 for (i in 0 until g.length) if (g.isTrackSupported(i))
                     TrackRow(label(g, i), g.isTrackSelected(i)) { select(g, i) }
