@@ -35,6 +35,11 @@ class AppSettings(context: Context) {
         get() = prefs.getInt("sub_bg", 0x00000000)
         set(v) { prefs.edit().putInt("sub_bg", v).apply() }
 
+    /** Altyazının alttan yükseltilme miktarı (dp) — kullanıcı sürükleyerek ayarlar. */
+    var subtitleRaiseDp: Int
+        get() = prefs.getInt("sub_raise", 0)
+        set(v) { prefs.edit().putInt("sub_raise", v.coerceIn(0, 480)).apply() }
+
     private var pinHash: String?
         get() = prefs.getString("pin", null)
         set(v) { prefs.edit().putString("pin", v).apply() }

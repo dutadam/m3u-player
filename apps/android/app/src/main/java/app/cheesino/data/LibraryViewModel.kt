@@ -228,6 +228,8 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     val subtitleBg: Int get() = settings.subtitleBg
     fun setSubtitleColor(v: Int) { settings.subtitleColor = v }
     fun setSubtitleBg(v: Int) { settings.subtitleBg = v }
+    val subtitleRaiseDp: Int get() = settings.subtitleRaiseDp
+    fun setSubtitleRaiseDp(v: Int) { settings.subtitleRaiseDp = v }
     /** Favori/beğeni/geçmiş/ilerleme temizle. */
     fun clearUserData() { _user.value = UserData(); userStore.save(UserData()) }
     fun setPin(pin: String) { settings.setPin(pin); _state.value = _state.value.copy(parentalOn = true, adultUnlocked = false) }

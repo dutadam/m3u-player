@@ -212,6 +212,7 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
     var subCues by remember(item.id) { mutableStateOf<List<SubCue>>(emptyList()) }    // orijinal
     var subCues2 by remember(item.id) { mutableStateOf<List<SubCue>>(emptyList()) }   // çeviri (varsa çift)
     var subOffsetMs by remember(item.id) { mutableStateOf(0L) }
+    var subRaise by remember(item.id) { mutableStateOf(vm.subtitleRaiseDp) }   // altyazının alttan yüksekliği (dp)
     val subScope = rememberCoroutineScope()
     val targetLang = remember { java.util.Locale.getDefault().language }
     // Dil paketi cihazda yoksa indirme onayı için bekleyen altyazı (manuel/isteğe bağlı indirme).
@@ -458,7 +459,9 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
             secondary = if (subCues2.isNotEmpty()) subCues else null,
             positionMs = positionMs,
             offsetMs = subOffsetMs,
-            scale = vm.subtitleScale, textColor = vm.subtitleColor, bgColor = vm.subtitleBg
+            scale = vm.subtitleScale, textColor = vm.subtitleColor, bgColor = vm.subtitleBg,
+            raiseDp = subRaise,
+            onRaise = { d -> subRaise = (subRaise + d).roundToInt().coerceIn(0, 480); vm.setSubtitleRaiseDp(subRaise) }
         )
 
         // Marka loader — yalnız ilk yüklemede (sardırırken/rebuffer'da gösterme).
