@@ -103,6 +103,7 @@ import app.cheesino.playback.PlaybackService
 import app.cheesino.ui.theme.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /** Oynatılacak öğe — kanal, film ya da dizi bölümü fark etmez. */
@@ -206,6 +207,8 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
     var autoNext by remember(item.id) { mutableStateOf(false) }
     // Harici altyazı (kullanıcının yüklediği .srt/.vtt/.ass) — set edilince medya yeniden kurulur.
     var externalSub by remember(item.id) { mutableStateOf<Uri?>(null) }
+    val subScope = rememberCoroutineScope()
+    val targetLang = remember { java.util.Locale.getDefault().language }
     val subPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             runCatching { context.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
@@ -607,7 +610,17 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
 
         if (showTracks) TrackDialog(
             player,
-            onPickSubtitle = { showTracks = false; runCatching { subPicker.launch(arrayOf("*/*")) } }
+            onPickSubtitle = { showTracks = false; runCatching { subPicker.launch(arrayOf("*/*")) } },
+            onTranslate = externalSub?.let { sub ->
+                {
+                    showTracks = false
+                    subScope.launch {
+                        hud = "Translating subtitles…"
+                        val out = app.cheesino.data.SubtitleTranslate.translate(context, sub, targetLang)
+                        if (out != null) { externalSub = out; hud = "Subtitles translated" } else hud = "Couldn't translate"
+                    }
+                }
+            }
         ) { showTracks = false }
 
         // Dizi bölümü bitti → sıradaki bölüm geri sayımı (kuyrukta sonraki bölüm varsa).
@@ -678,7 +691,7 @@ private fun GestureZone(modifier: Modifier, onVerticalDrag: (Float) -> Unit) {
 }
 
 @Composable
-private fun TrackDialog(player: Player, onPickSubtitle: () -> Unit, onDismiss: () -> Unit) {
+private fun TrackDialog(player: Player, onPickSubtitle: () -> Unit, onTranslate: (() -> Unit)? = null, onDismiss: () -> Unit) {
     val tracks = player.currentTracks
     val audio = tracks.groups.filter { it.type == C.TRACK_TYPE_AUDIO && it.isSupported }
     val text = tracks.groups.filter { it.type == C.TRACK_TYPE_TEXT && it.isSupported }
@@ -714,6 +727,7 @@ private fun TrackDialog(player: Player, onPickSubtitle: () -> Unit, onDismiss: (
             }
             Text("Subtitles", color = Accent2, fontWeight = FontWeight.Bold, fontSize = 13.sp)
             TrackRow("＋  Load subtitle file…", false) { onPickSubtitle() }
+            onTranslate?.let { t -> TrackRow("⇄  Translate subtitles (offline)", false) { t() } }
             TrackRow("Off", textOff) { disableText() }
             text.forEach { g ->
                 for (i in 0 until g.length) if (g.isTrackSupported(i))
