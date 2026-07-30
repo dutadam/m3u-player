@@ -230,6 +230,9 @@ class LibraryViewModel(app: Application) : AndroidViewModel(app) {
     fun setSubtitleBg(v: Int) { settings.subtitleBg = v }
     val subtitleRaiseDp: Int get() = settings.subtitleRaiseDp
     fun setSubtitleRaiseDp(v: Int) { settings.subtitleRaiseDp = v }
+    fun rememberSub(id: String, uri: String, offsetMs: Long) = settings.rememberSub(id, uri, offsetMs)
+    fun recalledSub(id: String): Pair<String, Long>? = settings.recalledSub(id)
+    fun forgetSub(id: String) = settings.forgetSub(id)
     /** Favori/beğeni/geçmiş/ilerleme temizle. */
     fun clearUserData() { _user.value = UserData(); userStore.save(UserData()) }
     fun setPin(pin: String) { settings.setPin(pin); _state.value = _state.value.copy(parentalOn = true, adultUnlocked = false) }

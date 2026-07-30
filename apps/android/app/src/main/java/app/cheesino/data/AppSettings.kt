@@ -40,6 +40,29 @@ class AppSettings(context: Context) {
         get() = prefs.getInt("sub_raise", 0)
         set(v) { prefs.edit().putInt("sub_raise", v.coerceIn(0, 480)).apply() }
 
+    // ---- Per-video altyazı hafızası: videoId → "subUri\toffsetMs" ----
+    private fun subMem() = runCatching { org.json.JSONObject(prefs.getString("sub_mem", "{}") ?: "{}") }
+        .getOrDefault(org.json.JSONObject())
+
+    fun rememberSub(id: String, uri: String, offsetMs: Long) {
+        val o = subMem()
+        // Sınırsız büyümesin — 200 girişte en eskiyi at (JSON sırasız ama pratikte yeterli).
+        if (o.length() >= 200) o.keys().asSequence().firstOrNull()?.let { o.remove(it) }
+        o.put(id, "$uri\t$offsetMs")
+        prefs.edit().putString("sub_mem", o.toString()).apply()
+    }
+
+    fun recalledSub(id: String): Pair<String, Long>? {
+        val v = subMem().optString(id, "")
+        if (v.isBlank()) return null
+        val parts = v.split("\t")
+        return parts[0] to (parts.getOrNull(1)?.toLongOrNull() ?: 0L)
+    }
+
+    fun forgetSub(id: String) {
+        val o = subMem(); o.remove(id); prefs.edit().putString("sub_mem", o.toString()).apply()
+    }
+
     private var pinHash: String?
         get() = prefs.getString("pin", null)
         set(v) { prefs.edit().putString("pin", v).apply() }

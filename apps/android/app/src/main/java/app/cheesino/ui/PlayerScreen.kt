@@ -25,6 +25,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
@@ -127,6 +128,8 @@ fun Channel.toPlayItem() = PlayItem(
 )
 
 private const val SEEK_STEP_MS = 10_000L
+// Yatay sürükle-sar: ekranın tam genişliği ≈ bu kadar süre.
+private const val SEEK_SPAN_MS = 120_000L
 
 /**
  * Oynatıcı girişi — arka plan servisine (PlaybackService) bir MediaController ile bağlanır.
@@ -223,13 +226,26 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
         if (uri != null) {
             runCatching { context.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
             externalSub = uri
+            vm.rememberSub(item.id, uri.toString(), 0L)   // per-video hafıza
             subScope.launch { subCues = Subtitles.read(context, uri); subCues2 = emptyList(); subOffsetMs = 0L }
+        }
+    }
+    // Per-video altyazı hafızası — bu videoya daha önce yüklenen altyazı+offset'i geri getir.
+    LaunchedEffect(item.id) {
+        if (item.isLive) return@LaunchedEffect
+        vm.recalledSub(item.id)?.let { (uriStr, off) ->
+            val uri = runCatching { Uri.parse(uriStr) }.getOrNull() ?: return@let
+            val cues = Subtitles.read(context, uri)
+            if (cues.isNotEmpty()) { externalSub = uri; subCues = cues; subOffsetMs = off }
         }
     }
     var isPlaying by remember { mutableStateOf(true) }
     var positionMs by remember { mutableStateOf(0L) }
     var durationMs by remember { mutableStateOf(0L) }
     var scrubbing by remember { mutableStateOf(false) }
+    // Yatay sürükleyerek sar — parmağı başladığı yere geri getirince iptal olur (seek-cancel).
+    var seekPreviewMs by remember { mutableStateOf<Long?>(null) }
+    var seekCancelZone by remember { mutableStateOf(false) }
     var controlsVisible by remember { mutableStateOf(true) }
     var hud by remember { mutableStateOf<String?>(null) }
     var showTracks by remember { mutableStateOf(false) }
@@ -417,21 +433,45 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
         )
 
         // Merkez dokunuş — tek dokunuş kontrolleri açar, çift dokunuş konuma göre ±10 sn.
-        Box(Modifier.fillMaxSize().pointerInput(locked) {
-            detectTapGestures(
-                onTap = { controlsVisible = if (locked) true else !controlsVisible },
-                onDoubleTap = { offset ->
-                    if (locked || item.isLive) return@detectTapGestures
-                    if (offset.x < size.width / 2f) {
-                        player.seekTo((player.currentPosition - SEEK_STEP_MS).coerceAtLeast(0)); hud = "⏪ 10 sn"
-                    } else {
-                        val dur = player.duration
-                        player.seekTo((player.currentPosition + SEEK_STEP_MS).let { if (dur > 0) it.coerceAtMost(dur) else it })
-                        hud = "⏩ 10 sn"
+        Box(Modifier.fillMaxSize()
+            .pointerInput(locked) {
+                detectTapGestures(
+                    onTap = { controlsVisible = if (locked) true else !controlsVisible },
+                    onDoubleTap = { offset ->
+                        if (locked || item.isLive) return@detectTapGestures
+                        if (offset.x < size.width / 2f) {
+                            player.seekTo((player.currentPosition - SEEK_STEP_MS).coerceAtLeast(0)); hud = "⏪ 10 sn"
+                        } else {
+                            val dur = player.duration
+                            player.seekTo((player.currentPosition + SEEK_STEP_MS).let { if (dur > 0) it.coerceAtMost(dur) else it })
+                            hud = "⏩ 10 sn"
+                        }
                     }
-                }
-            )
-        })
+                )
+            }
+            .pointerInput(locked, item.isLive) {
+                // Yatay sürükle → sar. Tüm genişlik ≈ SEEK_SPAN_MS. Başladığı x'e (±%4) dönersen iptal.
+                if (locked || item.isLive) return@pointerInput
+                var baseMs = 0L; var totalDx = 0f; var startX = 0f
+                detectHorizontalDragGestures(
+                    onDragStart = { pos -> baseMs = player.currentPosition; totalDx = 0f; startX = pos.x; controlsVisible = true },
+                    onHorizontalDrag = { change, dx ->
+                        change.consume()
+                        totalDx += dx
+                        val dur = player.duration.takeIf { it > 0 } ?: return@detectHorizontalDragGestures
+                        val target = (baseMs + (totalDx / size.width * SEEK_SPAN_MS).toLong()).coerceIn(0L, dur)
+                        seekPreviewMs = target
+                        seekCancelZone = kotlin.math.abs(totalDx) < size.width * 0.04f
+                    },
+                    onDragEnd = {
+                        val target = seekPreviewMs
+                        if (target != null && !seekCancelZone) player.seekTo(target)
+                        seekPreviewMs = null; seekCancelZone = false
+                    },
+                    onDragCancel = { seekPreviewMs = null; seekCancelZone = false }
+                )
+            }
+        )
 
         // Yan jest bölgeleri — yalnız dikey kaydırma (çakışmasın): sol parlaklık, sağ ses. Kilitliyken kapalı.
         if (!locked) GestureZone(Modifier.align(Alignment.CenterStart)) { dy ->
@@ -472,6 +512,27 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
                 Modifier.align(Alignment.Center).clip(RoundedCornerShape(10.dp))
                     .background(Color.Black.copy(alpha = 0.6f)).padding(horizontal = 18.dp, vertical = 10.dp)
             ) { Text(it, color = TextHi, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
+        }
+
+        // Yatay sürükle-sar önizlemesi — hedef konum + fark; başlangıca dönünce "İptal".
+        seekPreviewMs?.let { target ->
+            val delta = target - positionMs
+            val sign = if (delta >= 0) "+" else "−"
+            Box(
+                Modifier.align(Alignment.Center).clip(RoundedCornerShape(12.dp))
+                    .background(Color.Black.copy(alpha = 0.72f)).padding(horizontal = 22.dp, vertical = 14.dp)
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(fmt(target), color = TextHi, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+                    Text(
+                        if (seekCancelZone) "Release to cancel"
+                        else "$sign${fmt(kotlin.math.abs(delta))}",
+                        color = if (seekCancelZone) Accent2 else TextDim,
+                        fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
         }
 
         // Kayıt durum şeridi — üstte, kontroller gizliyken de görünür (donma/boş Kitaplık yerine net geri bildirim).
@@ -637,9 +698,10 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
                 }
             },
             offsetMs = subOffsetMs,
-            onOffset = if (subCues.isNotEmpty() || subCues2.isNotEmpty()) ({ d -> subOffsetMs += d }) else null,
+            onOffset = if (subCues.isNotEmpty() || subCues2.isNotEmpty())
+                ({ d -> subOffsetMs += d; externalSub?.let { vm.rememberSub(item.id, it.toString(), subOffsetMs) } }) else null,
             onClearExternal = if (subCues.isNotEmpty() || subCues2.isNotEmpty())
-                ({ subCues = emptyList(); subCues2 = emptyList(); subOffsetMs = 0L }) else null
+                ({ subCues = emptyList(); subCues2 = emptyList(); subOffsetMs = 0L; vm.forgetSub(item.id) }) else null
         ) { showTracks = false }
 
         // Dil paketi indirme onayı — manuel/isteğe bağlı (sessiz indirme yok).
