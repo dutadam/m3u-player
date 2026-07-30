@@ -18,7 +18,10 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
@@ -79,6 +82,7 @@ import androidx.media3.cast.CastPlayer
 import androidx.media3.cast.SessionAvailabilityListener
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
@@ -200,6 +204,14 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
     var startedOnce by remember(item.id) { mutableStateOf(false) }
     // Dizi bölümü bitince "sıradaki bölüm" geri sayımı (kuyrukta sonraki bölüm varsa).
     var autoNext by remember(item.id) { mutableStateOf(false) }
+    // Harici altyazı (kullanıcının yüklediği .srt/.vtt/.ass) — set edilince medya yeniden kurulur.
+    var externalSub by remember(item.id) { mutableStateOf<Uri?>(null) }
+    val subPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            runCatching { context.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+            externalSub = uri
+        }
+    }
     var isPlaying by remember { mutableStateOf(true) }
     var positionMs by remember { mutableStateOf(0L) }
     var durationMs by remember { mutableStateOf(0L) }
@@ -226,11 +238,24 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
 
     // Oynatıcı servise ait; burada yalnız bu öğe için medyayı kur (buffer/kod çözücü ayarları
     // serviste). Öğe değişince yeniden kur.
-    LaunchedEffect(item.id) {
+    LaunchedEffect(item.id, externalSub) {
         val url = StreamResolver.candidates(item.url).firstOrNull()?.url ?: item.url
-        player.setMediaItem(MediaItem.fromUri(url))
+        // Altyazı eklenince medya yeniden kurulur → mevcut konumu koru.
+        val keepMs = if (externalSub != null) player.currentPosition.coerceAtLeast(0) else 0L
+        val builder = MediaItem.Builder().setUri(url)
+        externalSub?.let { sub ->
+            builder.setSubtitleConfigurations(listOf(
+                MediaItem.SubtitleConfiguration.Builder(sub)
+                    .setMimeType(subMime(sub))
+                    .setLanguage("und")
+                    .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                    .build()
+            ))
+        }
+        player.setMediaItem(builder.build())
         player.prepare()
-        player.playWhenReady = !askResume
+        if (keepMs > 0) player.seekTo(keepMs)
+        player.playWhenReady = externalSub != null || !askResume
     }
 
     fun saveNow() {
@@ -580,7 +605,10 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
             }
         }
 
-        if (showTracks) TrackDialog(player) { showTracks = false }
+        if (showTracks) TrackDialog(
+            player,
+            onPickSubtitle = { showTracks = false; runCatching { subPicker.launch(arrayOf("*/*")) } }
+        ) { showTracks = false }
 
         // Dizi bölümü bitti → sıradaki bölüm geri sayımı (kuyrukta sonraki bölüm varsa).
         if (autoNext) NextEpisodeCountdown(
@@ -602,6 +630,16 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
 private fun fmt(ms: Long): String {
     val s = ms / 1000; val h = s / 3600; val m = (s % 3600) / 60; val sec = s % 60
     return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%d:%02d".format(m, sec)
+}
+
+/** Altyazı dosyası uzantısından MIME (ExoPlayer harici altyazı için). */
+private fun subMime(uri: Uri): String {
+    val s = uri.toString().lowercase()
+    return when {
+        s.endsWith(".vtt") -> MimeTypes.TEXT_VTT
+        s.endsWith(".ass") || s.endsWith(".ssa") -> MimeTypes.TEXT_SSA
+        else -> MimeTypes.APPLICATION_SUBRIP
+    }
 }
 
 @Composable
@@ -640,7 +678,7 @@ private fun GestureZone(modifier: Modifier, onVerticalDrag: (Float) -> Unit) {
 }
 
 @Composable
-private fun TrackDialog(player: Player, onDismiss: () -> Unit) {
+private fun TrackDialog(player: Player, onPickSubtitle: () -> Unit, onDismiss: () -> Unit) {
     val tracks = player.currentTracks
     val audio = tracks.groups.filter { it.type == C.TRACK_TYPE_AUDIO && it.isSupported }
     val text = tracks.groups.filter { it.type == C.TRACK_TYPE_TEXT && it.isSupported }
@@ -675,6 +713,7 @@ private fun TrackDialog(player: Player, onDismiss: () -> Unit) {
                 Spacer(Modifier.height(12.dp))
             }
             Text("Subtitles", color = Accent2, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            TrackRow("＋  Load subtitle file…", false) { onPickSubtitle() }
             TrackRow("Off", textOff) { disableText() }
             text.forEach { g ->
                 for (i in 0 until g.length) if (g.isTrackSupported(i))
