@@ -1,3 +1,7 @@
+> ⚠️ **Bu doküman yalnız Apple/App Store içindir ve şu an ertelenmiştir (Android odaklı gidiyoruz).**
+> Android/Google Play çıkışı için güncel kaynak: [`docs/store/play-store-readiness.md`](play-store-readiness.md).
+> Buradaki konumlandırma ve metinler eski (network-first) plana aittir; güncel değildir.
+
 # cheesino — App Store Yayın Hazırlığı
 
 Bu doküman TestFlight → App Store yolundaki tüm metin/varlık/uyum gereksinimlerini toplar.

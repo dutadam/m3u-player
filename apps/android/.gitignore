@@ -10,5 +10,7 @@ local.properties
 # İmza anahtarları — asla depoya girmez (YAYIN anahtarları)
 *.jks
 *.keystore
+# Yayın imzalama sırları (yol/parola) — örneği .example olarak commit edilir.
+keystore.properties
 # İstisna: ortak sabit DEBUG anahtarı (Firebase/Google Sign-In için kararlı SHA-1). Debug'a özel.
 !app/debug.keystore

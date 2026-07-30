@@ -7,3 +7,9 @@
 -keepclassmembers class app.cheesino.** {
     *** Companion;
 }
+
+# libVLC — native (JNI) katman yansımayla erişir; küçültme onu bozmasın.
+# (Media3/ExoPlayer, Firebase, ML Kit, Play Billing kendi consumer kurallarını getirir.)
+-keep class org.videolan.libvlc.** { *; }
+-keep interface org.videolan.libvlc.** { *; }
+-dontwarn org.videolan.libvlc.**

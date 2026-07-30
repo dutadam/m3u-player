@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -18,6 +20,12 @@ android {
         versionName = "0.1.0"
     }
 
+    // Yayın imzası — sırlar repoda DEĞİL. `keystore.properties` (gitignore'lu) varsa okunur;
+    // yoksa release imzasız kalır (yerel derleme kırılmaz). Örnek için keystore.properties.example.
+    val keystorePropsFile = rootProject.file("keystore.properties")
+    val keystoreProps = Properties().apply {
+        if (keystorePropsFile.exists()) keystorePropsFile.inputStream().use { load(it) }
+    }
     signingConfigs {
         // Ortak sabit debug anahtarı — CI ve yerel aynı SHA-1 ile imzalar → Google Sign-In
         // (Firebase) her yerde aynı. YALNIZ DEBUG; yayın anahtarı değil.
@@ -27,11 +35,21 @@ android {
             keyAlias = "androiddebugkey"
             keyPassword = "android"
         }
+        if (keystorePropsFile.exists()) create("release") {
+            storeFile = file(keystoreProps.getProperty("storeFile"))
+            storePassword = keystoreProps.getProperty("storePassword")
+            keyAlias = keystoreProps.getProperty("keyAlias")
+            keyPassword = keystoreProps.getProperty("keyPassword")
+        }
     }
     buildTypes {
         release {
+            // R8/küçültme: cihazda doğrulandıktan sonra true yap (proguard-rules.pro hazır).
             isMinifyEnabled = false
+            isShrinkResources = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // keystore.properties varsa yayın anahtarıyla imzala; yoksa imzasız bırak.
+            signingConfig = if (keystorePropsFile.exists()) signingConfigs.getByName("release") else null
         }
     }
     compileOptions {

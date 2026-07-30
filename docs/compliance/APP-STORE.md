@@ -1,3 +1,6 @@
+> ⚠️ **Bu doküman yalnız Apple/App Store içindir ve şu an ertelenmiştir (Android odaklı gidiyoruz).**
+> Android/Google Play çıkışı için güncel kaynak: [`docs/store/play-store-readiness.md`](../store/play-store-readiness.md).
+
 # cheesino — App Store / TestFlight Uyum Rehberi
 
 streaming oynatıcılar mağazalardan telif baskısıyla sık kaldırılır. Onay şansını yükseltmek ve kaldırılma riskini
