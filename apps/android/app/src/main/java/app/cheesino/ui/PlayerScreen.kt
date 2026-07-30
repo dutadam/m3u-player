@@ -209,6 +209,10 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
     var externalSub by remember(item.id) { mutableStateOf<Uri?>(null) }
     val subScope = rememberCoroutineScope()
     val targetLang = remember { java.util.Locale.getDefault().language }
+    // Dil paketi cihazda yoksa indirme onayı için bekleyen altyazı (manuel/isteğe bağlı indirme).
+    var pendingTranslateSub by remember(item.id) { mutableStateOf<Uri?>(null) }
+    // Çeviri/indirme sürerken kalıcı gösterge (kısa HUD yerine).
+    var subBusy by remember(item.id) { mutableStateOf<String?>(null) }
     val subPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             runCatching { context.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
@@ -615,13 +619,57 @@ private fun PlayerScreenContent(player: MediaController, item: PlayItem, vm: Lib
                 {
                     showTracks = false
                     subScope.launch {
-                        hud = "Translating subtitles…"
-                        val out = app.cheesino.data.SubtitleTranslate.translate(context, sub, targetLang)
-                        if (out != null) { externalSub = out; hud = "Subtitles translated" } else hud = "Couldn't translate"
+                        subBusy = "Translating subtitles…"
+                        val r = app.cheesino.data.SubtitleTranslate.translate(context, sub, targetLang, allowDownload = false)
+                        subBusy = null
+                        when (r) {
+                            is app.cheesino.data.SubtitleTranslate.Result.Done -> { externalSub = r.uri; hud = "Subtitles translated" }
+                            app.cheesino.data.SubtitleTranslate.Result.NeedsDownload -> pendingTranslateSub = sub
+                            app.cheesino.data.SubtitleTranslate.Result.Unsupported -> hud = "Language not supported"
+                            app.cheesino.data.SubtitleTranslate.Result.Failed -> hud = "Couldn't translate"
+                        }
                     }
                 }
             }
         ) { showTracks = false }
+
+        // Dil paketi indirme onayı — manuel/isteğe bağlı (sessiz indirme yok).
+        pendingTranslateSub?.let { sub ->
+            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.7f)), contentAlignment = Alignment.Center) {
+                Column(Modifier.clip(RoundedCornerShape(16.dp)).background(Ground).padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Offline translation", color = TextHi, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                    Text("Needs a one-time language pack download (~30 MB per language). It then works fully offline.",
+                        color = TextDim, fontSize = 13.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier.padding(top = 8.dp).widthIn(max = 300.dp))
+                    Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = { pendingTranslateSub = null }) { Text("Cancel", color = TextHi) }
+                        TextButton(onClick = {
+                            pendingTranslateSub = null
+                            subScope.launch {
+                                subBusy = "Downloading language pack…"
+                                val r = app.cheesino.data.SubtitleTranslate.translate(context, sub, targetLang, allowDownload = true)
+                                subBusy = null
+                                when (r) {
+                                    is app.cheesino.data.SubtitleTranslate.Result.Done -> { externalSub = r.uri; hud = "Subtitles translated" }
+                                    else -> hud = "Couldn't translate"
+                                }
+                            }
+                        }) { Text("Download", color = Accent, fontWeight = FontWeight.Bold) }
+                    }
+                }
+            }
+        }
+
+        // Çeviri/indirme sürerken kalıcı gösterge.
+        subBusy?.let {
+            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.6f)), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    BrandLoader()
+                    Text(it, color = TextHi, fontSize = 13.sp, modifier = Modifier.padding(top = 12.dp))
+                }
+            }
+        }
 
         // Dizi bölümü bitti → sıradaki bölüm geri sayımı (kuyrukta sonraki bölüm varsa).
         if (autoNext) NextEpisodeCountdown(
